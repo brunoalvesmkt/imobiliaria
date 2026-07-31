@@ -49,18 +49,47 @@ Preencha pelo menos:
 
 ## 3. Primeiro deploy
 
+Antes de tudo, decida qual dos dois cenários de Traefik se aplica — **só pode
+haver um dono das portas 80/443 por servidor**:
+
+- **Traefik dedicado a este projeto** (`docker compose -f docker-compose.yml
+  -f docker-compose.traefik-standalone.yml`) — use quando a VPS não tem
+  nenhum outro Traefik rodando. Emite certificado via desafio HTTP-01.
+- **Reaproveitar um Traefik que já roda na VPS para outro projeto**
+  (`docker compose -f docker-compose.yml -f
+  docker-compose.traefik-shared.yml`) — quando as portas 80/443 já estão
+  ocupadas por outro Traefik. Este projeto não sobe Traefik nenhum, só entra
+  na rede Docker do Traefik existente. Exige `TRAEFIK_CERTRESOLVER` e
+  `TRAEFIK_SHARED_NETWORK` preenchidos no `.env` — ver comentários no topo de
+  `docker-compose.traefik-shared.yml` para como descobrir esses dois valores
+  a partir do container do Traefik já existente.
+
+Os comandos abaixo usam `$COMPOSE_FILES` como abreviação — substitua pelas
+flags `-f` do cenário escolhido (ex.: `-f docker-compose.yml -f
+docker-compose.traefik-standalone.yml`).
+
 ```bash
-docker compose --profile production build
-docker compose --profile production up -d postgres redis minio
+docker compose $COMPOSE_FILES build
+docker compose $COMPOSE_FILES up -d postgres redis minio
 # espera os healthchecks (docker compose ps) antes de aplicar migrations
-docker compose run --rm api pnpm --filter database migrate:deploy
-docker compose run --rm api pnpm --filter database seed   # cria o Master seed
-docker compose --profile production up -d
+docker compose $COMPOSE_FILES run --rm api sh -c "cd node_modules/@chatbot-saas/database && node /app/node_modules/.pnpm/node_modules/prisma/build/index.js migrate deploy"
+docker compose $COMPOSE_FILES run --rm api node node_modules/@chatbot-saas/database/dist/seed.js   # cria o Master seed
+docker compose $COMPOSE_FILES --profile production up -d   # --profile production só tem efeito com o standalone (é o que ativa o serviço "traefik")
 ```
 
-O Traefik só sobe com `--profile production`; sem essa flag, `docker compose
-up` continua funcionando como ambiente de dev local (portas diretas em
-`127.0.0.1`, sem TLS).
+> **Por que não `pnpm --filter database migrate:deploy`/`pnpm --filter
+> database seed`, como um monorepo normal faria?** A imagem de produção do
+> `api` é gerada via `pnpm deploy --prod` (ver Dockerfile) — um pacote
+> enxuto só com o necessário pra rodar `node dist/main.js`, sem o restante
+> do monorepo nem um `pnpm` funcional lá dentro. Os comandos acima chamam o
+> Prisma e o seed compilado diretamente via `node`, contornando isso —
+> testado de ponta a ponta nesta sessão contra uma VPS real.
+
+O Traefik dedicado só sobe com `--profile production` (flag que só existe no
+`docker-compose.traefik-standalone.yml`); sem essa flag, `docker compose up`
+continua funcionando como ambiente de dev local (portas diretas em
+`127.0.0.1`, sem TLS). No cenário de Traefik compartilhado, não use
+`--profile production` — não há serviço `traefik` nesse arquivo pra ativar.
 
 ## 4. Verificação pós-deploy
 
@@ -96,14 +125,17 @@ backup nunca testado não é um backup, é uma esperança:
 
 ```bash
 git pull
-docker compose --profile production build
-docker compose run --rm api pnpm --filter database migrate:deploy
-docker compose --profile production up -d
+docker compose $COMPOSE_FILES build
+docker compose $COMPOSE_FILES run --rm api sh -c "cd node_modules/@chatbot-saas/database && node /app/node_modules/.pnpm/node_modules/prisma/build/index.js migrate deploy"
+docker compose $COMPOSE_FILES up -d   # + --profile production, só no cenário standalone
 ```
 
-`migrate:deploy` (diferente de `migrate` usado em dev) é não-interativo e só
-aplica migrations pendentes — nunca gera uma nova a partir do schema, então é
-seguro rodar em produção.
+(`$COMPOSE_FILES` é a mesma abreviação da seção 3 — as flags `-f` do cenário
+de Traefik escolhido no primeiro deploy.)
+
+O `migrate deploy` do Prisma (diferente do `migrate dev` usado em
+desenvolvimento) é não-interativo e só aplica migrations pendentes — nunca
+gera uma nova a partir do schema, então é seguro rodar em produção.
 
 ## 7. Trocando de domínio depois (ex.: subdomínio provisório → domínio oficial)
 

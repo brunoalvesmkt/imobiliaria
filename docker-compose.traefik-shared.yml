@@ -1,0 +1,30 @@
+# Reaproveita um Traefik que já roda na mesma VPS para OUTRO projeto — use
+# quando as portas 80/443 do host já estão ocupadas por outro Traefik (só
+# pode haver um dono dessas portas por servidor). Este projeto não sobe
+# Traefik nenhum; só entra na rede Docker do Traefik existente e ganha
+# labels compatíveis com o certresolver que ele já tem configurado.
+#
+# Uso:
+#   docker compose -f docker-compose.yml -f docker-compose.traefik-shared.yml up -d postgres redis minio api worker web
+#   (sem --profile production — o profile só existe para o serviço "traefik", que não está neste arquivo)
+#
+# Defina no .env:
+#   TRAEFIK_CERTRESOLVER=<nome do certresolver já configurado no Traefik existente>
+#     — descubra com: docker inspect <container_do_traefik_existente> --format '{{.Config.Cmd}}'
+#       (procure por --certificatesresolvers.<NOME>.acme...)
+#   TRAEFIK_SHARED_NETWORK=<nome da rede Docker externa em que o Traefik existente está>
+#     — descubra com: docker inspect <container_do_traefik_existente> --format '{{json .NetworkSettings.Networks}}'
+services:
+  api:
+    networks:
+      - default
+      - traefik-shared
+  web:
+    networks:
+      - default
+      - traefik-shared
+
+networks:
+  traefik-shared:
+    external: true
+    name: ${TRAEFIK_SHARED_NETWORK}

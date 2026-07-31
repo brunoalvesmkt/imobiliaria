@@ -1,30 +1,38 @@
 # Reaproveita um Traefik que já roda na mesma VPS para OUTRO projeto — use
 # quando as portas 80/443 do host já estão ocupadas por outro Traefik (só
-# pode haver um dono dessas portas por servidor). Este projeto não sobe
-# Traefik nenhum; só entra na rede Docker do Traefik existente e ganha
-# labels compatíveis com o certresolver que ele já tem configurado.
+# pode haver um dono dessas portas por servidor).
+#
+# IMPORTANTE: NÃO conecta este projeto na rede Docker do outro projeto
+# inteiro (ex.: "<outro-projeto>_platform") — se aquele projeto tiver a
+# stack inteira nessa rede (postgres/redis/minio próprios, não só o
+# Traefik), os nomes de serviço colidem (dois "postgres", dois "redis"...) e
+# o DNS interno do Docker pode resolver "postgres" para o container ERRADO,
+# de outro projeto — sintoma: erro de autenticação com senha "errada" que na
+# verdade está certa, só que contra o banco errado. Isso foi um bug real
+# descoberto em produção nesta sessão.
+#
+# Em vez disso, este arquivo cria uma rede pequena e exclusiva deste
+# projeto, e você conecta o Traefik existente A ELA manualmente (um comando,
+# uma vez só) — nunca o contrário.
 #
 # Uso:
 #   docker compose -f docker-compose.yml -f docker-compose.traefik-shared.yml up -d postgres redis minio api worker web
-#   (sem --profile production — o profile só existe para o serviço "traefik", que não está neste arquivo)
+#   docker network connect ${TRAEFIK_BRIDGE_NETWORK:-chatbot-saas-platform_traefik-bridge} <nome_do_container_traefik_existente>
 #
 # Defina no .env:
 #   TRAEFIK_CERTRESOLVER=<nome do certresolver já configurado no Traefik existente>
 #     — descubra com: docker inspect <container_do_traefik_existente> --format '{{.Config.Cmd}}'
 #       (procure por --certificatesresolvers.<NOME>.acme...)
-#   TRAEFIK_SHARED_NETWORK=<nome da rede Docker externa em que o Traefik existente está>
-#     — descubra com: docker inspect <container_do_traefik_existente> --format '{{json .NetworkSettings.Networks}}'
 services:
   api:
     networks:
       - default
-      - traefik-shared
+      - traefik-bridge
   web:
     networks:
       - default
-      - traefik-shared
+      - traefik-bridge
 
 networks:
-  traefik-shared:
-    external: true
-    name: ${TRAEFIK_SHARED_NETWORK}
+  traefik-bridge:
+    name: ${TRAEFIK_BRIDGE_NETWORK:-chatbot-saas-platform_traefik-bridge}

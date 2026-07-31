@@ -58,11 +58,15 @@ haver um dono das portas 80/443 por servidor**:
 - **Reaproveitar um Traefik que já roda na VPS para outro projeto**
   (`docker compose -f docker-compose.yml -f
   docker-compose.traefik-shared.yml`) — quando as portas 80/443 já estão
-  ocupadas por outro Traefik. Este projeto não sobe Traefik nenhum, só entra
-  na rede Docker do Traefik existente. Exige `TRAEFIK_CERTRESOLVER` e
-  `TRAEFIK_SHARED_NETWORK` preenchidos no `.env` — ver comentários no topo de
-  `docker-compose.traefik-shared.yml` para como descobrir esses dois valores
-  a partir do container do Traefik já existente.
+  ocupadas por outro Traefik. Este projeto **não** entra na rede do outro
+  projeto inteiro (risco real, descoberto em produção: se o outro projeto
+  também tiver `postgres`/`redis`/`minio` nessa rede, os nomes colidem e o
+  DNS interno do Docker pode resolver pro container errado — ver aviso no
+  topo de `docker-compose.traefik-shared.yml`). Em vez disso, cria uma rede
+  pequena e exclusiva, e você conecta o Traefik existente a ela manualmente
+  (um comando, uma vez só). Exige `TRAEFIK_CERTRESOLVER` preenchido no
+  `.env` — ver comentários no topo de `docker-compose.traefik-shared.yml`
+  para o passo a passo completo.
 
 Os comandos abaixo usam `$COMPOSE_FILES` como abreviação — substitua pelas
 flags `-f` do cenário escolhido (ex.: `-f docker-compose.yml -f

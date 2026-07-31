@@ -9,11 +9,25 @@ export const AFFILIATE_REFRESH_COOKIE = "affiliate_refresh_token";
 
 const isProduction = process.env.NODE_ENV === "production";
 
+// Sem isso, o cookie fica "host-only" — restrito exatamente ao host que o
+// criou. Funciona em dev local por coincidência (api e web rodam ambos em
+// "localhost", só em portas diferentes — cookie não é escopado por porta).
+// Em produção, api/web ficam em subdomínios DIFERENTES (ex.:
+// api.chatbot.agenciaclamber.com.br vs chatbot.agenciaclamber.com.br) — sem
+// um domain explícito cobrindo os dois, o navegador nunca reenvia o cookie
+// pro domínio do painel, e o middleware.ts (que roda no servidor do painel)
+// nunca o vê. Bug real encontrado no primeiro deploy em VPS desta sessão.
+// COOKIE_DOMAIN deve ser o domínio-pai comum aos dois (ex.:
+// "chatbot.agenciaclamber.com.br", que cobre a si mesmo e o subdomínio
+// "api.chatbot.agenciaclamber.com.br") — deixe vazio em dev.
+const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
+
 const baseCookieOptions = {
   httpOnly: true,
   secure: isProduction,
   sameSite: "strict" as const,
   path: "/",
+  ...(cookieDomain ? { domain: cookieDomain } : {}),
 };
 
 export function setAuthCookies(

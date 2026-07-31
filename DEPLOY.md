@@ -33,6 +33,7 @@ Preencha pelo menos:
 | `ACME_EMAIL` | e-mail para avisos de expiração do Let's Encrypt |
 | `NEXT_PUBLIC_API_URL` | `https://api.chatbot.agenciaclamber.com.br` — **build-time**, não runtime (ver nota abaixo) |
 | `APP_URL` | `https://chatbot.agenciaclamber.com.br` (usado para CORS pela API) |
+| `COOKIE_DOMAIN` | `chatbot.agenciaclamber.com.br` — domínio-pai comum a `APP_DOMAIN`/`API_DOMAIN`, obrigatório em produção (ver nota abaixo) |
 | `POSTGRES_PASSWORD`, `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` | troque os padrões de dev |
 | `DATABASE_URL` | mesma senha do `POSTGRES_PASSWORD` acima |
 | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` | `openssl rand -hex 48` cada um |
@@ -46,6 +47,18 @@ Preencha pelo menos:
 > `.env` depois de já ter feito o build **não tem efeito** até reconstruir a
 > imagem do `web` (`docker compose build web`). Isso é comportamento do
 > Next.js, não um bug daqui.
+
+> **`COOKIE_DOMAIN` é obrigatório em produção** (bug real descoberto no
+> primeiro deploy desta sessão): os cookies de sessão (JWT) são criados pela
+> API, mas o `middleware.ts` que valida a sessão roda no servidor do `web` —
+> um domínio diferente. Sem `COOKIE_DOMAIN` explícito, o cookie fica preso
+> ao host exato que o criou (a API) e o navegador nunca o reenvia pro
+> painel — o login parece funcionar (retorna `200`, seta o cookie) mas o
+> painel redireciona de volta pro login em seguida, sem erro visível na
+> tela. O valor precisa ser o domínio-pai comum a `APP_DOMAIN` e
+> `API_DOMAIN` (ex.: se são `chatbot.agenciaclamber.com.br` e
+> `api.chatbot.agenciaclamber.com.br`, use `COOKIE_DOMAIN=chatbot.agenciaclamber.com.br`).
+> Exige rebuild do `api` depois de setar (`docker compose build api`).
 
 ## 3. Primeiro deploy
 

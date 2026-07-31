@@ -70,10 +70,16 @@ services:
         condition: service_healthy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.api.rule=Host(`${API_DOMAIN:-api.localhost}`)"
-      - "traefik.http.routers.api.entrypoints=websecure"
-      - "traefik.http.routers.api.tls.certresolver=${TRAEFIK_CERTRESOLVER:-le}"
-      - "traefik.http.services.api.loadbalancer.server.port=3001"
+      # Nomes de router/serviço prefixados com "chatbot-saas-" (não só "api")
+      # de propósito — o Traefik nomeia rotas globalmente pelo nome literal
+      # do label, então "api"/"web" colidiriam com qualquer outro projeto na
+      # mesma VPS que também tenha serviços com esses nomes (aconteceu de
+      # verdade em produção nesta sessão: "HTTP router defined multiple
+      # times with different configurations").
+      - "traefik.http.routers.chatbot-saas-api.rule=Host(`${API_DOMAIN:-api.localhost}`)"
+      - "traefik.http.routers.chatbot-saas-api.entrypoints=websecure"
+      - "traefik.http.routers.chatbot-saas-api.tls.certresolver=${TRAEFIK_CERTRESOLVER:-le}"
+      - "traefik.http.services.chatbot-saas-api.loadbalancer.server.port=3001"
 
   worker:
     build:
@@ -103,10 +109,12 @@ services:
       - api
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.web.rule=Host(`${APP_DOMAIN:-app.localhost}`)"
-      - "traefik.http.routers.web.entrypoints=websecure"
-      - "traefik.http.routers.web.tls.certresolver=${TRAEFIK_CERTRESOLVER:-le}"
-      - "traefik.http.services.web.loadbalancer.server.port=3000"
+      # Ver comentário equivalente no serviço "api" acima sobre por que não
+      # usar só "web" como nome de router/serviço.
+      - "traefik.http.routers.chatbot-saas-web.rule=Host(`${APP_DOMAIN:-app.localhost}`)"
+      - "traefik.http.routers.chatbot-saas-web.entrypoints=websecure"
+      - "traefik.http.routers.chatbot-saas-web.tls.certresolver=${TRAEFIK_CERTRESOLVER:-le}"
+      - "traefik.http.services.chatbot-saas-web.loadbalancer.server.port=3000"
 
   # O serviço "traefik" (Traefik próprio, dedicado a este projeto) NÃO mora
   # mais neste arquivo — ver docker-compose.traefik-standalone.yml (quando a

@@ -28,10 +28,22 @@ services:
     networks:
       - default
       - traefik-bridge
+    labels:
+      # Com o container em duas redes (default + traefik-bridge), o Traefik
+      # não sabe sozinho qual delas usar pra alcançar o container — sem essa
+      # label ele pode escolher a rede errada (a "default", que o Traefik
+      # nem está conectado) silenciosamente, sem logar erro nenhum. Sintoma
+      # real descoberto em produção nesta sessão: TLS/roteamento funcionando
+      # (sem erro nos logs do Traefik), conectividade direta confirmada via
+      # `docker exec <traefik> wget <ip-do-container>` funcionando, mas a
+      # requisição via domínio voltando 504 Gateway Timeout mesmo assim.
+      - "traefik.docker.network=${TRAEFIK_BRIDGE_NETWORK:-chatbot-saas-platform_traefik-bridge}"
   web:
     networks:
       - default
       - traefik-bridge
+    labels:
+      - "traefik.docker.network=${TRAEFIK_BRIDGE_NETWORK:-chatbot-saas-platform_traefik-bridge}"
 
 networks:
   traefik-bridge:

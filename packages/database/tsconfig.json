@@ -1,0 +1,17 @@
+{
+  "extends": "@chatbot-saas/tsconfig/base.json",
+  "compilerOptions": {
+    // CommonJS/Node em vez do NodeNext herdado de base.json — este pacote é
+    // consumido em runtime pelo apps/api compilado (`nest build`, saída
+    // CommonJS), que faz `require()` direto do `dist` gerado aqui. NodeNext
+    // exigiria extensão `.js` em todo import relativo interno (`./auth.js`)
+    // para funcionar sob o resolvedor ESM nativo do Node — a mesma classe de
+    // problema documentada no DEVELOPMENT_PLAN.md (bug de ambiente Node
+    // v24/ts-node) — CommonJS evita a questão inteira.
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": ["src"]
+}

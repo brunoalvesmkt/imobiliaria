@@ -1,0 +1,17 @@
+# Nunca copiar node_modules do host para dentro da imagem — binários nativos
+# (argon2, sharp, etc.) compilados para o SO do host não funcionam dentro do
+# container linux-alpine, e o `pnpm install` de dentro do Dockerfile já
+# reinstala tudo do jeito certo mesmo.
+node_modules
+**/node_modules
+
+.git
+**/dist
+**/.next
+**/.turbo
+.docker-data
+apps/api/.baileys-sessions
+
+.env
+.env.local
+*.log

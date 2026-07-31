@@ -1,0 +1,1242 @@
+// Modelagem da Fase 1 — Fundação (identidade, organização, RBAC, auditoria).
+// Modelagem completa de todas as entidades do produto está documentada em
+// DATABASE_DESIGN.md; os demais módulos comerciais (CRM, WhatsApp, Chatbot,
+// Automação...) entram no schema a partir das fases 3+ (ver DEVELOPMENT_PLAN.md).
+
+generator client {
+  provider      = "prisma-client-js"
+  // "native" cobre o dev local (Windows/mac/glibc); "linux-musl-openssl-3.0.x"
+  // é o binário do engine para os containers Docker (node:20-alpine, que traz
+  // OpenSSL 3.x, não o 1.1.x que o Prisma tenta detectar por padrão em Alpine).
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Identidade e organização
+// ---------------------------------------------------------------------------
+
+enum TenantStatus {
+  trial
+  active
+  suspended // "inativar" — pausa reversível, geralmente por inadimplência
+  blocked // "bloquear" — ação administrativa/política de uso, mais severa que suspended
+  cancelled
+}
+
+model Tenant {
+  id             String       @id @default(uuid())
+  razaoSocial    String
+  cnpj           String       @unique
+  responsavel    String
+  endereco       String?
+  telefone       String?
+  whatsapp       String?
+  email          String
+  logoUrl        String?
+  subdominio     String       @unique
+  dominioCustom  String?      @unique
+  status         TenantStatus @default(trial)
+  planId         String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  plan          Plan?          @relation(fields: [planId], references: [id], onDelete: SetNull)
+  users         TenantUser[]
+  roles         Role[]
+  featureFlags  FeatureFlag[]
+  auditLogs     AuditLog[]
+  refreshTokens RefreshToken[]
+  subscriptions Subscription[]
+  contacts      Contact[]
+  funnels       Funnel[]
+  opportunities Opportunity[]
+  crmTasks      CrmTask[]
+  whatsAppNumbers   WhatsAppNumber[]
+  whatsAppTemplates WhatsAppTemplate[]
+  riskAcceptances   RiskAcceptance[]
+  conversations     Conversation[]
+  messages          Message[]
+  teams             Team[]
+  queues            Queue[]
+  businessHours     BusinessHours[]
+  conversationEvents ConversationEvent[]
+  chatbotFlows       ChatbotFlow[]
+  chatbotExecutions  ChatbotExecution[]
+  knowledgeBaseItems KnowledgeBaseItem[]
+  aiCredentials      TenantAiCredential[]
+  automations        Automation[]
+  automationExecutions AutomationExecution[]
+  followUpSchedules  FollowUpSchedule[]
+  invoices           Invoice[]
+  affiliateReferrals AffiliateReferral[]
+  emailLogs          EmailLog[]
+  impersonationSessions ImpersonationSession[]
+  notifications      Notification[]
+  conversationEvaluations ConversationEvaluation[]
+  quickMessages           QuickMessage[]
+  customFieldDefinitions  CustomFieldDefinition[]
+
+  @@map("tenants")
+}
+
+enum MasterRole {
+  super_admin
+  financeiro
+  suporte
+}
+
+model MasterUser {
+  id           String     @id @default(uuid())
+  nome         String
+  email        String     @unique
+  passwordHash String
+  role         MasterRole @default(suporte)
+  status       String     @default("active")
+  lastLoginAt  DateTime?
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  refreshTokens RefreshToken[]
+  impersonationSessions ImpersonationSession[]
+
+  @@map("master_users")
+}
+
+/// Rastro de sessões de acesso assistido em andamento (Fase 29, ver
+/// DEVELOPMENT_PLAN.md) — o token JWT de impersonação é stateless (Fase
+/// 2.7); esta tabela existe só para o painel Master saber, sem heurística,
+/// que empresas estão sob acesso assistido agora.
+model ImpersonationSession {
+  id           String    @id @default(uuid())
+  tenantId     String
+  masterUserId String
+  accessLevel  String
+  startedAt    DateTime  @default(now())
+  expiresAt    DateTime
+  endedAt      DateTime?
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  masterUser MasterUser @relation(fields: [masterUserId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, endedAt, expiresAt])
+  @@map("impersonation_sessions")
+}
+
+model TenantUser {
+  id           String    @id @default(uuid())
+  tenantId     String
+  nome         String
+  // Login é feito só por e-mail (sem exigir subdomínio/tenant na tela de
+  // login nesta fase) — por isso o e-mail é único globalmente, não só por
+  // tenant. O tenant do usuário autenticado nunca é lido do input do
+  // cliente: é resolvido a partir deste registro após validar a senha.
+  email        String    @unique
+  passwordHash String
+  roleId       String
+  status       String    @default("active")
+  lastLoginAt  DateTime?
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  invitedBy    String?
+  invitedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  refreshTokens RefreshToken[]
+  contactsAsResponsavel     Contact[]
+  opportunitiesAsResponsavel Opportunity[]
+  crmTasksAsResponsavel     CrmTask[]
+  whatsAppNumbersAsResponsavel WhatsAppNumber[]
+  riskAcceptances              RiskAcceptance[]
+  conversationsAsResponsavel   Conversation[]
+  teamMemberships              TeamMember[]
+  notifications                Notification[]
+  conversationEvaluations      ConversationEvaluation[]
+
+  @@index([tenantId, status])
+  @@map("tenant_users")
+}
+
+model Role {
+  id          String  @id @default(uuid())
+  tenantId    String? // null = papel padrão do sistema, não editável por tenant
+  nome        String
+  descricao   String?
+  isSystem    Boolean @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  permissions Permission[]
+  users       TenantUser[]
+
+  @@unique([tenantId, nome])
+  @@index([tenantId])
+  @@map("roles")
+}
+
+enum PermissionAction {
+  view
+  create
+  edit
+  delete
+  send
+  transfer
+  publish
+  approve
+  export
+  administer
+  // Fase 56: acesso a dados pessoais sensíveis (CPF/CNPJ) sem mascaramento —
+  // separado de "view" porque ver o cadastro não deveria implicar
+  // automaticamente ver o documento completo (ver SECURITY.md §8).
+  view_sensitive
+}
+
+model Permission {
+  id       String            @id @default(uuid())
+  roleId   String
+  module   String
+  action   PermissionAction
+  scope    String? // ex.: "queue:<id>", "team:<id>" — granularidade opcional (ver PERMISSIONS_MATRIX.md)
+
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, module, action, scope])
+  @@index([roleId])
+  @@map("permissions")
+}
+
+// ---------------------------------------------------------------------------
+// Autenticação
+// ---------------------------------------------------------------------------
+
+model RefreshToken {
+  id           String    @id @default(uuid())
+  tokenHash    String    @unique
+  tenantId     String?
+  tenantUserId String?
+  masterUserId String?
+  affiliateId  String?
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?
+  createdAt    DateTime  @default(now())
+
+  tenant     Tenant?     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantUser TenantUser? @relation(fields: [tenantUserId], references: [id], onDelete: Cascade)
+  masterUser MasterUser? @relation(fields: [masterUserId], references: [id], onDelete: Cascade)
+  affiliate  Affiliate?  @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  @@index([tenantUserId])
+  @@index([masterUserId])
+  @@index([affiliateId])
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id           String    @id @default(uuid())
+  tokenHash    String    @unique
+  tenantUserId String?
+  masterUserId String?
+  expiresAt    DateTime
+  usedAt       DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([tenantUserId])
+  @@index([masterUserId])
+  @@map("password_reset_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// Planos e assinaturas (Painel Master)
+// ---------------------------------------------------------------------------
+
+model Plan {
+  id             String   @id @default(uuid())
+  nome           String   @unique
+  descricao      String?
+  preco          Decimal  @db.Decimal(10, 2)
+  recorrencia    String   @default("mensal") // mensal | anual
+  modulos        Json // lista de módulos incluídos, ex.: ["crm", "whatsapp"]
+  limites        Json // ex.: { "usuarios": 10, "numerosWhatsapp": 1, "armazenamentoMb": 500 }
+  iaIncluida     Boolean  @default(false)
+  apiOficial     Boolean  @default(false)
+  ativo          Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenants       Tenant[]
+  subscriptions Subscription[]
+  affiliateCommissions AffiliateCommission[]
+  affiliateReferrals   AffiliateReferral[]
+
+  @@map("plans")
+}
+
+enum SubscriptionStatus {
+  waiting
+  active
+  overdue
+  delinquent
+  suspended
+  cancelled
+  refunded
+}
+
+model Subscription {
+  id         String             @id @default(uuid())
+  tenantId   String
+  planId     String
+  status     SubscriptionStatus @default(waiting)
+  startedAt  DateTime?
+  renewedAt  DateTime?
+  cancelledAt DateTime?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plan   Plan   @relation(fields: [planId], references: [id], onDelete: Restrict)
+  invoices Invoice[]
+
+  @@index([tenantId])
+  @@map("subscriptions")
+}
+
+// ---------------------------------------------------------------------------
+// Feature flags (módulos comerciais ativos por tenant)
+// ---------------------------------------------------------------------------
+
+model FeatureFlag {
+  id         String    @id @default(uuid())
+  tenantId   String
+  module     String
+  enabled    Boolean   @default(false)
+  enabledAt  DateTime?
+  disabledAt DateTime?
+  config     Json?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, module])
+  @@index([tenantId])
+  @@map("feature_flags")
+}
+
+// ---------------------------------------------------------------------------
+// Arquivos
+// ---------------------------------------------------------------------------
+
+model File {
+  id           String    @id @default(uuid())
+  tenantId     String
+  bucketKey    String    @unique
+  nomeOriginal String
+  mimeType     String
+  tamanho      Int
+  uploadedBy   String
+  status       String    @default("pending") // pending | uploaded
+  createdAt    DateTime  @default(now())
+  deletedAt    DateTime?
+
+  @@index([tenantId])
+  @@map("files")
+}
+
+// ---------------------------------------------------------------------------
+// CRM (Fase 3)
+// ---------------------------------------------------------------------------
+
+// Simplificação consciente em relação a DATABASE_DESIGN.md: tags do contato
+// entram como array de strings (`tags`) em vez de uma tabela `ContactTag`
+// separada — mesmo resultado funcional, menos uma junção para um dado que
+// nunca é consultado sozinho fora do contato.
+model Contact {
+  id            String    @id @default(uuid())
+  tenantId      String
+  nome          String
+  sobrenome     String?
+  cpf           String?
+  cnpj          String?
+  razaoSocial   String?
+  telefone      String?
+  whatsapp      String?
+  email         String?
+  origem        String?
+  campanha      String?
+  produto       String?
+  servico       String?
+  responsavelId String?
+  observacoes   String?
+  // Lead Score (prompt mestre §4) — soma de pontos das respostas de
+  // qualificação (QuestionNodeData.pontuacao / MenuOption.pontuacao),
+  // aplicada por ChatbotEngineService. Clampada em [0, 100].
+  leadScore     Int       @default(0)
+  tags          String[] @default([])
+  customFields  Json?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+  anonymizedAt  DateTime? // LGPD: dados pessoais apagados sob pedido — ver ContactsService.anonymize
+  // Fase 53: bloquear contato — impede novo envio de mensagem (manual ou por
+  // automação/chatbot) até ser desbloqueado; não afeta mensagens já trocadas.
+  bloqueado       Boolean   @default(false)
+  bloqueadoEm     DateTime?
+  bloqueadoMotivo String?
+
+  tenant       Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  responsavel  TenantUser? @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
+  opportunities Opportunity[]
+  tasks        CrmTask[]
+  conversations Conversation[]
+
+  @@index([tenantId, deletedAt])
+  @@index([tenantId, whatsapp])
+  @@index([tenantId, email])
+  @@index([tenantId, cpf])
+  @@index([tenantId, cnpj])
+  @@map("contacts")
+}
+
+model DeduplicationRule {
+  id       String  @id @default(uuid())
+  tenantId String
+  campo    String // whatsapp | telefone | email | cpf | cnpj
+  ativo    Boolean @default(true)
+  prioridade Int   @default(0)
+
+  @@unique([tenantId, campo])
+  @@index([tenantId])
+  @@map("deduplication_rules")
+}
+
+model Funnel {
+  id        String   @id @default(uuid())
+  tenantId  String
+  nome      String
+  descricao String?
+  status    String   @default("active") // active | inactive
+  ordem     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  stages FunnelStage[]
+  opportunities Opportunity[]
+
+  @@index([tenantId])
+  @@map("funnels")
+}
+
+model FunnelStage {
+  id                 String  @id @default(uuid())
+  funnelId           String
+  nome               String
+  ordem              Int
+  cor                String?
+  probabilidade      Int?
+  camposObrigatorios Json?
+  slaHoras           Int?
+  ativo              Boolean @default(true)
+
+  funnel        Funnel        @relation(fields: [funnelId], references: [id], onDelete: Cascade)
+  opportunities Opportunity[]
+
+  @@index([funnelId])
+  @@map("funnel_stages")
+}
+
+enum OpportunityStatus {
+  open
+  won
+  lost
+}
+
+model Opportunity {
+  id                 String            @id @default(uuid())
+  tenantId           String
+  contactId          String
+  funnelId           String
+  stageId            String
+  valor              Decimal?          @db.Decimal(12, 2)
+  probabilidade      Int?
+  produto            String?
+  servico            String?
+  responsavelId      String?
+  previsaoFechamento DateTime?
+  origem             String?
+  campanha           String?
+  motivoGanho        String?
+  motivoPerda        String?
+  observacoes        String?
+  status             OpportunityStatus @default(open)
+  // Posição dentro da etapa, para reordenação manual no Kanban (Fase 27) —
+  // menor primeiro; não é alterado por mover de etapa, só por arrastar
+  // dentro da mesma coluna.
+  ordem              Int               @default(0)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  deletedAt          DateTime?
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact     Contact     @relation(fields: [contactId], references: [id], onDelete: Restrict)
+  funnel      Funnel      @relation(fields: [funnelId], references: [id], onDelete: Restrict)
+  stage       FunnelStage @relation(fields: [stageId], references: [id], onDelete: Restrict)
+  responsavel TenantUser? @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
+  tasks       CrmTask[]
+
+  @@index([tenantId, status])
+  @@index([funnelId, stageId])
+  @@index([contactId])
+  @@map("opportunities")
+}
+
+model CrmTask {
+  id            String    @id @default(uuid())
+  tenantId      String
+  contactId     String
+  opportunityId String?
+  tipo          String // retorno | ligacao | reuniao | proposta | cobranca | pos_venda | avaliacao | custom
+  titulo        String
+  descricao     String?
+  dataHora      DateTime
+  responsavelId String?
+  status        String    @default("pending") // pending | done | overdue
+  concluidaEm   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact     Contact      @relation(fields: [contactId], references: [id], onDelete: Restrict)
+  opportunity Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  responsavel TenantUser?  @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status])
+  @@index([contactId])
+  @@map("crm_tasks")
+}
+
+// ---------------------------------------------------------------------------
+// WhatsApp e conversas (Fase 4)
+// ---------------------------------------------------------------------------
+
+model WhatsAppNumber {
+  id            String    @id @default(uuid())
+  tenantId      String
+  tipo          String // chatbot | atendente
+  modalidade    String // official_api | unofficial
+  numero        String
+  status        String    @default("disconnected") // connected | disconnected | paused | authenticating | unavailable | error | blocked
+  provider      String // identifica a implementação de WhatsAppProvider usada (ex.: "meta", "fake_unofficial")
+  externalAccountId String? // phone_number_id da Meta, quando modalidade = official_api
+  responsavelId String?
+  chatbotFlowId String? // fluxo disparado automaticamente em toda conversa nova neste número (tipo = chatbot)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  responsavel   TenantUser?      @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
+  chatbotFlow   ChatbotFlow?     @relation(fields: [chatbotFlowId], references: [id], onDelete: SetNull)
+  templates     WhatsAppTemplate[]
+  riskAcceptances RiskAcceptance[]
+  conversations Conversation[]
+
+  @@unique([tenantId, numero])
+  @@index([tenantId, status])
+  @@map("whatsapp_numbers")
+}
+
+model WhatsAppTemplate {
+  id             String   @id @default(uuid())
+  tenantId       String
+  whatsAppNumberId String?
+  nome           String
+  idioma         String   @default("pt_BR")
+  categoria      String // marketing | utility | authentication
+  cabecalho      String?
+  corpo          String
+  rodape         String?
+  variaveis      Json?
+  botoes         Json?
+  status         String   @default("draft") // draft | pending | approved | rejected
+  versao         Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  whatsAppNumber WhatsAppNumber? @relation(fields: [whatsAppNumberId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status])
+  @@map("whatsapp_templates")
+}
+
+// Aceite de risco obrigatório antes de automatizar/enviar em número na
+// modalidade não oficial — ver SECURITY.md §9 e seção 13.8 do prompt mestre.
+model RiskAcceptance {
+  id               String   @id @default(uuid())
+  tenantId         String
+  userId           String
+  whatsAppNumberId String
+  aceitoEm         DateTime @default(now())
+  versaoTermo      String
+  ip               String?
+  recursosAtivados Json?
+
+  tenant         Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user           TenantUser     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  whatsAppNumber WhatsAppNumber @relation(fields: [whatsAppNumberId], references: [id], onDelete: Cascade)
+
+  @@index([whatsAppNumberId])
+  @@map("risk_acceptances")
+}
+
+model Conversation {
+  id               String    @id @default(uuid())
+  tenantId         String
+  // Número de telefone de quem está conversando — sempre presente,
+  // independe do módulo CRM estar ativo. `contactId` é um vínculo
+  // opcional adicional (ver MODULE_DEPENDENCIES.md, CRM + WhatsApp).
+  contatoNumero    String
+  contactId        String?
+  whatsAppNumberId String
+  queueId          String?
+  responsavelId    String?
+  origem           String?
+  prioridade       String    @default("normal")
+  status           String    @default("open") // open | pending | closed
+  unreadCount      Int       @default(0)
+  lastMessageAt    DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+
+  tenant         Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact        Contact?       @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  whatsAppNumber WhatsAppNumber @relation(fields: [whatsAppNumberId], references: [id], onDelete: Restrict)
+  queue          Queue?         @relation(fields: [queueId], references: [id], onDelete: SetNull)
+  responsavel    TenantUser?    @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
+  messages       Message[]
+  events         ConversationEvent[]
+  chatbotExecutions ChatbotExecution[]
+  evaluations    ConversationEvaluation[]
+
+  @@index([tenantId, status, lastMessageAt])
+  @@index([tenantId, whatsAppNumberId, contatoNumero])
+  @@index([tenantId, queueId, status])
+  @@map("conversations")
+}
+
+// Funcionalidade 12 do prompt mestre ("Análise de Atendimentos com IA —
+// Versão 2.0") — o próprio documento a descreve como versão futura, mas foi
+// antecipada a pedido do usuário. Avalia uma conversa já encerrada/com
+// histórico via IA, contra critérios configuráveis pelo tenant.
+model ConversationEvaluation {
+  id                  String   @id @default(uuid())
+  tenantId            String
+  conversationId      String
+  solicitanteId       String
+  notaGeral           Float
+  classificacao       String
+  criteriosAvaliados  Json
+  pontosPositivos     Json
+  pontosMelhoria      Json
+  oportunidadesPerdidas Json
+  momentosCriticos    Json
+  sugestoes           Json
+  resumoExecutivo     String
+  modeloUtilizado     String
+  createdAt           DateTime @default(now())
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  solicitante  TenantUser   @relation(fields: [solicitanteId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, conversationId, createdAt])
+  @@map("conversation_evaluations")
+}
+
+model Message {
+  id             String    @id @default(uuid())
+  tenantId       String
+  conversationId String
+  direction      String // in | out
+  senderType     String // contact | agent | chatbot | system
+  tipo           String    @default("text") // text | image | audio | video | document | location
+  conteudo       String?
+  midiaUrl       String?
+  statusEntrega  String    @default("sent") // sent | delivered | read | failed
+  externalId     String?   @unique // id da mensagem no provedor — garante idempotência de webhook
+  createdAt      DateTime  @default(now())
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, conversationId, createdAt])
+  @@map("messages")
+}
+
+// ---------------------------------------------------------------------------
+// Atendimento (Fase 5)
+// ---------------------------------------------------------------------------
+
+model Team {
+  id        String   @id @default(uuid())
+  tenantId  String
+  nome      String
+  createdAt DateTime @default(now())
+
+  tenant  Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  members TeamMember[]
+  queues  Queue[]
+  quickMessages QuickMessage[]
+
+  @@unique([tenantId, nome])
+  @@index([tenantId])
+  @@map("teams")
+}
+
+model TeamMember {
+  id           String @id @default(uuid())
+  teamId       String
+  tenantUserId String
+  papel        String @default("agent") // agent | supervisor
+  // Distribuição "priority" (InboxService.pickNextMember): quanto maior,
+  // primeiro na fila de distribuição — desempate por menor volume de
+  // conversas ativas, mesmo critério de "least_volume".
+  prioridade   Int    @default(0)
+
+  team       Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  tenantUser TenantUser @relation(fields: [tenantUserId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, tenantUserId])
+  @@index([tenantUserId])
+  @@map("team_members")
+}
+
+model Queue {
+  id                     String   @id @default(uuid())
+  tenantId               String
+  nome                   String
+  descricao              String?
+  teamId                 String?
+  prioridade             Int      @default(0)
+  distribuicao           String   @default("least_volume") // round_robin | least_volume | priority
+  slaMinutos             Int?
+  mensagemEspera         String?
+  mensagemForaExpediente String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  team          Team?          @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  conversations Conversation[]
+  businessHours BusinessHours[]
+
+  @@unique([tenantId, nome])
+  @@index([tenantId])
+  @@map("queues")
+}
+
+model BusinessHours {
+  id           String    @id @default(uuid())
+  tenantId     String
+  escopo       String // number | team | queue | department
+  queueId      String?
+  diaSemana    Int? // 0 (domingo) a 6 (sábado) — null quando é uma data especial/feriado
+  horaInicio   String? // "HH:mm"
+  horaFim      String? // "HH:mm"
+  feriadoData  DateTime? // preenchido só em datas especiais/feriados
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  queue  Queue? @relation(fields: [queueId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, escopo])
+  @@map("business_hours")
+}
+
+model ConversationEvent {
+  id             String   @id @default(uuid())
+  tenantId       String
+  conversationId String
+  tipo           String // transfer | assign | reopen | close | summary
+  payload        Json?
+  actorId        String?
+  createdAt      DateTime @default(now())
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, conversationId, createdAt])
+  @@map("conversation_events")
+}
+
+// ---------------------------------------------------------------------------
+// Chatbot (Fase 6)
+// ---------------------------------------------------------------------------
+
+model ChatbotFlow {
+  id          String    @id @default(uuid())
+  tenantId    String
+  nome        String
+  descricao   String?
+  status      String    @default("draft") // draft | published | paused | archived
+  versaoAtual Int       @default(1)
+  aiEnabled   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  tenant         Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  versions       ChatbotFlowVersion[]
+  executions     ChatbotExecution[]
+  whatsAppNumbers WhatsAppNumber[]
+
+  @@unique([tenantId, nome])
+  @@index([tenantId, status])
+  @@map("chatbot_flows")
+}
+
+// A definição de nós/conexões do Flow Builder fica em `definicao` (JSON) —
+// simplificação consciente em relação a DATABASE_DESIGN.md (que descrevia
+// `ChatbotFlowNode` como conceito): nós e arestas só fazem sentido lidos em
+// conjunto (um grafo), então uma tabela relacional por nó só acrescentaria
+// joins sem benefício de consulta real. Ver ChatbotEngineService para o
+// formato esperado (`nodes`/`edges`).
+model ChatbotFlowVersion {
+  id            String    @id @default(uuid())
+  chatbotFlowId String
+  versao        Int
+  definicao     Json
+  publicadaEm   DateTime?
+  createdAt     DateTime  @default(now())
+
+  chatbotFlow ChatbotFlow        @relation(fields: [chatbotFlowId], references: [id], onDelete: Cascade)
+  executions  ChatbotExecution[]
+
+  @@unique([chatbotFlowId, versao])
+  @@map("chatbot_flow_versions")
+}
+
+model ChatbotExecution {
+  id            String    @id @default(uuid())
+  tenantId      String
+  chatbotFlowId String
+  versao        Int
+  conversationId String
+  contactId     String?
+  status        String    @default("running") // running | completed | abandoned | transferred
+  currentNodeId String?
+  contextData   Json?
+  startedAt     DateTime  @default(now())
+  finishedAt    DateTime?
+
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  chatbotFlow        ChatbotFlow         @relation(fields: [chatbotFlowId], references: [id], onDelete: Cascade)
+  chatbotFlowVersion ChatbotFlowVersion? @relation(fields: [chatbotFlowId, versao], references: [chatbotFlowId, versao])
+  conversation       Conversation        @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, conversationId, status])
+  @@map("chatbot_executions")
+}
+
+model KnowledgeBaseItem {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tipo      String // empresa | produto | servico | preco | politica | horario | entrega | garantia | pagamento | faq | documento | texto
+  titulo    String
+  conteudo  String
+  arquivoId String?
+  campanha  String?
+  ativo     Boolean  @default(true)
+  // Vetor de embedding (array de floats) para busca semântica — calculado
+  // sob demanda na primeira busca e cacheado aqui; null enquanto não
+  // calculado ou se o provedor de IA do tenant não suporta embeddings (ver
+  // ChatbotEngineService.searchKnowledgeBase, Fase 25).
+  embedding Json?
+  // Fase 58: base de perguntas e respostas (prompt mestre, Funcionalidade 2)
+  // — só relevante para tipo = "faq", mas mantido como colunas genéricas em
+  // vez de uma tabela separada por não haver hoje nenhum outro dado
+  // específico de FAQ que justifique a junção extra (mesmo raciocínio de
+  // `Contact.tags`). `variacoes` são formas alternativas de perguntar a
+  // mesma coisa; `palavraChave` é um atalho de busca opcional além do
+  // título/conteúdo; `prioridade` desempata quando vários itens batem a
+  // mesma busca (maior primeiro).
+  variacoes    String[] @default([])
+  palavraChave String?
+  prioridade   Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, tipo, ativo])
+  @@map("knowledge_base_items")
+}
+
+// ---------------------------------------------------------------------------
+// Mensagens rápidas (Fase 50, Funcionalidade 9 do prompt mestre)
+// ---------------------------------------------------------------------------
+
+model QuickMessage {
+  id        String   @id @default(uuid())
+  tenantId  String
+  titulo    String
+  // Texto pode conter variáveis no formato {{contato.nome}}/{{contato.whatsapp}}/{{agente.nome}}
+  // — substituídas no momento da inserção no composer (ver quick-messages.util.ts).
+  texto     String
+  categoria String?
+  atalho    String? // ex.: "/saudacao" — disparo rápido digitando no composer
+  // null = disponível para toda a empresa; preenchido = só para a equipe.
+  teamId    String?
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  team   Team?  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, categoria, ativo])
+  @@map("quick_messages")
+}
+
+// ---------------------------------------------------------------------------
+// Campos personalizados tipados (Fase 52, Funcionalidade 3 do prompt mestre)
+// ---------------------------------------------------------------------------
+
+model CustomFieldDefinition {
+  id          String   @id @default(uuid())
+  tenantId    String
+  nome        String
+  // Chave usada em `Contact.customFields` (JSON) — slug estável mesmo se o
+  // nome de exibição mudar depois.
+  chave       String
+  tipo        String // texto | numero | data | moeda | lista | multipla_escolha | booleano | texto_longo
+  opcoes      Json? // valores possíveis, só para tipo = lista/multipla_escolha
+  obrigatorio Boolean  @default(false)
+  ordem       Int      @default(0)
+  ativo       Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, chave])
+  @@index([tenantId, ativo, ordem])
+  @@map("custom_field_definitions")
+}
+
+// Chave de API de IA cadastrada pelo próprio tenant (BYOK — bring your own
+// key). `encryptedKey` nunca é devolvida por nenhum endpoint em texto puro;
+// ver apps/api/src/common/crypto/secret-encryption.util.ts (AES-256-GCM).
+// Se o tenant tem ou não permissão de usar a própria chave é decidido pelo
+// FeatureFlag (module: "ia", config.allowByok) — esta tabela só guarda o
+// segredo, não a permissão.
+model TenantAiCredential {
+  id           String   @id @default(uuid())
+  tenantId     String
+  provider     String // anthropic | openai | google
+  encryptedKey String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, provider])
+  @@map("tenant_ai_credentials")
+}
+
+/// Chave de IA da própria plataforma, configurável pelo Master (Fase 30, ver
+/// DEVELOPMENT_PLAN.md) — antes só existia via env var (`AI_PLATFORM_*_API_KEY`).
+/// A env var continua funcionando como fallback quando não há registro aqui,
+/// para não quebrar ambientes já configurados sem passar pela UI.
+model PlatformAiCredential {
+  id           String   @id @default(uuid())
+  provider     String   @unique // anthropic | openai | google
+  encryptedKey String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("platform_ai_credentials")
+}
+
+// ---------------------------------------------------------------------------
+// Automação (Fase 7)
+// ---------------------------------------------------------------------------
+
+// `gatilhoTipo` casa com o nome do evento de domínio emitido pelos outros
+// módulos (ver DomainEventsService) — ex.: "conversation.created",
+// "opportunity.won". `condicoes`/`acoes` seguem o mesmo espírito de JSON
+// estruturado usado em `ChatbotFlowVersion.definicao` (ver
+// flow-definition.types.ts): simples de versionar, sem exigir uma tabela
+// por tipo de ação.
+model Automation {
+  id          String   @id @default(uuid())
+  tenantId    String
+  nome        String
+  descricao   String?
+  gatilhoTipo String
+  condicoes   Json?
+  acoes       Json
+  status      String   @default("active") // active | paused | archived
+  versao      Int      @default(1)
+  // Segredo usado para assinar (HMAC-SHA256) o corpo de requisições da ação
+  // "send_webhook" desta automação — o destino externo usa para verificar
+  // autenticidade, mesmo princípio dos webhooks que a própria plataforma
+  // recebe (Meta, Stripe). Gerado automaticamente na criação (Fase 28).
+  webhookSecret String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant           Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  executions       AutomationExecution[]
+  followUpSchedules FollowUpSchedule[]
+
+  @@unique([tenantId, nome])
+  @@index([tenantId, gatilhoTipo, status])
+  @@map("automations")
+}
+
+model AutomationExecution {
+  id               String    @id @default(uuid())
+  tenantId         String
+  automationId     String
+  contactId        String?
+  conversationId   String?
+  gatilhoDisparado String
+  acoesExecutadas  Json?
+  tentativas       Int       @default(0)
+  status           String    @default("pending") // pending | running | success | failed | dead_letter
+  erro             String?
+  executedAt       DateTime?
+  createdAt        DateTime  @default(now())
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  automation Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, automationId, status])
+  @@map("automation_executions")
+}
+
+model FollowUpSchedule {
+  id                 String    @id @default(uuid())
+  tenantId           String
+  automationId       String
+  contactId          String?
+  conversationId     String?
+  mensagem           String
+  sequenciaIndex     Int       @default(0)
+  agendadoPara       DateTime
+  status             String    @default("scheduled") // scheduled | sent | cancelled
+  canceladoPorEvento String?
+  createdAt          DateTime  @default(now())
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  automation Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status, agendadoPara])
+  @@index([conversationId, status])
+  @@map("follow_up_schedules")
+}
+
+// ---------------------------------------------------------------------------
+// Financeiro (Fase 8)
+// ---------------------------------------------------------------------------
+
+enum InvoiceStatus {
+  pending
+  paid
+  overdue
+  refunded
+  cancelled
+}
+
+model Invoice {
+  id             String        @id @default(uuid())
+  tenantId       String
+  subscriptionId String
+  valor          Decimal       @db.Decimal(10, 2)
+  status         InvoiceStatus @default(pending)
+  vencimento     DateTime
+  pagoEm         DateTime?
+  metodo         String? // pix | boleto | cartao | manual
+  gatewayRef     String?
+  motivoEstorno  String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
+  @@index([subscriptionId])
+  @@map("invoices")
+}
+
+// ---------------------------------------------------------------------------
+// Afiliados (Fase 8)
+// ---------------------------------------------------------------------------
+
+enum AffiliateStatus {
+  pending
+  approved
+  rejected
+  active
+  inactive
+  blocked
+}
+
+model Affiliate {
+  id              String          @id @default(uuid())
+  nome            String
+  sobrenome       String
+  cpf             String          @unique
+  email           String          @unique
+  telefone        String?
+  whatsapp        String?
+  endereco        String?
+  dadosPagamento  Json?
+  status          AffiliateStatus @default(pending)
+  linkCode        String          @unique
+  aceitoTermosEm  DateTime?
+  /// Autenticação de autoatendimento (Fase 32, ver DEVELOPMENT_PLAN.md) —
+  /// opcional porque afiliados cadastrados antes desta fase não têm senha
+  /// até o Master definir uma.
+  passwordHash    String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  commissions   AffiliateCommission[]
+  referrals     AffiliateReferral[]
+  refreshTokens RefreshToken[]
+
+  @@map("affiliates")
+}
+
+model AffiliateCommission {
+  id                  String   @id @default(uuid())
+  affiliateId         String
+  tipo                String // percentual | fixo
+  valor               Decimal  @db.Decimal(10, 2)
+  recorrente          Boolean  @default(false)
+  planId              String?
+  moduleId            String?
+  prazoLimiteDias     Int?
+  carenciaDias        Int      @default(0)
+  minimoParaPagamento Decimal? @db.Decimal(10, 2)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  affiliate Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  plan      Plan?     @relation(fields: [planId], references: [id], onDelete: SetNull)
+
+  @@index([affiliateId])
+  @@map("affiliate_commissions")
+}
+
+model AffiliateReferral {
+  id            String    @id @default(uuid())
+  affiliateId   String
+  tenantId      String?
+  evento        String // click | signup | subscription | renewal | cancellation | refund
+  planId        String?
+  valorComissao Decimal?  @db.Decimal(10, 2)
+  status        String    @default("pending") // pending | paid | reversed
+  elegivelEm    DateTime?
+  createdAt     DateTime  @default(now())
+
+  affiliate Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  tenant    Tenant?   @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  plan      Plan?     @relation(fields: [planId], references: [id], onDelete: SetNull)
+
+  @@index([affiliateId, status])
+  @@index([tenantId])
+  @@map("affiliate_referrals")
+}
+
+// ---------------------------------------------------------------------------
+// Notificações (Fase 10)
+// ---------------------------------------------------------------------------
+
+model EmailLog {
+  id         String   @id @default(uuid())
+  tenantId   String?
+  to         String
+  assunto    String
+  template   String // welcome | password_reset
+  provider   String // identifica a implementação de EmailProvider usada (ex.: "log")
+  providerRef String?
+  status     String   @default("sent") // sent | failed
+  createdAt  DateTime @default(now())
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, template])
+  @@map("email_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Auditoria
+// ---------------------------------------------------------------------------
+
+enum AuditActorType {
+  master
+  tenant_user
+  affiliate
+}
+
+model AuditLog {
+  id               String         @id @default(uuid())
+  tenantId         String?
+  actorId          String
+  actorType        AuditActorType
+  onBehalfOfTenantId String?
+  action           String
+  entity           String
+  entityId         String?
+  previousData     Json?
+  newData          Json?
+  ip               String?
+  userAgent        String?
+  timestamp        DateTime       @default(now())
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, entity, timestamp])
+  @@index([actorId])
+  @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Notificações in-app (débito do prompt mestre §6, fechado em fase própria)
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id              String    @id @default(uuid())
+  tenantId        String
+  // null = visível para todos os usuários da empresa (ex.: "nova conversa");
+  // preenchido = dirigida a um usuário específico (ex.: "você recebeu uma transferência").
+  recipientUserId String?
+  tipo            String
+  titulo          String
+  corpo           String
+  link            String?
+  readAt          DateTime?
+  createdAt       DateTime  @default(now())
+
+  tenant    Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  recipient TenantUser? @relation(fields: [recipientUserId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, recipientUserId, readAt])
+  @@map("notifications")
+}

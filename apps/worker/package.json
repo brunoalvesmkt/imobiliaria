@@ -1,0 +1,48 @@
+{
+  "name": "@chatbot-saas/worker",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "nest start --watch",
+    "build": "nest build",
+    "start": "node dist/main.js",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@chatbot-saas/database": "workspace:*",
+    "@chatbot-saas/types": "workspace:*",
+    "@nestjs/bullmq": "^10.2.0",
+    "@nestjs/common": "^10.4.0",
+    "@nestjs/config": "^3.3.0",
+    "@nestjs/core": "^10.4.0",
+    "@nestjs/platform-express": "^10.4.0",
+    "bullmq": "^5.13.0",
+    "ioredis": "^5.4.1",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.8.0"
+  },
+  "devDependencies": {
+    "@chatbot-saas/eslint-config": "workspace:*",
+    "@chatbot-saas/tsconfig": "workspace:*",
+    "@nestjs/cli": "^10.4.0",
+    "@nestjs/testing": "^10.4.0",
+    "@types/jest": "^29.5.0",
+    "@types/node": "^22.7.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.0",
+    "typescript": "^5.6.0"
+  },
+  "jest": {
+    "moduleFileExtensions": ["js", "json", "ts"],
+    "rootDir": "src",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "testEnvironment": "node",
+    "forceExit": true,
+    "maxWorkers": 1
+  }
+}

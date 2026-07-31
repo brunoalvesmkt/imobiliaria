@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand-50: 238 246 244;
+  --brand-100: 220 238 233;
+  --brand-200: 179 221 210;
+  --brand-300: 127 196 179;
+  --brand-400: 74 165 144;
+  --brand-500: 31 111 92;
+  --brand-600: 26 92 76;
+  --brand-700: 22 74 62;
+  --brand-800: 18 59 50;
+  --brand-900: 14 63 52;
+
+  --ink: 28 27 24;
+  --ink-dim: 91 88 79;
+  /* 120 116 104 sobre --surface (branco) dá ~4.7:1 — WCAG AA para texto
+     normal (mín. 4.5:1). O tom anterior (138 133 120) só passava em
+     ~3.96:1, suficiente para "large text"/UI mas não para rótulos em
+     texto pequeno, onde é usado em toda a aplicação (Fase 31, ver
+     DEVELOPMENT_PLAN.md). */
+  --ink-faint: 120 116 104;
+
+  --surface: 255 255 255;
+  --surface-alt: 245 243 238;
+  --surface-muted: 237 233 223;
+
+  --line: 221 216 202;
+
+  color-scheme: light;
+}
+
+.dark {
+  --brand-50: 29 51 44;
+  --brand-100: 40 66 57;
+  --brand-200: 46 92 78;
+  --brand-300: 58 128 108;
+  --brand-400: 70 161 137;
+  --brand-500: 82 194 160;
+  --brand-600: 106 209 178;
+  --brand-700: 189 240 224;
+  --brand-800: 210 245 233;
+  --brand-900: 224 248 239;
+
+  --ink: 236 232 221;
+  --ink-dim: 167 162 148;
+  /* Mesmo ajuste do modo claro, na direção oposta: 140 136 124 sobre
+     --surface (quase preto) dá ~4.8:1, o tom anterior (112 108 96) só
+     alcançava ~3.25:1 (Fase 31, ver DEVELOPMENT_PLAN.md). */
+  --ink-faint: 140 136 124;
+
+  --surface: 26 29 25;
+  --surface-alt: 20 22 19;
+  --surface-muted: 33 37 31;
+
+  --line: 49 52 41;
+
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-surface-alt text-ink antialiased transition-colors;
+}
+
+* {
+  scrollbar-color: rgb(var(--line)) transparent;
+}

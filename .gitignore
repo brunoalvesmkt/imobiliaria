@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+.turbo/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Prisma
+packages/database/prisma/migrations/dev-*
+
+# Sessões WhatsApp (Baileys) — credenciais de pareamento por número, nunca versionadas
+apps/api/.baileys-sessions/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage/
+
+# Docker volumes (local)
+.docker-data/

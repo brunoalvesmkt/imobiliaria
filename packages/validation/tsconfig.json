@@ -1,0 +1,11 @@
+{
+  "extends": "@chatbot-saas/tsconfig/base.json",
+  "compilerOptions": {
+    // Ver comentário em packages/database/tsconfig.json — mesmo motivo.
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": ["src"]
+}

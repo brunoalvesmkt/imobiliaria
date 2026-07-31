@@ -1,0 +1,30 @@
+{
+  "name": "@chatbot-saas/database",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "prisma generate && tsc",
+    "prepare": "prisma generate && tsc",
+    "generate": "dotenv -e ../../.env -- prisma generate",
+    "migrate": "dotenv -e ../../.env -- prisma migrate dev",
+    "migrate:deploy": "dotenv -e ../../.env -- prisma migrate deploy",
+    "seed": "dotenv -e ../../.env -- ts-node src/seed.ts",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.20.0",
+    "argon2": "^0.41.0",
+    "prisma": "^5.20.0"
+  },
+  "devDependencies": {
+    "@chatbot-saas/eslint-config": "workspace:*",
+    "@chatbot-saas/tsconfig": "workspace:*",
+    "@types/node": "^22.7.0",
+    "dotenv-cli": "^7.4.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.6.0"
+  }
+}

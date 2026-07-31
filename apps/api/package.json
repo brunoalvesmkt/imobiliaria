@@ -1,0 +1,90 @@
+{
+  "name": "@chatbot-saas/api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "nest start --watch",
+    "build": "nest build",
+    "start": "node dist/main.js",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.658.0",
+    "@aws-sdk/s3-request-presigner": "^3.658.0",
+    "@chatbot-saas/database": "workspace:*",
+    "@chatbot-saas/types": "workspace:*",
+    "@chatbot-saas/validation": "workspace:*",
+    "@hapi/boom": "^9.1.3",
+    "@nestjs/bullmq": "^10.2.0",
+    "@nestjs/common": "^10.4.0",
+    "@nestjs/config": "^3.3.0",
+    "@nestjs/core": "^10.4.0",
+    "@nestjs/event-emitter": "^2.1.0",
+    "@nestjs/jwt": "^10.2.0",
+    "@nestjs/mapped-types": "^2.0.5",
+    "@nestjs/passport": "^10.0.0",
+    "@nestjs/platform-express": "^10.4.0",
+    "@nestjs/platform-socket.io": "^10.4.0",
+    "@nestjs/throttler": "^6.2.0",
+    "@nestjs/websockets": "^10.4.0",
+    "@whiskeysockets/baileys": "^6.7.24",
+    "argon2": "^0.41.0",
+    "bullmq": "^5.13.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.0",
+    "cookie-parser": "^1.4.6",
+    "exceljs": "^4.4.0",
+    "ioredis": "^5.4.1",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "pdfkit": "^0.15.0",
+    "pino": "^9.6.0",
+    "qrcode": "^1.5.4",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.8.0",
+    "socket.io": "^4.7.0",
+    "uuid": "^10.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@chatbot-saas/eslint-config": "workspace:*",
+    "@chatbot-saas/tsconfig": "workspace:*",
+    "@nestjs/cli": "^10.4.0",
+    "@nestjs/testing": "^10.4.0",
+    "@types/cookie-parser": "^1.4.7",
+    "@types/express": "^4.17.0",
+    "@types/jest": "^29.5.0",
+    "@types/node": "^22.7.0",
+    "@types/passport-jwt": "^4.0.1",
+    "@types/pdfkit": "^0.13.4",
+    "@types/qrcode": "^1.5.5",
+    "@types/supertest": "^6.0.0",
+    "@types/uuid": "^10.0.0",
+    "dotenv": "^17.4.2",
+    "jest": "^29.7.0",
+    "socket.io-client": "^4.7.0",
+    "supertest": "^7.0.0",
+    "ts-jest": "^29.2.0",
+    "typescript": "^5.6.0"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
+    "rootDir": "src",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "collectCoverageFrom": [
+      "**/*.(t|j)s"
+    ],
+    "testEnvironment": "node",
+    "forceExit": true,
+    "maxWorkers": 1
+  }
+}

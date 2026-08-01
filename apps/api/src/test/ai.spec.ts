@@ -193,7 +193,7 @@ describe("Integração com IA", () => {
     const numberId = numberRes.body.id as string;
     await tenant.agent.post(`/whatsapp/numbers/${numberId}/connect`);
     await tenant.agent.post(`/whatsapp/numbers/${numberId}/confirm-connection`);
-    await tenant.agent.post(`/whatsapp/numbers/${numberId}/accept-risk`).send({ versaoTermo: "1.0" });
+    await tenant.agent.post(`/whatsapp/numbers/${numberId}/accept-risk`).send({});
     await tenant.agent.patch(`/whatsapp/numbers/${numberId}/chatbot-flow`).send({ chatbotFlowId: flowId });
 
     const first = await tenant.agent.post("/whatsapp/conversations/dev/simulate-incoming").send({

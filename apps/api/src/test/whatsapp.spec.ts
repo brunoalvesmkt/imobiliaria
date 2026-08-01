@@ -140,9 +140,9 @@ describe("WhatsApp (Fase 4)", () => {
       .send({ tipo: "text", texto: "Olá! Como posso ajudar?" });
     expect(blockedSend.status).toBe(403);
 
-    const acceptRisk = await tenant.agent
-      .post(`/whatsapp/numbers/${numberId}/accept-risk`)
-      .send({ versaoTermo: "1.0" });
+    // Item 14.3: a versão do termo é definida pelo servidor (Master),
+    // não mais enviada pelo cliente — ver PlatformSettings.riskTermVersion.
+    const acceptRisk = await tenant.agent.post(`/whatsapp/numbers/${numberId}/accept-risk`).send({});
     expect(acceptRisk.status).toBe(201);
 
     const allowedSend = await tenant.agent

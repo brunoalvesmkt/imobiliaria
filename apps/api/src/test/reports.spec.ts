@@ -198,7 +198,9 @@ describe("Relatórios e Dashboard (Fase 9)", () => {
     expect(contactsCsv.status).toBe(200);
     expect(contactsCsv.headers["content-type"]).toContain("text/csv");
     const contactLines = contactsCsv.text.trim().split("\n");
-    expect(contactLines[0]).toBe("id,nome,sobrenome,documento,telefone,whatsapp,email,origem,campanha,responsavel,criadoEm");
+    expect(contactLines[0]).toBe(
+      "id,nome,sobrenome,documento,telefone,whatsapp,outrosTelefones,email,origem,campanha,responsavel,criadoEm",
+    );
     expect(contactLines.length).toBeGreaterThanOrEqual(2); // pelo menos o "Cliente Relatório" criado antes
 
     const numberRes = await tenant.agent.post("/whatsapp/numbers").send({

@@ -159,7 +159,7 @@ describe("Gaps do prompt mestre — Fases 50-58", () => {
       modalidade: "unofficial",
       numero: `5511${Math.floor(Math.random() * 900000000 + 100000000)}`,
     });
-    await tenant.agent.post(`/whatsapp/numbers/${numberRes.body.id}/accept-risk`).send({ versaoTermo: "1.0" });
+    await tenant.agent.post(`/whatsapp/numbers/${numberRes.body.id}/accept-risk`).send({});
     await tenant.agent.post(`/whatsapp/numbers/${numberRes.body.id}/connect`);
     await tenant.agent.post(`/whatsapp/numbers/${numberRes.body.id}/confirm-connection`);
     const incoming = await tenant.agent.post("/whatsapp/conversations/dev/simulate-incoming").send({

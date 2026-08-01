@@ -196,7 +196,7 @@ describe("Automação (Fase 7)", () => {
     const numberId = numberRes.body.id as string;
     await tenant.agent.post(`/whatsapp/numbers/${numberId}/connect`);
     await tenant.agent.post(`/whatsapp/numbers/${numberId}/confirm-connection`);
-    await tenant.agent.post(`/whatsapp/numbers/${numberId}/accept-risk`).send({ versaoTermo: "1.0" });
+    await tenant.agent.post(`/whatsapp/numbers/${numberId}/accept-risk`).send({});
 
     const contatoNumero = "5511933332222";
     const first = await tenant.agent.post("/whatsapp/conversations/dev/simulate-incoming").send({

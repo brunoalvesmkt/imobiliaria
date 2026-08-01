@@ -69,7 +69,7 @@ describe("Chatbot (Fase 6)", () => {
     const numberId = numberRes.body.id as string;
     await tenant.agent.post(`/whatsapp/numbers/${numberId}/connect`);
     await tenant.agent.post(`/whatsapp/numbers/${numberId}/confirm-connection`);
-    await tenant.agent.post(`/whatsapp/numbers/${numberId}/accept-risk`).send({ versaoTermo: "1.0" });
+    await tenant.agent.post(`/whatsapp/numbers/${numberId}/accept-risk`).send({});
     return numberId;
   }
 

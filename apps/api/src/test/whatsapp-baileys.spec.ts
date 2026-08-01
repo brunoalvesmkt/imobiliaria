@@ -129,7 +129,7 @@ describe("WhatsApp — ponte não oficial real via Baileys (Fase 48)", () => {
     });
     expect(create.status).toBe(201);
     await prisma.whatsAppNumber.update({ where: { id: create.body.id }, data: { provider: "baileys_unofficial" } });
-    await tenant.agent.post(`/whatsapp/numbers/${create.body.id}/accept-risk`).send({ versaoTermo: "1.0" });
+    await tenant.agent.post(`/whatsapp/numbers/${create.body.id}/accept-risk`).send({});
     return create.body.id as string;
   }
 

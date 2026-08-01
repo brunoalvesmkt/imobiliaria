@@ -131,7 +131,15 @@ describe("Financeiro e Afiliados (Fase 8)", () => {
 
       const subAfterRefund = await tenant.agent.get("/billing/subscription");
       expect(subAfterRefund.body.status).toBeUndefined(); // refunded não entra em waiting/active/overdue/delinquent (getCurrentSubscription não encontra nada)
-      const subscriptionRowAfterRefund = await prisma.subscription.findFirstOrThrow({ where: { tenantId: tenant.tenantId } });
+      // Ordenado pela mais recente: o signup (Doc-Fase1/2) já cria uma
+      // assinatura própria no cadastro, que fica "cancelled" quando este
+      // teste contrata um novo plano de teste via subscribe() — sem
+      // orderBy, a busca poderia pegar essa linha antiga em vez da que
+      // sofreu o estorno.
+      const subscriptionRowAfterRefund = await prisma.subscription.findFirstOrThrow({
+        where: { tenantId: tenant.tenantId },
+        orderBy: { createdAt: "desc" },
+      });
       expect(subscriptionRowAfterRefund.status).toBe("refunded");
 
       const other = await signupTenant("billing-other");

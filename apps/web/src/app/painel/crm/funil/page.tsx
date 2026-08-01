@@ -543,29 +543,9 @@ function Board({ funnel, otherFunnels }: { funnel: Funnel; otherFunnels: Funnel[
   const reorderOpportunities = useReorderOpportunities();
   const closeOpportunity = useCloseOpportunity();
   const transferOpportunity = useTransferOpportunity();
-  const removeStage = useRemoveStage(funnel.id);
   const [showNewOpportunity, setShowNewOpportunity] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
-  const [stageNeedingTarget, setStageNeedingTarget] = useState<string | null>(null);
-  const [removeStageError, setRemoveStageError] = useState<string | null>(null);
-
-  async function onRemoveStage(stageId: string, targetStageId?: string) {
-    setRemoveStageError(null);
-    try {
-      await removeStage.mutateAsync({ stageId, targetStageId });
-      setStageNeedingTarget(null);
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 409) {
-        const body = err.body as { opportunitiesCount?: number } | undefined;
-        if (body?.opportunitiesCount) {
-          setStageNeedingTarget(stageId);
-          return;
-        }
-      }
-      setRemoveStageError(err instanceof ApiError ? err.message : t("crm.funnel.errorGeneric"));
-    }
-  }
 
   const open = (opportunities.data ?? []).filter((o) => o.status === "open");
 
@@ -619,8 +599,6 @@ function Board({ funnel, otherFunnels }: { funnel: Funnel; otherFunnels: Funnel[
         <p className="px-1 text-xs text-ink-faint sm:hidden">{t("crm.funnel.swipeHint")}</p>
       )}
 
-      {removeStageError && <Alert tone="error">{removeStageError}</Alert>}
-
       <HorizontalScroller contentClassName="flex gap-4 pb-2">
         {funnel.stages.map((stage) => {
           const stageOpportunities = opportunitiesForStage(stage.id);
@@ -645,38 +623,8 @@ function Board({ funnel, otherFunnels }: { funnel: Funnel; otherFunnels: Funnel[
             >
               <div className="flex items-center justify-between px-1">
                 <h3 className="text-sm font-semibold text-ink">{stage.nome}</h3>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-ink-faint">{stageOpportunities.length}</span>
-                  {funnel.stages.length > 1 && (
-                    <button
-                      type="button"
-                      title={t("crm.funnel.removeStage")}
-                      onClick={() => onRemoveStage(stage.id)}
-                      className="text-xs text-ink-faint hover:text-red-600"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
+                <span className="text-xs text-ink-faint">{stageOpportunities.length}</span>
               </div>
-              {stageNeedingTarget === stage.id && (
-                <select
-                  defaultValue=""
-                  onChange={(e) => {
-                    if (e.target.value) onRemoveStage(stage.id, e.target.value);
-                  }}
-                  className="mx-1 rounded border border-line bg-surface px-1.5 py-1 text-xs"
-                >
-                  <option value="">{t("crm.funnel.chooseTargetStage")}</option>
-                  {funnel.stages
-                    .filter((s) => s.id !== stage.id)
-                    .map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.nome}
-                      </option>
-                    ))}
-                </select>
-              )}
               <div className="flex flex-col gap-2">
                 {stageOpportunities.map((opportunity) => {
                   const stageIndex = funnel.stages.findIndex((s) => s.id === stage.id);

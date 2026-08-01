@@ -12,6 +12,8 @@ export interface CurrentUser {
   tenantId?: string;
   roleId?: string;
   impersonation?: ImpersonationClaim;
+  /** `false` enquanto o e-mail da empresa não foi confirmado (documento de alterações, seção 4). Omitido quando confirmado. */
+  emailConfirmed?: boolean;
 }
 
 export interface MyProfile {
@@ -28,6 +30,8 @@ export interface TenantInfo {
   subdominio: string;
   status: string;
   createdAt: string;
+  email: string;
+  emailConfirmado: boolean;
 }
 
 export interface FeatureFlagInfo {

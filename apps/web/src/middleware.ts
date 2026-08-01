@@ -52,6 +52,16 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     if (res.status === 401 || res.status === 403) {
       return redirectToLogin(request, guard.loginPath);
     }
+    // Documento de alterações, seção 4: enquanto o e-mail da empresa não
+    // for confirmado, nenhuma rota do painel do tenant deve carregar (as
+    // chamadas de dados dela dariam 403 de qualquer forma, ver
+    // TenantAuthGuard) — manda direto para a tela de confirmação.
+    if (guard === GUARDS[0] && res.ok) {
+      const body = (await res.json()) as { emailConfirmed?: boolean };
+      if (body.emailConfirmed === false && request.nextUrl.pathname !== "/confirmar-email") {
+        return NextResponse.redirect(new URL("/confirmar-email", request.url));
+      }
+    }
   } catch {
     // API indisponível — client-side cuida do redirect se a sessão for mesmo inválida.
   }

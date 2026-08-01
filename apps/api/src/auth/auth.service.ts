@@ -1,8 +1,10 @@
 import { BadRequestException, ConflictException, HttpException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
+import { randomInt } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/audit/audit.service";
 import { AffiliatesService } from "../affiliates/affiliates.service";
 import { NotificationsProducer } from "../queues/notifications.producer";
+import { PlatformSettingsService } from "../master/settings/platform-settings.service";
 import { TokenService } from "./token.service";
 import { generateOpaqueToken, hashOpaqueToken, hashPassword, slugify, verifyPassword } from "./crypto.util";
 import { computeLockUntil, isCurrentlyLocked, minutesUntil } from "./account-lockout.util";
@@ -29,6 +31,7 @@ export class AuthService {
     private readonly audit: AuditService,
     private readonly affiliates: AffiliatesService,
     private readonly notifications: NotificationsProducer,
+    private readonly platformSettings: PlatformSettingsService,
   ) {}
 
   async signupTenant(dto: SignupTenantDto, meta: RequestMeta): Promise<TenantSession> {
@@ -61,6 +64,7 @@ export class AuthService {
     const subdominio = await this.generateUniqueSubdomain(dto.razaoSocial);
     const passwordHash = await hashPassword(dto.senha);
 
+    const platformSettings = await this.platformSettings.get();
     const precoContratado = dto.periodicidade === "anual" ? plan.precoAnual! : plan.preco;
     const now = new Date();
     const trialEndsAt = plan.diasTeste > 0 ? new Date(now.getTime() + plan.diasTeste * 24 * 60 * 60 * 1000) : null;
@@ -81,6 +85,7 @@ export class AuthService {
           telefone: dto.telefone,
           whatsapp: dto.whatsapp,
           email: dto.email,
+          emailConfirmado: !platformSettings.emailConfirmCodeEnabled,
           subdominio,
           planId: plan.id,
           status: "trial",
@@ -158,7 +163,30 @@ export class AuthService {
       await this.affiliates.trackSignup(dto.affiliateLinkCode, tenant.id);
     }
 
+    if (platformSettings.emailConfirmCodeEnabled) {
+      await this.sendEmailConfirmationCode(tenant.id, tenantUser.id, tenant.email);
+    }
+
     return this.issueTenantSession(tenantUser.id, tenant.id, tenantUser.roleId);
+  }
+
+  /**
+   * Gera e envia o código de confirmação (documento de alterações, seção
+   * 4) — usado tanto para confirmar o e-mail informado no cadastro (sem
+   * `emailPendente`, já que o e-mail em si não muda) quanto, via
+   * `TenantsService`, para confirmar a troca de e-mail em "Meus Dados"
+   * (que reaproveita os mesmos campos com `emailPendente` preenchido).
+   */
+  private async sendEmailConfirmationCode(tenantId: string, tenantUserId: string, email: string): Promise<void> {
+    const codigo = String(randomInt(0, 1_000_000)).padStart(6, "0");
+    await this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        emailPendenteCodigo: hashOpaqueToken(codigo),
+        emailPendenteExpira: new Date(Date.now() + 15 * 60 * 1000),
+      },
+    });
+    await this.notifications.enqueueEmailConfirmationCode({ tenantId, tenantUserId, email, codigo });
   }
 
   async loginTenant(dto: LoginDto, meta: RequestMeta): Promise<TenantSession> {
@@ -314,7 +342,13 @@ export class AuthService {
   }
 
   private async issueTenantSession(tenantUserId: string, tenantId: string, roleId: string): Promise<TenantSession> {
-    const accessToken = this.tokenService.signTenantAccessToken({ sub: tenantUserId, tenantId, roleId });
+    const tenant = await this.prisma.tenant.findUniqueOrThrow({ where: { id: tenantId }, select: { emailConfirmado: true } });
+    const accessToken = this.tokenService.signTenantAccessToken({
+      sub: tenantUserId,
+      tenantId,
+      roleId,
+      ...(tenant.emailConfirmado ? {} : { emailConfirmed: false }),
+    });
     const rawRefresh = generateOpaqueToken();
     const refreshTtlMs = this.tokenService.getRefreshTokenTtlMs();
 

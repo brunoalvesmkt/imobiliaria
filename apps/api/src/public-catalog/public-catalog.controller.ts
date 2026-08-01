@@ -1,5 +1,6 @@
 import { Controller, Get } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { PlatformSettingsService } from "../master/settings/platform-settings.service";
 
 /**
  * Rotas públicas (sem autenticação, protegidas só pelo ThrottlerGuard
@@ -9,7 +10,10 @@ import { PrismaService } from "../prisma/prisma.service";
  */
 @Controller("public/catalog")
 export class PublicCatalogController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly platformSettings: PlatformSettingsService,
+  ) {}
 
   @Get("plans")
   async plans() {
@@ -29,5 +33,28 @@ export class PublicCatalogController {
       where: { ativo: true },
       orderBy: { ordem: "asc" },
     });
+  }
+
+  /**
+   * Subconjunto de `PlatformSettings` seguro para expor sem autenticação —
+   * governa a UI pública de "Escolha seu plano" e do formulário de cadastro
+   * (documento de alterações, seção 5.1/5.2/5.3). Campos administrativos
+   * (ex.: `tenantCanEditProfile`, que só importa dentro do painel já
+   * autenticado) ficam de fora de propósito.
+   */
+  @Get("settings")
+  async settings() {
+    const s = await this.platformSettings.get();
+    return {
+      planSelectionEnabled: s.planSelectionEnabled,
+      allowMonthly: s.allowMonthly,
+      allowAnnual: s.allowAnnual,
+      showPrices: s.showPrices,
+      showTrialPeriod: s.showTrialPeriod,
+      subscribeButtonText: s.subscribeButtonText,
+      allowPlanChangeBeforeSignup: s.allowPlanChangeBeforeSignup,
+      emailConfirmRepeatEnabled: s.emailConfirmRepeatEnabled,
+      emailConfirmCodeEnabled: s.emailConfirmCodeEnabled,
+    };
   }
 }

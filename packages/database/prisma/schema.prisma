@@ -1028,6 +1028,35 @@ model PlatformAiCredential {
   @@map("platform_ai_credentials")
 }
 
+/// Linha única (id fixo "singleton") com as configurações globais do fluxo
+/// de contratação/cadastro/confirmação, editáveis pelo Master no módulo
+/// "Configurações para Empresas" (documento de alterações, seção 5) — sem
+/// isso, cada regra viraria env var/redeploy, o que o documento não pede.
+model PlatformSettings {
+  id String @id @default("singleton")
+
+  // Seção 5.1 — seleção pública de plano.
+  planSelectionEnabled        Boolean @default(true)
+  allowMonthly                Boolean @default(true)
+  allowAnnual                 Boolean @default(true)
+  showPrices                  Boolean @default(true)
+  showTrialPeriod             Boolean @default(true)
+  subscribeButtonText         String  @default("Selecionar plano")
+  allowPlanChangeBeforeSignup Boolean @default(true)
+
+  // Seções 5.2/5.3 — confirmação no cadastro (podem ficar ativas juntas).
+  emailConfirmRepeatEnabled Boolean @default(true)
+  emailConfirmCodeEnabled   Boolean @default(true)
+
+  // Seções 5.5/5.6 — edição pela própria empresa.
+  tenantCanEditProfile     Boolean @default(true)
+  requireCodeOnEmailChange Boolean @default(true)
+
+  updatedAt DateTime @updatedAt
+
+  @@map("platform_settings")
+}
+
 // ---------------------------------------------------------------------------
 // Automação (Fase 7)
 // ---------------------------------------------------------------------------

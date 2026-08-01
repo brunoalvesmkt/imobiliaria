@@ -9,7 +9,7 @@ import { Alert } from "@/components/ui/alert";
 import { useSignup } from "@/lib/auth";
 import { ApiError } from "@/lib/api-client";
 import { useI18n } from "@/lib/i18n";
-import { usePublicPlans, usePublicSegments } from "@/lib/public-catalog";
+import { usePublicPlans, usePublicSegments, usePublicSettings } from "@/lib/public-catalog";
 import { signupTenantSchema } from "@chatbot-saas/validation";
 
 export default function CadastroPage() {
@@ -51,7 +51,9 @@ function CadastroForm() {
 
   const plans = usePublicPlans();
   const segments = usePublicSegments();
+  const settings = usePublicSettings();
   const signup = useSignup();
+  const requireEmailRepeat = settings.data?.emailConfirmRepeatEnabled !== false;
 
   const [step, setStep] = useState<Step>("empresa");
   const [clientError, setClientError] = useState<string | null>(null);
@@ -221,17 +223,22 @@ function CadastroForm() {
             autoComplete="email"
             required
             value={form.email}
-            onChange={(e) => set("email", e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              setForm((prev) => ({ ...prev, email: value, ...(requireEmailRepeat ? {} : { confirmacaoEmail: value }) }));
+            }}
           />
-          <Field
-            label={t("auth.signup.confirmEmail")}
-            type="email"
-            name="confirmacaoEmail"
-            onPaste={(e) => e.preventDefault()}
-            required
-            value={form.confirmacaoEmail}
-            onChange={(e) => set("confirmacaoEmail", e.target.value)}
-          />
+          {requireEmailRepeat && (
+            <Field
+              label={t("auth.signup.confirmEmail")}
+              type="email"
+              name="confirmacaoEmail"
+              onPaste={(e) => e.preventDefault()}
+              required
+              value={form.confirmacaoEmail}
+              onChange={(e) => set("confirmacaoEmail", e.target.value)}
+            />
+          )}
           <Field
             label={t("auth.signup.password")}
             type="password"

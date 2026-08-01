@@ -15,6 +15,7 @@ const NAV_ITEMS: { labelKey: DictionaryKey; href: string; roles?: ("super_admin"
   { labelKey: "master.nav.afiliados", href: "/master/painel/afiliados", roles: ["super_admin", "financeiro"] },
   { labelKey: "master.nav.ia", href: "/master/painel/ia", roles: ["super_admin"] },
   { labelKey: "master.nav.usuarios", href: "/master/painel/usuarios", roles: ["super_admin"] },
+  { labelKey: "master.nav.configuracoesEmpresas", href: "/master/painel/configuracoes-empresas", roles: ["super_admin"] },
 ];
 
 /**

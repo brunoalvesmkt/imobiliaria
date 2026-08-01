@@ -10,6 +10,14 @@ export interface TenantAccessTokenPayload {
   roleId: string;
   /** Presente apenas em tokens emitidos por acesso assistido (ver PERMISSIONS_MATRIX.md §7). */
   impersonation?: ImpersonationClaim;
+  /**
+   * `false` quando a confirmação de e-mail por código está ativa
+   * (PlatformSettings.emailConfirmCodeEnabled) e o tenant ainda não
+   * confirmou (documento de alterações, seção 4) — `TenantAuthGuard` usa
+   * isso para bloquear o painel até a confirmação. Omitido (equivalente a
+   * confirmado) no caso comum, para não inflar todo token existente.
+   */
+  emailConfirmed?: boolean;
 }
 
 export interface MasterAccessTokenPayload {
@@ -33,4 +41,5 @@ export interface AuthenticatedRequestUser {
   roleId?: string;
   masterRole?: string;
   impersonation?: ImpersonationClaim;
+  emailConfirmed?: boolean;
 }

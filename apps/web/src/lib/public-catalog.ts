@@ -41,6 +41,26 @@ export function usePublicSegments() {
   });
 }
 
+export interface PublicSettings {
+  planSelectionEnabled: boolean;
+  allowMonthly: boolean;
+  allowAnnual: boolean;
+  showPrices: boolean;
+  showTrialPeriod: boolean;
+  subscribeButtonText: string;
+  allowPlanChangeBeforeSignup: boolean;
+  emailConfirmRepeatEnabled: boolean;
+  emailConfirmCodeEnabled: boolean;
+}
+
+export function usePublicSettings() {
+  return useQuery({
+    queryKey: ["public-catalog", "settings"],
+    queryFn: () => apiGet<PublicSettings>("/public/catalog/settings"),
+    staleTime: 60_000,
+  });
+}
+
 export function planFeatureList(funcionalidades: unknown): string[] {
   if (!Array.isArray(funcionalidades)) return [];
   return funcionalidades.filter((f): f is string => typeof f === "string");

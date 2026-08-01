@@ -29,6 +29,7 @@ export class TenantJwtStrategy extends PassportStrategy(Strategy, "jwt-tenant") 
       tenantId: payload.tenantId,
       roleId: payload.roleId,
       ...(payload.impersonation ? { impersonation: payload.impersonation } : {}),
+      ...(payload.emailConfirmed === false ? { emailConfirmed: false } : {}),
     };
   }
 }

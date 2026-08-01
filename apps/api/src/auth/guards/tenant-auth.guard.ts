@@ -6,6 +6,20 @@ import type { AuthenticatedRequestUser } from "../jwt-payload.interface";
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 /**
+ * Rotas acessíveis mesmo com `emailConfirmed: false` — o suficiente para a
+ * tela de confirmação (documento de alterações, item 4.2/4.3) funcionar
+ * sem dar acesso ao resto do painel.
+ */
+const EMAIL_CONFIRMATION_ALLOWLIST = [
+  "/auth/tenant/me",
+  "/auth/tenant/logout",
+  "/auth/tenant/refresh",
+  "/tenants/me",
+  "/tenants/me/email/confirm",
+  "/tenants/me/email/resend-code",
+];
+
+/**
  * Além de autenticar o token tenant, bloqueia mutações quando a requisição
  * vem de uma sessão de acesso assistido (impersonação) em nível somente
  * leitura — ver PERMISSIONS_MATRIX.md §7. Como este guard é aplicado em
@@ -33,6 +47,13 @@ export class TenantAuthGuard extends AuthGuard("jwt-tenant") {
       throw new ForbiddenException(
         "Acesso assistido em modo somente leitura — esta ação de escrita não é permitida.",
       );
+    }
+
+    if (
+      request.user?.emailConfirmed === false &&
+      !EMAIL_CONFIRMATION_ALLOWLIST.some((path) => request.path.endsWith(path))
+    ) {
+      throw new ForbiddenException("Confirme o e-mail da empresa para acessar o painel.");
     }
 
     return true;

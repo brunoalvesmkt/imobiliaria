@@ -23,7 +23,7 @@ export class TenantsController {
   async me(@CurrentUser() user: AuthenticatedRequestUser) {
     return this.prisma.tenant.findUniqueOrThrow({
       where: { id: user.tenantId as string },
-      select: { id: true, razaoSocial: true, subdominio: true, status: true, createdAt: true },
+      select: { id: true, razaoSocial: true, subdominio: true, status: true, createdAt: true, email: true, emailConfirmado: true },
     });
   }
 
@@ -55,5 +55,19 @@ export class TenantsController {
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   confirmEmailChange(@CurrentUser() user: AuthenticatedRequestUser, @Body() dto: ConfirmEmailChangeDto) {
     return this.tenantsService.confirmEmailChange(user.tenantId as string, user.id, dto.codigo);
+  }
+
+  /**
+   * Reenvia o código pendente — cobre tanto o reenvio da confirmação
+   * inicial do cadastro (documento, item 4.2 "Reenviar código") quanto o
+   * de uma troca de e-mail em andamento.
+   */
+  @Post("email/resend-code")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(PermissionsGuard)
+  @RequirePermission("configuracoes", "administer")
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  resendCode(@CurrentUser() user: AuthenticatedRequestUser) {
+    return this.tenantsService.resendCode(user.tenantId as string, user.id);
   }
 }

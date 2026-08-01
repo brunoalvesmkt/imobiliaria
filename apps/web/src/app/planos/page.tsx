@@ -1,13 +1,13 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { AuthLink } from "@/components/auth/auth-card";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
-import { usePublicPlans, planFeatureList, type PublicPlan } from "@/lib/public-catalog";
+import { usePublicPlans, usePublicSettings, planFeatureList, type PublicPlan } from "@/lib/public-catalog";
 
 /**
  * Página pública "Escolha seu plano" (documento de alterações, seção 2) —
@@ -28,9 +28,21 @@ function PlanosContent() {
   const searchParams = useSearchParams();
   const affiliateLinkCode = searchParams.get("ref") ?? undefined;
   const plans = usePublicPlans();
+  const settings = usePublicSettings();
   const [periodicidade, setPeriodicidade] = useState<"mensal" | "anual">("mensal");
 
-  const hasAnual = (plans.data ?? []).some((p) => p.precoAnual !== null);
+  const allowMonthly = settings.data?.allowMonthly !== false;
+  const allowAnnual = settings.data?.allowAnnual !== false;
+  const hasAnualPlans = (plans.data ?? []).some((p) => p.precoAnual !== null);
+  const showToggle = allowMonthly && allowAnnual && hasAnualPlans;
+  const showPrices = settings.data?.showPrices !== false;
+  const showTrialPeriod = settings.data?.showTrialPeriod !== false;
+  const buttonText = settings.data?.subscribeButtonText || t("publicPlans.subscribe");
+
+  useEffect(() => {
+    if (!allowMonthly && periodicidade === "mensal") setPeriodicidade("anual");
+    if (!allowAnnual && periodicidade === "anual") setPeriodicidade("mensal");
+  }, [allowMonthly, allowAnnual, periodicidade]);
 
   function escolherPlano(plan: PublicPlan) {
     const params = new URLSearchParams({ planId: plan.id, periodicidade, ...(affiliateLinkCode ? { ref: affiliateLinkCode } : {}) });
@@ -57,7 +69,7 @@ function PlanosContent() {
           <p className="mt-2 text-sm text-ink-dim">{t("publicPlans.subtitle")}</p>
         </div>
 
-        {hasAnual && (
+        {showToggle && (
           <div className="mb-8 flex justify-center">
             <div className="inline-flex rounded-md border border-line bg-surface p-1">
               <button
@@ -82,11 +94,14 @@ function PlanosContent() {
           </div>
         )}
 
-        {plans.isLoading && <p className="text-center text-sm text-ink-dim">{t("publicPlans.loading")}</p>}
-        {plans.isError && <p className="text-center text-sm text-red-600">{t("publicPlans.error")}</p>}
-        {plans.data && plans.data.length === 0 && <p className="text-center text-sm text-ink-dim">{t("publicPlans.empty")}</p>}
+        {settings.data?.planSelectionEnabled === false && <p className="text-center text-sm text-ink-dim">{t("publicPlans.disabled")}</p>}
+        {settings.data?.planSelectionEnabled !== false && (
+          <>
+            {plans.isLoading && <p className="text-center text-sm text-ink-dim">{t("publicPlans.loading")}</p>}
+            {plans.isError && <p className="text-center text-sm text-red-600">{t("publicPlans.error")}</p>}
+            {plans.data && plans.data.length === 0 && <p className="text-center text-sm text-ink-dim">{t("publicPlans.empty")}</p>}
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {plans.data?.map((plan) => {
             const preco = periodicidade === "anual" && plan.precoAnual !== null ? plan.precoAnual : plan.preco;
             const features = planFeatureList(plan.funcionalidades);
@@ -104,13 +119,15 @@ function PlanosContent() {
                 )}
                 <h2 className="text-lg font-semibold text-ink">{plan.nome}</h2>
                 {plan.descricao && <p className="mt-1 text-sm text-ink-dim">{plan.descricao}</p>}
-                <p className="mt-4 text-3xl font-bold text-ink">
-                  R$ {Number(preco).toFixed(2)}
-                  <span className="text-sm font-normal text-ink-dim">
-                    /{periodicidade === "anual" ? t("publicPlans.ano") : t("publicPlans.mes")}
-                  </span>
-                </p>
-                {plan.diasTeste > 0 && (
+                {showPrices && (
+                  <p className="mt-4 text-3xl font-bold text-ink">
+                    R$ {Number(preco).toFixed(2)}
+                    <span className="text-sm font-normal text-ink-dim">
+                      /{periodicidade === "anual" ? t("publicPlans.ano") : t("publicPlans.mes")}
+                    </span>
+                  </p>
+                )}
+                {showTrialPeriod && plan.diasTeste > 0 && (
                   <p className="mt-1 text-xs text-brand-600 dark:text-brand-300">{t("publicPlans.trial").replace("{dias}", String(plan.diasTeste))}</p>
                 )}
                 {features.length > 0 && (
@@ -126,12 +143,14 @@ function PlanosContent() {
                   </ul>
                 )}
                 <Button className="mt-6 w-full" onClick={() => escolherPlano(plan)}>
-                  {t("publicPlans.subscribe")}
+                  {buttonText}
                 </Button>
               </div>
             );
           })}
-        </div>
+            </div>
+          </>
+        )}
       </main>
     </div>
   );

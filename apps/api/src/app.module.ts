@@ -15,6 +15,7 @@ import { TenantsModule } from "./tenants/tenants.module";
 import { FilesModule } from "./files/files.module";
 import { QueuesModule } from "./queues/queues.module";
 import { PlansModule } from "./master/plans/plans.module";
+import { PlatformSettingsModule } from "./master/settings/platform-settings.module";
 import { MasterTenantsModule } from "./master/tenants/master-tenants.module";
 import { MasterUsersModule } from "./master/master-users/master-users.module";
 import { CrmModule } from "./crm/crm.module";
@@ -46,6 +47,7 @@ import { NotificationsModule } from "./notifications/notifications.module";
     FilesModule,
     QueuesModule,
     PlansModule,
+    PlatformSettingsModule,
     MasterTenantsModule,
     MasterUsersModule,
     CrmModule,

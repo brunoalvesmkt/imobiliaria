@@ -33,6 +33,22 @@ export async function ensureTestSegment(prisma: PrismaService) {
 }
 
 /**
+ * Desativa `emailConfirmCodeEnabled` no banco de teste — sem isso, todo
+ * `POST /auth/tenant/signup` (Doc-Fase6, documento seção 4) devolveria uma
+ * sessão com `emailConfirmed: false`, e `TenantAuthGuard` bloquearia
+ * qualquer chamada seguinte nos ~30 arquivos de spec que assumem acesso
+ * total logo após o cadastro. Idempotente — a primeira chamada no processo
+ * de teste já resolve para todo o resto (Jest roda com `maxWorkers: 1`).
+ */
+export async function ensureTestPlatformSettings(prisma: PrismaService) {
+  return prisma.platformSettings.upsert({
+    where: { id: "singleton" },
+    update: { emailConfirmCodeEnabled: false },
+    create: { id: "singleton", emailConfirmCodeEnabled: false },
+  });
+}
+
+/**
  * Recebe `app` (a instância Nest — sempre disponível em todo arquivo de
  * spec e2e) em vez de `PrismaService` diretamente, para não obrigar cada um
  * dos ~30 arquivos de teste a injetar/expor uma variável `prisma` só para
@@ -40,7 +56,7 @@ export async function ensureTestSegment(prisma: PrismaService) {
  */
 export async function signupExtras(app: INestApplication) {
   const prisma = app.get(PrismaService);
-  const [plan, segmento] = await Promise.all([ensureTestPlan(prisma), ensureTestSegment(prisma)]);
+  const [plan, segmento] = await Promise.all([ensureTestPlan(prisma), ensureTestSegment(prisma), ensureTestPlatformSettings(prisma)]);
   return {
     telefone: "11987654321",
     whatsapp: "11987654321",

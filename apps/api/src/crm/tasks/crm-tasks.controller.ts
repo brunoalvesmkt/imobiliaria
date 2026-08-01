@@ -20,8 +20,16 @@ export class CrmTasksController {
 
   @Get()
   @RequirePermission("crm", "view")
-  list(@Query("contactId") contactId?: string, @Query("status") status?: string) {
-    return this.service.list(contactId, status);
+  list(
+    @Query("contactId") contactId?: string,
+    @Query("opportunityId") opportunityId?: string,
+    @Query("responsavelId") responsavelId?: string,
+    @Query("status") status?: string,
+    @Query("view") view?: "hoje" | "atrasadas" | "futuras" | "todas" | "periodo",
+    @Query("dataInicio") dataInicio?: string,
+    @Query("dataFim") dataFim?: string,
+  ) {
+    return this.service.list({ contactId, opportunityId, responsavelId, status, view, dataInicio, dataFim });
   }
 
   @Get(":id")

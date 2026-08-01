@@ -66,7 +66,7 @@ export function useUpdateContactOrigin() {
 export function useDeleteContactOrigin() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, substitutaId }: { id: string; substitutaId?: string }) =>
+    mutationFn: ({ id, substitutaId }: { id: string; substitutaId?: string | undefined }) =>
       apiDelete<{ status: "ok" }>(`/crm/contact-origins/${id}${substitutaId ? `?substitutaId=${substitutaId}` : ""}`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["crm", "contact-origins"] }),
   });
@@ -283,6 +283,45 @@ export function useAddStage(funnelId: string) {
   });
 }
 
+export function useDuplicateFunnel() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiPost<Funnel>(`/crm/funnels/${id}/duplicate`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["crm", "funnels"] }),
+  });
+}
+
+export function useDeleteFunnel() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiDelete<{ status: "ok" }>(`/crm/funnels/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["crm", "funnels"] }),
+  });
+}
+
+export function useRemoveStage(funnelId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ stageId, targetStageId }: { stageId: string; targetStageId?: string | undefined }) =>
+      apiDelete<{ status: "ok" }>(
+        `/crm/funnels/${funnelId}/stages/${stageId}${targetStageId ? `?targetStageId=${targetStageId}` : ""}`,
+      ),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["crm", "funnels"] }),
+  });
+}
+
+export function useTransferOpportunity() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ opportunityId, targetFunnelId }: { opportunityId: string; targetFunnelId: string }) =>
+      apiPost<Opportunity>(`/crm/funnels/opportunities/${opportunityId}/transfer`, { targetFunnelId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["crm", "opportunities"] });
+      queryClient.invalidateQueries({ queryKey: ["crm", "funnels"] });
+    },
+  });
+}
+
 export interface Opportunity {
   id: string;
   contactId: string;
@@ -351,13 +390,23 @@ export interface CrmTask {
   concluidaEm: string | null;
 }
 
-export function useTasks(contactId?: string, status?: string) {
+export type CrmTaskView = "hoje" | "atrasadas" | "futuras" | "todas" | "periodo";
+
+export function useTasks(
+  contactId?: string,
+  status?: string,
+  view?: CrmTaskView,
+  range?: { dataInicio?: string; dataFim?: string },
+) {
   const params = new URLSearchParams();
   if (contactId) params.set("contactId", contactId);
   if (status) params.set("status", status);
+  if (view) params.set("view", view);
+  if (range?.dataInicio) params.set("dataInicio", range.dataInicio);
+  if (range?.dataFim) params.set("dataFim", range.dataFim);
   const qs = params.toString();
   return useQuery({
-    queryKey: ["crm", "tasks", contactId ?? "", status ?? ""],
+    queryKey: ["crm", "tasks", contactId ?? "", status ?? "", view ?? "", range?.dataInicio ?? "", range?.dataFim ?? ""],
     queryFn: () => apiGet<CrmTask[]>(`/crm/tasks${qs ? `?${qs}` : ""}`),
   });
 }

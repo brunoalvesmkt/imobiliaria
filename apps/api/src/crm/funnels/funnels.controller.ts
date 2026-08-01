@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { TenantAuthGuard } from "../../auth/guards/tenant-auth.guard";
 import { ModuleActiveGuard } from "../../common/modules/module-active.guard";
 import { PermissionsGuard } from "../../common/permissions/permissions.guard";
@@ -11,6 +11,7 @@ import { CreateFunnelDto } from "./dto/create-funnel.dto";
 import { UpdateFunnelDto } from "./dto/update-funnel.dto";
 import { CreateStageDto } from "./dto/create-stage.dto";
 import { UpdateStageDto } from "./dto/update-stage.dto";
+import { TransferOpportunityDto } from "./dto/transfer-opportunity.dto";
 
 @Controller("crm/funnels")
 @UseGuards(TenantAuthGuard, ModuleActiveGuard, PermissionsGuard)
@@ -57,5 +58,38 @@ export class FunnelsController {
     @CurrentUser() user: AuthenticatedRequestUser,
   ) {
     return this.service.updateStage(id, stageId, dto, user.id);
+  }
+
+  @Delete(":id/stages/:stageId")
+  @RequirePermission("crm", "administer")
+  removeStage(
+    @Param("id") id: string,
+    @Param("stageId") stageId: string,
+    @Query("targetStageId") targetStageId: string | undefined,
+    @CurrentUser() user: AuthenticatedRequestUser,
+  ) {
+    return this.service.removeStage(id, stageId, targetStageId, user.id);
+  }
+
+  @Post(":id/duplicate")
+  @RequirePermission("crm", "administer")
+  duplicate(@Param("id") id: string, @CurrentUser() user: AuthenticatedRequestUser) {
+    return this.service.duplicate(id, user.id);
+  }
+
+  @Delete(":id")
+  @RequirePermission("crm", "administer")
+  remove(@Param("id") id: string, @CurrentUser() user: AuthenticatedRequestUser) {
+    return this.service.remove(id, user.id);
+  }
+
+  @Post("opportunities/:opportunityId/transfer")
+  @RequirePermission("crm", "edit")
+  transferOpportunity(
+    @Param("opportunityId") opportunityId: string,
+    @Body() dto: TransferOpportunityDto,
+    @CurrentUser() user: AuthenticatedRequestUser,
+  ) {
+    return this.service.transferOpportunity(opportunityId, dto.targetFunnelId, user.id);
   }
 }

@@ -7,10 +7,14 @@ import {
   useContacts,
   useCreateFunnel,
   useCreateOpportunity,
+  useDeleteFunnel,
+  useDuplicateFunnel,
   useFunnels,
   useMoveOpportunityStage,
   useOpportunities,
+  useRemoveStage,
   useReorderOpportunities,
+  useTransferOpportunity,
   type Funnel,
   type Opportunity,
 } from "@/lib/crm";
@@ -19,6 +23,7 @@ import { Field } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
 import { HorizontalScroller } from "@/components/ui/horizontal-scroller";
 import { useI18n } from "@/lib/i18n";
+import { ApiError } from "@/lib/api-client";
 
 export default function FunilPage() {
   const { t } = useI18n();
@@ -43,21 +48,77 @@ export default function FunilPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-3">
+      <FunnelToolbar
+        funnels={funnels.data}
+        funnel={funnel}
+        onSelect={setSelectedFunnelId}
+        onDeleted={() => setSelectedFunnelId("")}
+      />
+
+      {funnel.stages.length === 0 ? <NewStageForm funnel={funnel} /> : <Board funnel={funnel} otherFunnels={funnels.data.filter((f) => f.id !== funnel.id)} />}
+    </div>
+  );
+}
+
+function FunnelToolbar({
+  funnels,
+  funnel,
+  onSelect,
+  onDeleted,
+}: {
+  funnels: Funnel[];
+  funnel: Funnel;
+  onSelect: (id: string) => void;
+  onDeleted: () => void;
+}) {
+  const { t } = useI18n();
+  const duplicateFunnel = useDuplicateFunnel();
+  const deleteFunnel = useDeleteFunnel();
+  const [error, setError] = useState<string | null>(null);
+
+  async function onDuplicate() {
+    setError(null);
+    try {
+      const copy = await duplicateFunnel.mutateAsync(funnel.id);
+      onSelect(copy.id);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t("crm.funnel.errorGeneric"));
+    }
+  }
+
+  async function onDelete() {
+    setError(null);
+    if (!window.confirm(t("crm.funnel.confirmDelete"))) return;
+    try {
+      await deleteFunnel.mutateAsync(funnel.id);
+      onDeleted();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t("crm.funnel.errorGeneric"));
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-3">
         <select
           value={funnel.id}
-          onChange={(e) => setSelectedFunnelId(e.target.value)}
+          onChange={(e) => onSelect(e.target.value)}
           className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
         >
-          {funnels.data.map((f) => (
+          {funnels.map((f) => (
             <option key={f.id} value={f.id}>
               {f.nome}
             </option>
           ))}
         </select>
+        <Button variant="secondary" onClick={onDuplicate} loading={duplicateFunnel.isPending}>
+          {t("crm.funnel.duplicate")}
+        </Button>
+        <Button variant="secondary" onClick={onDelete} loading={deleteFunnel.isPending}>
+          {t("crm.funnel.delete")}
+        </Button>
       </div>
-
-      {funnel.stages.length === 0 ? <NewStageForm funnel={funnel} /> : <Board funnel={funnel} />}
+      {error && <Alert tone="error">{error}</Alert>}
     </div>
   );
 }
@@ -115,15 +176,36 @@ function NewStageForm({ funnel }: { funnel: Funnel }) {
   );
 }
 
-function Board({ funnel }: { funnel: Funnel }) {
+function Board({ funnel, otherFunnels }: { funnel: Funnel; otherFunnels: Funnel[] }) {
   const { t, locale } = useI18n();
   const opportunities = useOpportunities(funnel.id);
   const moveStage = useMoveOpportunityStage();
   const reorderOpportunities = useReorderOpportunities();
   const closeOpportunity = useCloseOpportunity();
+  const transferOpportunity = useTransferOpportunity();
+  const removeStage = useRemoveStage(funnel.id);
   const [showNewOpportunity, setShowNewOpportunity] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
+  const [stageNeedingTarget, setStageNeedingTarget] = useState<string | null>(null);
+  const [removeStageError, setRemoveStageError] = useState<string | null>(null);
+
+  async function onRemoveStage(stageId: string, targetStageId?: string) {
+    setRemoveStageError(null);
+    try {
+      await removeStage.mutateAsync({ stageId, targetStageId });
+      setStageNeedingTarget(null);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        const body = err.body as { opportunitiesCount?: number } | undefined;
+        if (body?.opportunitiesCount) {
+          setStageNeedingTarget(stageId);
+          return;
+        }
+      }
+      setRemoveStageError(err instanceof ApiError ? err.message : t("crm.funnel.errorGeneric"));
+    }
+  }
 
   const open = (opportunities.data ?? []).filter((o) => o.status === "open");
 
@@ -177,6 +259,8 @@ function Board({ funnel }: { funnel: Funnel }) {
         <p className="px-1 text-xs text-ink-faint sm:hidden">{t("crm.funnel.swipeHint")}</p>
       )}
 
+      {removeStageError && <Alert tone="error">{removeStageError}</Alert>}
+
       <HorizontalScroller contentClassName="flex gap-4 pb-2">
         {funnel.stages.map((stage) => {
           const stageOpportunities = opportunitiesForStage(stage.id);
@@ -201,8 +285,38 @@ function Board({ funnel }: { funnel: Funnel }) {
             >
               <div className="flex items-center justify-between px-1">
                 <h3 className="text-sm font-semibold text-ink">{stage.nome}</h3>
-                <span className="text-xs text-ink-faint">{stageOpportunities.length}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-ink-faint">{stageOpportunities.length}</span>
+                  {funnel.stages.length > 1 && (
+                    <button
+                      type="button"
+                      title={t("crm.funnel.removeStage")}
+                      onClick={() => onRemoveStage(stage.id)}
+                      className="text-xs text-ink-faint hover:text-red-600"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
               </div>
+              {stageNeedingTarget === stage.id && (
+                <select
+                  defaultValue=""
+                  onChange={(e) => {
+                    if (e.target.value) onRemoveStage(stage.id, e.target.value);
+                  }}
+                  className="mx-1 rounded border border-line bg-surface px-1.5 py-1 text-xs"
+                >
+                  <option value="">{t("crm.funnel.chooseTargetStage")}</option>
+                  {funnel.stages
+                    .filter((s) => s.id !== stage.id)
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.nome}
+                      </option>
+                    ))}
+                </select>
+              )}
               <div className="flex flex-col gap-2">
                 {stageOpportunities.map((opportunity) => {
                   const stageIndex = funnel.stages.findIndex((s) => s.id === stage.id);
@@ -279,6 +393,23 @@ function Board({ funnel }: { funnel: Funnel }) {
                           </button>
                         </div>
                       </div>
+                      {otherFunnels.length > 0 && (
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            if (e.target.value) transferOpportunity.mutate({ opportunityId: opportunity.id, targetFunnelId: e.target.value });
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="mt-2 w-full rounded border border-line bg-surface px-1.5 py-1 text-xs text-ink-dim"
+                        >
+                          <option value="">{t("crm.funnel.transferTo")}</option>
+                          {otherFunnels.map((f) => (
+                            <option key={f.id} value={f.id}>
+                              {f.nome}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </div>
                   );
                 })}

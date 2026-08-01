@@ -15,10 +15,54 @@ export class CrmTasksService {
     private readonly domainEvents: DomainEventsService,
   ) {}
 
-  list(contactId?: string, status?: string) {
+  /**
+   * `view` implementa os atalhos do documento (item 12): "hoje" é o filtro
+   * inicial ao abrir Tarefas; "atrasadas"/"futuras" recortam por `dataHora`
+   * relativa a agora; "periodo" usa `dataInicio`/`dataFim` explícitos;
+   * "todas" não recorta por data.
+   */
+  list(params: {
+    contactId?: string | undefined;
+    opportunityId?: string | undefined;
+    responsavelId?: string | undefined;
+    status?: string | undefined;
+    view?: "hoje" | "atrasadas" | "futuras" | "todas" | "periodo" | undefined;
+    dataInicio?: string | undefined;
+    dataFim?: string | undefined;
+  }) {
+    const { contactId, opportunityId, responsavelId, status, view, dataInicio, dataFim } = params;
     const where: Prisma.CrmTaskWhereInput = {};
     if (contactId) where.contactId = contactId;
+    if (opportunityId) where.opportunityId = opportunityId;
+    if (responsavelId) where.responsavelId = responsavelId;
     if (status) where.status = status;
+
+    const now = new Date();
+    switch (view) {
+      case "hoje": {
+        const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+        where.dataHora = { gte: start, lt: end };
+        break;
+      }
+      case "atrasadas":
+        where.dataHora = { lt: now };
+        where.status = status ?? "pending";
+        break;
+      case "futuras":
+        where.dataHora = { gt: now };
+        break;
+      case "periodo":
+        where.dataHora = {
+          ...(dataInicio ? { gte: new Date(dataInicio) } : {}),
+          ...(dataFim ? { lte: new Date(dataFim) } : {}),
+        };
+        break;
+      case "todas":
+      default:
+        break;
+    }
+
     return this.tenantPrisma.crmTask.findMany({ where, orderBy: { dataHora: "asc" } });
   }
 

@@ -1,27 +1,28 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useContacts, useCreateTask, useTasks, useUpdateTask } from "@/lib/crm";
+import { useContacts, useCreateTask, useTasks, useUpdateTask, type CrmTaskView } from "@/lib/crm";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
 import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 
-const STATUS_TABS: { labelKey: DictionaryKey; value: string }[] = [
-  { labelKey: "crm.tasks.tab.pending", value: "pending" },
-  { labelKey: "crm.tasks.tab.done", value: "done" },
-  { labelKey: "crm.tasks.tab.overdue", value: "overdue" },
-  { labelKey: "crm.tasks.tab.all", value: "" },
+/** Documento de alterações, item 12: ao abrir Tarefas, iniciar em "Hoje". */
+const VIEW_TABS: { labelKey: DictionaryKey; value: CrmTaskView }[] = [
+  { labelKey: "crm.tasks.view.hoje", value: "hoje" },
+  { labelKey: "crm.tasks.view.atrasadas", value: "atrasadas" },
+  { labelKey: "crm.tasks.view.futuras", value: "futuras" },
+  { labelKey: "crm.tasks.view.todas", value: "todas" },
 ];
 
 const TIPOS = ["retorno", "ligacao", "reuniao", "proposta", "cobranca", "pos_venda", "avaliacao", "custom"];
 
 export default function TarefasPage() {
   const { t } = useI18n();
-  const [status, setStatus] = useState("pending");
+  const [view, setView] = useState<CrmTaskView>("hoje");
   const [showForm, setShowForm] = useState(false);
-  const tasks = useTasks(undefined, status || undefined);
+  const tasks = useTasks(undefined, undefined, view);
   const contacts = useContacts("");
   const updateTask = useUpdateTask();
 
@@ -31,12 +32,12 @@ export default function TarefasPage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div className="flex gap-1">
-          {STATUS_TABS.map((tab) => (
+          {VIEW_TABS.map((tab) => (
             <button
               key={tab.value}
-              onClick={() => setStatus(tab.value)}
+              onClick={() => setView(tab.value)}
               className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                status === tab.value ? "bg-brand-500 text-white" : "text-ink-dim hover:bg-surface-muted"
+                view === tab.value ? "bg-brand-500 text-white" : "text-ink-dim hover:bg-surface-muted"
               }`}
             >
               {t(tab.labelKey)}

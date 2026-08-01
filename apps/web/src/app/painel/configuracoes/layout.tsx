@@ -7,9 +7,6 @@ import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 
 const TABS: { href: string; labelKey: DictionaryKey }[] = [
   { href: "/painel/configuracoes/ia", labelKey: "ia.title" },
-  { href: "/painel/configuracoes/origens", labelKey: "crm.origins.title" },
-  { href: "/painel/configuracoes/lead-score", labelKey: "crm.leadScore.configTitle" },
-  { href: "/painel/configuracoes/qualidade", labelKey: "quality.configTitle" },
   { href: "/painel/configuracoes/campos-personalizados", labelKey: "crm.customFields.title" },
   { href: "/painel/configuracoes/mensagens-rapidas", labelKey: "atendimento.quickMessages.title" },
   { href: "/painel/configuracoes/notificacoes", labelKey: "notifications.whatsappSettings.title" },

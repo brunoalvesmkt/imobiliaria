@@ -1,7 +1,7 @@
 import { Logger } from "@nestjs/common";
 import { Processor, WorkerHost } from "@nestjs/bullmq";
 import type { Job } from "bullmq";
-import type { PasswordResetEmailJobData, TenantUserWelcomeJobData } from "@chatbot-saas/types";
+import type { EmailConfirmationCodeJobData, PasswordResetEmailJobData, TenantUserWelcomeJobData } from "@chatbot-saas/types";
 import { PrismaService } from "../prisma/prisma.service";
 import { LogEmailProvider } from "../notifications/log-email.provider";
 
@@ -24,13 +24,17 @@ export class NotificationsProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job<TenantUserWelcomeJobData | PasswordResetEmailJobData, unknown, string>): Promise<void> {
+  async process(job: Job<TenantUserWelcomeJobData | PasswordResetEmailJobData | EmailConfirmationCodeJobData, unknown, string>): Promise<void> {
     if (job.name === "tenant_user.welcome") {
       await this.processWelcome(job.data as TenantUserWelcomeJobData);
       return;
     }
     if (job.name === "tenant_user.password_reset") {
       await this.processPasswordReset(job.data as PasswordResetEmailJobData);
+      return;
+    }
+    if (job.name === "tenant.email_confirmation_code") {
+      await this.processEmailConfirmationCode(job.data as EmailConfirmationCodeJobData);
       return;
     }
   }
@@ -73,6 +77,34 @@ export class NotificationsProcessor extends WorkerHost {
       }),
       this.prisma.auditLog.create({
         data: { tenantId, actorId: tenantUserId, actorType: "tenant_user", action: "notification.password_reset_sent", entity: "TenantUser", entityId: tenantUserId },
+      }),
+    ]);
+  }
+
+  private async processEmailConfirmationCode(data: EmailConfirmationCodeJobData): Promise<void> {
+    const { tenantId, tenantUserId, email, codigo } = data;
+    this.logger.log(`Processando código de confirmação de e-mail para ${email} (tenant ${tenantId})`);
+
+    const result = await this.emailProvider.send({
+      to: email,
+      assunto: "Confirme seu novo e-mail",
+      corpo: `Use o código a seguir para confirmar este e-mail (válido por 15 minutos): ${codigo}`,
+      template: "email_confirmation_code",
+    });
+
+    await this.prisma.$transaction([
+      this.prisma.emailLog.create({
+        data: {
+          tenantId,
+          to: email,
+          assunto: "Confirme seu novo e-mail",
+          template: "email_confirmation_code",
+          provider: this.emailProvider.name,
+          providerRef: result.providerRef,
+        },
+      }),
+      this.prisma.auditLog.create({
+        data: { tenantId, actorId: tenantUserId, actorType: "tenant_user", action: "notification.email_confirmation_code_sent", entity: "TenantUser", entityId: tenantUserId },
       }),
     ]);
   }

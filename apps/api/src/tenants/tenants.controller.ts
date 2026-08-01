@@ -1,9 +1,14 @@
-import { Controller, Get, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import { TenantAuthGuard } from "../auth/guards/tenant-auth.guard";
+import { PermissionsGuard } from "../common/permissions/permissions.guard";
+import { RequirePermission } from "../common/permissions/permissions.decorator";
 import { CurrentUser } from "../auth/current-user.decorator";
 import type { AuthenticatedRequestUser } from "../auth/jwt-payload.interface";
 import { PrismaService } from "../prisma/prisma.service";
 import { TenantScopedPrismaService } from "../prisma/tenant-scoped-prisma.service";
+import { TenantsService } from "./tenants.service";
+import { ConfirmEmailChangeDto, RequestEmailChangeDto } from "./dto/email-confirmation.dto";
 
 @Controller("tenants/me")
 @UseGuards(TenantAuthGuard)
@@ -11,6 +16,7 @@ export class TenantsController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tenantPrisma: TenantScopedPrismaService,
+    private readonly tenantsService: TenantsService,
   ) {}
 
   @Get()
@@ -31,5 +37,23 @@ export class TenantsController {
   async features(@CurrentUser() _user: AuthenticatedRequestUser) {
     const flags = await this.tenantPrisma.featureFlag.findMany({});
     return flags.map((flag) => ({ module: flag.module, enabled: flag.enabled }));
+  }
+
+  @Post("email/request-change")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(PermissionsGuard)
+  @RequirePermission("configuracoes", "administer")
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  requestEmailChange(@CurrentUser() user: AuthenticatedRequestUser, @Body() dto: RequestEmailChangeDto) {
+    return this.tenantsService.requestEmailChange(user.tenantId as string, user.id, dto.novoEmail);
+  }
+
+  @Post("email/confirm")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(PermissionsGuard)
+  @RequirePermission("configuracoes", "administer")
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  confirmEmailChange(@CurrentUser() user: AuthenticatedRequestUser, @Body() dto: ConfirmEmailChangeDto) {
+    return this.tenantsService.confirmEmailChange(user.tenantId as string, user.id, dto.codigo);
   }
 }

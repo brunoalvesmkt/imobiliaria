@@ -14,6 +14,7 @@ import {
 } from "@/lib/billing";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
+import { SectionCard, StatCard } from "@/components/ui/stat-card";
 import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 
@@ -26,6 +27,8 @@ export default function FinanceiroPage() {
   const cancelSubscription = useCancelSubscription();
   const [error, setError] = useState<string | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
+
+  const overdueCount = invoices.data?.filter((invoice) => invoice.status === "overdue").length ?? 0;
 
   async function onSubscribe(planId: string) {
     setError(null);
@@ -49,6 +52,15 @@ export default function FinanceiroPage() {
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-lg font-semibold text-ink">{t("financeiro.title")}</h1>
+
+      <SectionCard title={t("financeiro.summary.title")}>
+        <StatCard
+          label={t("financeiro.summary.subscriptionStatus")}
+          value={subscription.data ? t(`dashboard.financeiro.status.${subscription.data.status}` as DictionaryKey) : t("financeiro.noSubscription")}
+        />
+        <StatCard label={t("financeiro.summary.plan")} value={subscription.data?.plan.nome ?? t("dashboard.financeiro.noPlan")} />
+        <StatCard label={t("financeiro.summary.overdueInvoices")} value={overdueCount} />
+      </SectionCard>
 
       <section className="rounded-lg border border-line bg-surface p-4">
         <h2 className="text-sm font-semibold text-ink">{t("financeiro.currentPlan")}</h2>

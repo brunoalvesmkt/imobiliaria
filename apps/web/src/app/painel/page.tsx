@@ -4,7 +4,6 @@ import { useDashboard } from "@/lib/reports";
 import { Alert } from "@/components/ui/alert";
 import { SectionCard, StatCard } from "@/components/ui/stat-card";
 import { useI18n } from "@/lib/i18n";
-import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 
 export default function DashboardPage() {
   const { t } = useI18n();
@@ -28,12 +27,6 @@ export default function DashboardPage() {
       </div>
 
       {data.modulosAtivos.length === 0 && <Alert tone="info">{t("dashboard.noModules")}</Alert>}
-
-      <SectionCard title={t("dashboard.financeiro.title")}>
-        <StatCard label={t("dashboard.financeiro.subscriptionStatus")} value={statusLabel(data.financeiro.subscriptionStatus, t)} />
-        <StatCard label={t("dashboard.financeiro.plan")} value={data.financeiro.plano ?? t("dashboard.financeiro.noPlan")} />
-        <StatCard label={t("dashboard.financeiro.overdueInvoices")} value={data.financeiro.overdueInvoicesCount} />
-      </SectionCard>
 
       {data.crm && (
         <SectionCard title={t("dashboard.crm.title")}>
@@ -74,10 +67,4 @@ export default function DashboardPage() {
       )}
     </div>
   );
-}
-
-function statusLabel(status: string, t: (key: DictionaryKey) => string): string {
-  const key = `dashboard.financeiro.status.${status}` as DictionaryKey;
-  const translated = t(key);
-  return translated === key ? status : translated;
 }

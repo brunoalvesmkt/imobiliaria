@@ -760,6 +760,10 @@ const dictionary: Record<DictionaryKey, string> = {
   "automation.executions.status.dead_letter": "Falha definitiva",
 
   "financeiro.title": "Financeiro",
+  "financeiro.summary.title": "Resumo",
+  "financeiro.summary.subscriptionStatus": "Estado da assinatura",
+  "financeiro.summary.plan": "Plano",
+  "financeiro.summary.overdueInvoices": "Faturas em atraso",
   "financeiro.currentPlan": "Plano atual",
   "financeiro.noSubscription": "Ainda não tem uma assinatura ativa.",
   "financeiro.cancelSubscription": "Cancelar assinatura",

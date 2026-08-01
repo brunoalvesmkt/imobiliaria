@@ -758,6 +758,10 @@ const dictionary = {
   "automation.executions.status.dead_letter": "Falha definitiva",
 
   "financeiro.title": "Financeiro",
+  "financeiro.summary.title": "Resumo",
+  "financeiro.summary.subscriptionStatus": "Status da assinatura",
+  "financeiro.summary.plan": "Plano",
+  "financeiro.summary.overdueInvoices": "Faturas em atraso",
   "financeiro.currentPlan": "Plano atual",
   "financeiro.noSubscription": "Você ainda não tem uma assinatura ativa.",
   "financeiro.cancelSubscription": "Cancelar assinatura",

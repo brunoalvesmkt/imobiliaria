@@ -1,23 +1,42 @@
 import { z } from "zod";
+import { isValidCpfOuCnpj } from "./document";
 
 /**
- * Espelha as regras de `apps/api/src/auth/dto/signup-tenant.dto.ts` — a
- * validação autoritativa continua sendo a do backend (class-validator), este
- * schema serve para o frontend dar feedback antes de enviar a requisição
- * (Fase 31, ver DEVELOPMENT_PLAN.md — início de `packages/validation`).
+ * Validação autoritativa do `POST /auth/signup` — `AuthController` usa este
+ * schema direto via `ZodValidationPipe` (não passa pelos decorators de
+ * `apps/api/src/auth/dto/signup-tenant.dto.ts`, que hoje só servem de tipo).
+ * Documento de alterações da plataforma, seção 3: cadastro estendido com
+ * CPF/CNPJ único, responsável, telefone, WhatsApp, segmento e endereço
+ * completo, todos obrigatórios; mais a seleção de plano (seção 2).
  */
 export const signupTenantSchema = z
   .object({
-    razaoSocial: z.string().trim().min(1, "Informe a razão social."),
-    cnpj: z.string().regex(/^\d{14}$/, "CNPJ deve conter 14 dígitos numéricos."),
-    responsavel: z.string().trim().min(1, "Informe o responsável."),
-    endereco: z.string().trim().optional(),
-    telefone: z.string().trim().optional(),
-    whatsapp: z.string().trim().optional(),
-    email: z.string().email("E-mail inválido."),
-    confirmacaoEmail: z.string().email("E-mail inválido."),
+    razaoSocial: z.string().trim().min(1, "Informe o nome ou razão social."),
+    cnpj: z
+      .string()
+      .transform((v) => v.replace(/\D/g, ""))
+      .refine((v) => v.length === 11 || v.length === 14, "Informe um CPF ou CNPJ com a quantidade certa de dígitos.")
+      .refine((v) => isValidCpfOuCnpj(v), "CPF ou CNPJ inválido — confira os dígitos."),
+    responsavel: z.string().trim().min(1, "Informe o nome completo do responsável."),
+    telefone: z.string().trim().min(1, "Informe o telefone."),
+    whatsapp: z.string().trim().min(1, "Informe o WhatsApp."),
+    segmentoId: z.string().uuid("Selecione o segmento da empresa."),
+    endereco: z.string().trim().min(1, "Informe o endereço."),
+    numero: z.string().trim().min(1, "Informe o número."),
+    bairro: z.string().trim().min(1, "Informe o bairro."),
+    cidade: z.string().trim().min(1, "Informe a cidade."),
+    uf: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z]{2}$/, "UF deve ter 2 letras."),
+    cep: z.string().regex(/^\d{5}-?\d{3}$/, "CEP inválido — use o formato 00000-000."),
+    email: z.string().trim().toLowerCase().email("E-mail inválido."),
+    confirmacaoEmail: z.string().trim().toLowerCase().email("E-mail inválido."),
     senha: z.string().min(10, "A senha deve ter ao menos 10 caracteres."),
     confirmacaoSenha: z.string(),
+    planId: z.string().uuid("Selecione um plano."),
+    periodicidade: z.enum(["mensal", "anual"]),
     affiliateLinkCode: z.string().trim().optional(),
   })
   .refine((data) => data.email === data.confirmacaoEmail, {

@@ -145,5 +145,13 @@ describe("Row-Level Security (Fase 19)", () => {
 });
 
 function randomCnpj(): string {
-  return Array.from({ length: 14 }, () => Math.floor(Math.random() * 10)).join("");
+  const base = Array.from({ length: 12 }, () => Math.floor(Math.random() * 10));
+  const calc = (nums: number[], weights: number[]) => {
+    const sum = nums.reduce((acc, n, i) => acc + n * (weights[i] ?? 0), 0);
+    const r = sum % 11;
+    return r < 2 ? 0 : 11 - r;
+  };
+  const d1 = calc(base, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const d2 = calc([...base, d1], [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  return [...base, d1, d2].join("");
 }

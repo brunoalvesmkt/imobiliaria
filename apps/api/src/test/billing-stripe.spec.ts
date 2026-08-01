@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import request from "supertest";
 import { randomUUID, createHmac } from "node:crypto";
 import { AppModule } from "../app.module";
+import { signupExtras } from "./support/signup-extras";
 
 /**
  * Testes de integração do gateway real (Stripe) — provedor selecionado por
@@ -27,7 +28,15 @@ describe("Financeiro — gateway real (Stripe)", () => {
   const STRIPE_WEBHOOK_SECRET = "whsec_teste_stripe_123";
 
   function randomCnpj(): string {
-    return Array.from({ length: 14 }, () => Math.floor(Math.random() * 10)).join("");
+    const base = Array.from({ length: 12 }, () => Math.floor(Math.random() * 10));
+    const calc = (nums: number[], weights: number[]) => {
+      const sum = nums.reduce((acc, n, i) => acc + n * (weights[i] ?? 0), 0);
+      const r = sum % 11;
+      return r < 2 ? 0 : 11 - r;
+    };
+    const d1 = calc(base, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+    const d2 = calc([...base, d1], [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+    return [...base, d1, d2].join("");
   }
 
   async function loginMaster(email: string, senha: string) {
@@ -50,6 +59,7 @@ describe("Financeiro — gateway real (Stripe)", () => {
       confirmacaoEmail: email,
       senha,
       confirmacaoSenha: senha,
+      ...(await signupExtras(app)),
     });
     if (res.status !== 201) throw new Error(`Signup falhou: ${res.status} ${JSON.stringify(res.body)}`);
     const me = await agent.get("/auth/tenant/me");

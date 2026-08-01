@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, HttpException, Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ConflictException, HttpException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/audit/audit.service";
 import { AffiliatesService } from "../affiliates/affiliates.service";
@@ -32,19 +32,38 @@ export class AuthService {
   ) {}
 
   async signupTenant(dto: SignupTenantDto, meta: RequestMeta): Promise<TenantSession> {
-    const [existingCnpj, existingEmail] = await Promise.all([
+    const [existingCnpj, existingEmail, plan, segmento] = await Promise.all([
       this.prisma.tenant.findUnique({ where: { cnpj: dto.cnpj } }),
       this.prisma.tenantUser.findUnique({ where: { email: dto.email } }),
+      this.prisma.plan.findUnique({ where: { id: dto.planId } }),
+      this.prisma.segment.findUnique({ where: { id: dto.segmentoId } }),
     ]);
     if (existingCnpj) {
-      throw new ConflictException("CNPJ já cadastrado.");
+      throw new ConflictException("CPF/CNPJ já cadastrado.");
     }
     if (existingEmail) {
       throw new ConflictException("E-mail já cadastrado.");
     }
+    // Não confiar no `planId` só porque veio no corpo da requisição — o
+    // documento de alterações exige revalidar o plano no backend antes de
+    // criar a conta (item 2.4), inclusive impedindo um plano não-público
+    // (interno/arquivado) de ser contratado manipulando a requisição.
+    if (!plan || !plan.ativo || !plan.publicoAtivo) {
+      throw new NotFoundException("Plano não encontrado ou não disponível para contratação.");
+    }
+    if (dto.periodicidade === "anual" && plan.precoAnual === null) {
+      throw new BadRequestException("Este plano não tem modalidade anual.");
+    }
+    if (!segmento || !segmento.ativo) {
+      throw new BadRequestException("Segmento inválido.");
+    }
 
     const subdominio = await this.generateUniqueSubdomain(dto.razaoSocial);
     const passwordHash = await hashPassword(dto.senha);
+
+    const precoContratado = dto.periodicidade === "anual" ? plan.precoAnual! : plan.preco;
+    const now = new Date();
+    const trialEndsAt = plan.diasTeste > 0 ? new Date(now.getTime() + plan.diasTeste * 24 * 60 * 60 * 1000) : null;
 
     const { tenant, tenantUser } = await this.prisma.$transaction(async (tx) => {
       const tenant = await tx.tenant.create({
@@ -52,14 +71,46 @@ export class AuthService {
           razaoSocial: dto.razaoSocial,
           cnpj: dto.cnpj,
           responsavel: dto.responsavel,
-          endereco: dto.endereco ?? null,
-          telefone: dto.telefone ?? null,
-          whatsapp: dto.whatsapp ?? null,
+          endereco: dto.endereco,
+          numero: dto.numero,
+          bairro: dto.bairro,
+          cidade: dto.cidade,
+          uf: dto.uf,
+          cep: dto.cep,
+          segmentoId: dto.segmentoId,
+          telefone: dto.telefone,
+          whatsapp: dto.whatsapp,
           email: dto.email,
           subdominio,
+          planId: plan.id,
           status: "trial",
         },
       });
+
+      // Fotografia das condições comerciais contratadas (documento de
+      // alterações, item 2.6) — mudanças futuras no Plan não afetam esta
+      // assinatura já criada.
+      await tx.subscription.create({
+        data: {
+          tenantId: tenant.id,
+          planId: plan.id,
+          status: "active",
+          startedAt: now,
+          recorrenciaContratada: dto.periodicidade,
+          precoContratado,
+          diasTesteContratado: plan.diasTeste,
+          trialEndsAt,
+        },
+      });
+
+      // Ativa só os módulos incluídos no plano contratado — nenhum módulo
+      // vem ligado por padrão fora disso.
+      const modulos = Array.isArray(plan.modulos) ? (plan.modulos as unknown[]).filter((m): m is string => typeof m === "string") : [];
+      if (modulos.length > 0) {
+        await tx.featureFlag.createMany({
+          data: modulos.map((module) => ({ tenantId: tenant.id, module, enabled: true, enabledAt: now })),
+        });
+      }
 
       const adminRole = await tx.role.create({
         data: {

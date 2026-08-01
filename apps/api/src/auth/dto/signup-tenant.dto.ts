@@ -1,62 +1,27 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, Matches, MinLength, Validate } from "class-validator";
-import { ValidationArguments, ValidatorConstraint, ValidatorConstraintInterface } from "class-validator";
-
-@ValidatorConstraint({ name: "MatchesField", async: false })
-class MatchesFieldConstraint implements ValidatorConstraintInterface {
-  validate(value: string, args: ValidationArguments): boolean {
-    const [relatedField] = args.constraints as [string];
-    const relatedValue = (args.object as Record<string, unknown>)[relatedField];
-    return value === relatedValue;
-  }
-
-  defaultMessage(args: ValidationArguments): string {
-    const [relatedField] = args.constraints as [string];
-    return `${args.property} deve ser igual a ${relatedField}`;
-  }
-}
-
-function MatchesField(relatedField: string) {
-  return Validate(MatchesFieldConstraint, [relatedField]);
-}
-
+/**
+ * Tipo do corpo de `POST /auth/signup` depois de passar pelo
+ * `ZodValidationPipe(signupTenantSchema)` (ver `AuthController`) — a
+ * validação de verdade é a do schema Zod em `@chatbot-saas/validation`;
+ * esta classe existe só para dar tipo ao `dto` no controller/service.
+ */
 export class SignupTenantDto {
-  @IsString()
-  @IsNotEmpty()
   razaoSocial!: string;
-
-  @Matches(/^\d{14}$/, { message: "cnpj deve conter 14 dígitos numéricos" })
   cnpj!: string;
-
-  @IsString()
-  @IsNotEmpty()
   responsavel!: string;
-
-  @IsOptional()
-  @IsString()
-  endereco?: string;
-
-  @IsOptional()
-  @IsString()
-  telefone?: string;
-
-  @IsOptional()
-  @IsString()
-  whatsapp?: string;
-
-  @IsEmail()
+  telefone!: string;
+  whatsapp!: string;
+  segmentoId!: string;
+  endereco!: string;
+  numero!: string;
+  bairro!: string;
+  cidade!: string;
+  uf!: string;
+  cep!: string;
   email!: string;
-
-  @IsEmail()
-  @MatchesField("email")
   confirmacaoEmail!: string;
-
-  @MinLength(10, { message: "senha deve ter ao menos 10 caracteres" })
   senha!: string;
-
-  @MatchesField("senha")
   confirmacaoSenha!: string;
-
-  @IsOptional()
-  @IsString()
+  planId!: string;
+  periodicidade!: "mensal" | "anual";
   affiliateLinkCode?: string;
 }

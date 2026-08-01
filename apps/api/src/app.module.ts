@@ -25,6 +25,7 @@ import { AiModule } from "./ai/ai.module";
 import { AutomationModule } from "./automation/automation.module";
 import { BillingModule } from "./billing/billing.module";
 import { AffiliatesModule } from "./affiliates/affiliates.module";
+import { PublicCatalogModule } from "./public-catalog/public-catalog.module";
 import { ReportsModule } from "./reports/reports.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 
@@ -54,6 +55,7 @@ import { NotificationsModule } from "./notifications/notifications.module";
     ChatbotModule,
     AutomationModule,
     AffiliatesModule,
+    PublicCatalogModule,
     BillingModule,
     ReportsModule,
     NotificationsModule,

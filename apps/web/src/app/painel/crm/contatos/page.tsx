@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useContacts, useContactOrigins, useCreateContact, useImportContacts, type ContactPhoneType } from "@/lib/crm";
 import { LeadScoreBadge } from "@/components/crm/lead-score-badge";
@@ -30,9 +30,10 @@ export default function ContatosPage() {
   const { t } = useI18n();
   const [search, setSearch] = useState("");
   const [origemId, setOrigemId] = useState("");
+  const [phoneType, setPhoneType] = useState<ContactPhoneType | "">("");
   const [showForm, setShowForm] = useState(false);
   const origins = useContactOrigins();
-  const contacts = useContacts(search, origemId || undefined);
+  const contacts = useContacts(search, origemId || undefined, phoneType || undefined);
   const importContacts = useImportContacts();
   const csvInputRef = useRef<HTMLInputElement>(null);
   const xlsxInputRef = useRef<HTMLInputElement>(null);
@@ -85,18 +86,13 @@ export default function ContatosPage() {
             onChange={(e) => setSearch(e.target.value)}
             className="w-64 rounded-md border border-line bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
           />
-          <select
-            value={origemId}
-            onChange={(e) => setOrigemId(e.target.value)}
-            className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
-          >
-            <option value="">{t("crm.contacts.filterAllOrigins")}</option>
-            {origins.data?.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.nome}
-              </option>
-            ))}
-          </select>
+          <FilterButton
+            origins={origins.data ?? []}
+            origemId={origemId}
+            onOrigemChange={setOrigemId}
+            phoneType={phoneType}
+            onPhoneTypeChange={setPhoneType}
+          />
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <DropdownMenu label={t("crm.contacts.export")} items={exportItems} />
@@ -155,6 +151,84 @@ export default function ContatosPage() {
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+function FilterButton({
+  origins,
+  origemId,
+  onOrigemChange,
+  phoneType,
+  onPhoneTypeChange,
+}: {
+  origins: { id: string; nome: string }[];
+  origemId: string;
+  onOrigemChange: (value: string) => void;
+  phoneType: ContactPhoneType | "";
+  onPhoneTypeChange: (value: ContactPhoneType | "") => void;
+}) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const phoneTypeLabels: Record<ContactPhoneType, string> = {
+    whatsapp: t("crm.contacts.phoneType.whatsapp"),
+    residencial: t("crm.contacts.phoneType.residencial"),
+    comercial: t("crm.contacts.phoneType.comercial"),
+  };
+  const activeCount = (origemId ? 1 : 0) + (phoneType ? 1 : 0);
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative inline-block">
+      <Button variant="secondary" onClick={() => setOpen((v) => !v)}>
+        {t("crm.contacts.filter")}
+        {activeCount > 0 ? ` (${activeCount})` : ""}
+      </Button>
+      {open && (
+        <div className="absolute z-20 mt-1 w-64 rounded-md border border-line bg-surface p-3 shadow-lg">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-ink-dim">{t("crm.contacts.filterOrigin")}</label>
+              <select
+                value={origemId}
+                onChange={(e) => onOrigemChange(e.target.value)}
+                className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
+              >
+                <option value="">{t("crm.contacts.filterAllOrigins")}</option>
+                {origins.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-ink-dim">{t("crm.contacts.filterPhoneType")}</label>
+              <select
+                value={phoneType}
+                onChange={(e) => onPhoneTypeChange(e.target.value as ContactPhoneType | "")}
+                className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
+              >
+                <option value="">{t("crm.contacts.filterAllPhoneTypes")}</option>
+                {PHONE_TYPES.map((tipo) => (
+                  <option key={tipo} value={tipo}>
+                    {phoneTypeLabels[tipo]}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

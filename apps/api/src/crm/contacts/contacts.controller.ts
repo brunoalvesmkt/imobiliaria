@@ -27,9 +27,10 @@ export class ContactsController {
     @Query("search") search: string | undefined,
     @Query("origemId") origemId: string | undefined,
     @Query("responsavelId") responsavelId: string | undefined,
+    @Query("phoneType") phoneType: string | undefined,
     @CurrentUser() user: AuthenticatedRequestUser,
   ) {
-    return this.service.list(search, user.roleId, origemId, responsavelId);
+    return this.service.list(search, user.roleId, origemId, responsavelId, phoneType);
   }
 
   @Get(":id")

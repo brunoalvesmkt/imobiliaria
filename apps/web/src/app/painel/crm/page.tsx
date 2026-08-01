@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function CrmIndexPage() {
-  redirect("/painel/crm/contatos");
+  redirect("/painel/crm/funil");
 }

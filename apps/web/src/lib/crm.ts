@@ -122,13 +122,14 @@ export interface CreateContactInput {
   observacoes?: string;
 }
 
-export function useContacts(search: string, origemId?: string) {
+export function useContacts(search: string, origemId?: string, phoneType?: ContactPhoneType) {
   const params = new URLSearchParams();
   if (search) params.set("search", search);
   if (origemId) params.set("origemId", origemId);
+  if (phoneType) params.set("phoneType", phoneType);
   const qs = params.toString();
   return useQuery({
-    queryKey: ["crm", "contacts", search, origemId ?? ""],
+    queryKey: ["crm", "contacts", search, origemId ?? "", phoneType ?? ""],
     queryFn: () => apiGet<Contact[]>(`/crm/contacts${qs ? `?${qs}` : ""}`),
   });
 }

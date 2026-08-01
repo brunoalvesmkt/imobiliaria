@@ -72,6 +72,7 @@ model Tenant {
   subscriptions Subscription[]
   contacts      Contact[]
   contactOrigins ContactOrigin[]
+  crmTaskTypes  CrmTaskType[]
   funnels       Funnel[]
   opportunities Opportunity[]
   crmTasks      CrmTask[]
@@ -513,6 +514,20 @@ model ContactOrigin {
 
   @@unique([tenantId, nome])
   @@map("contact_origins")
+}
+
+// Tipos de tarefa personalizáveis do CRM (além dos tipos padrão fixos no frontend).
+model CrmTaskType {
+  id       String  @id @default(uuid())
+  tenantId String
+  nome     String
+  ativo    Boolean @default(true)
+  ordem    Int     @default(0)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, nome])
+  @@map("crm_task_types")
 }
 
 model DeduplicationRule {

@@ -72,6 +72,42 @@ export function useDeleteContactOrigin() {
   });
 }
 
+export interface CrmTaskType {
+  id: string;
+  nome: string;
+  ativo: boolean;
+  ordem: number;
+}
+
+export function useTaskTypes() {
+  return useQuery({ queryKey: ["crm", "task-types"], queryFn: () => apiGet<CrmTaskType[]>("/crm/task-types") });
+}
+
+export function useCreateTaskType() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (nome: string) => apiPost<CrmTaskType>("/crm/task-types", { nome }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["crm", "task-types"] }),
+  });
+}
+
+export function useUpdateTaskType() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...input }: { id: string; nome?: string; ativo?: boolean; ordem?: number }) =>
+      apiPatch<CrmTaskType>(`/crm/task-types/${id}`, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["crm", "task-types"] }),
+  });
+}
+
+export function useDeleteTaskType() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiDelete<{ status: "ok" }>(`/crm/task-types/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["crm", "task-types"] }),
+  });
+}
+
 export function useImportContacts() {
   const queryClient = useQueryClient();
   return useMutation({

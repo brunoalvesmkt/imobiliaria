@@ -19,6 +19,8 @@ import { CustomFieldsController } from "./custom-fields/custom-fields.controller
 import { CustomFieldsService } from "./custom-fields/custom-fields.service";
 import { ContactOriginsController } from "./contact-origins/contact-origins.controller";
 import { ContactOriginsService } from "./contact-origins/contact-origins.service";
+import { TaskTypesController } from "./task-types/task-types.controller";
+import { TaskTypesService } from "./task-types/task-types.service";
 
 @Module({
   imports: [
@@ -40,7 +42,8 @@ import { ContactOriginsService } from "./contact-origins/contact-origins.service
     LeadScoreConfigController,
     CustomFieldsController,
     ContactOriginsController,
+    TaskTypesController,
   ],
-  providers: [ContactsService, FunnelsService, OpportunitiesService, CrmTasksService, CrmTasksOverdueScheduler, CustomFieldsService, ContactOriginsService],
+  providers: [ContactsService, FunnelsService, OpportunitiesService, CrmTasksService, CrmTasksOverdueScheduler, CustomFieldsService, ContactOriginsService, TaskTypesService],
 })
 export class CrmModule {}

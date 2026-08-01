@@ -162,6 +162,28 @@ export class TenantScopedPrismaService {
 
       update: (args: { where: { id: string }; data: Prisma.CrmTaskUncheckedUpdateInput }) =>
         this.prisma.crmTask.update({ where: { id: args.where.id, tenantId }, data: args.data }),
+
+      count: (args: Omit<Prisma.CrmTaskCountArgs, "where"> & { where?: Prisma.CrmTaskWhereInput } = {}) =>
+        this.prisma.crmTask.count({ ...args, where: { ...args.where, tenantId } }),
+    };
+  }
+
+  get crmTaskType() {
+    const tenantId = requireCurrentTenantId();
+    return {
+      findMany: (args: Omit<Prisma.CrmTaskTypeFindManyArgs, "where"> & { where?: Prisma.CrmTaskTypeWhereInput } = {}) =>
+        this.prisma.crmTaskType.findMany({ ...args, where: { ...args.where, tenantId } }),
+
+      findFirst: (args: Omit<Prisma.CrmTaskTypeFindFirstArgs, "where"> & { where?: Prisma.CrmTaskTypeWhereInput } = {}) =>
+        this.prisma.crmTaskType.findFirst({ ...args, where: { ...args.where, tenantId } }),
+
+      create: (args: Omit<Prisma.CrmTaskTypeCreateArgs, "data"> & { data: Omit<Prisma.CrmTaskTypeUncheckedCreateInput, "tenantId"> }) =>
+        this.prisma.crmTaskType.create({ ...args, data: { ...args.data, tenantId } }),
+
+      update: (args: { where: { id: string }; data: Prisma.CrmTaskTypeUncheckedUpdateInput }) =>
+        this.prisma.crmTaskType.update({ where: { id: args.where.id, tenantId }, data: args.data }),
+
+      delete: (args: { where: { id: string } }) => this.prisma.crmTaskType.delete({ where: { id: args.where.id, tenantId } }),
     };
   }
 

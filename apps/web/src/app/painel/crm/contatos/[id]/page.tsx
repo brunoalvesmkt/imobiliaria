@@ -116,8 +116,8 @@ export default function ContactDetailPage() {
           </form>
         ) : (
           <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
-            <Info label={t("crm.contacts.whatsapp")} value={data.whatsapp} />
-            <Info label={t("crm.contacts.phone")} value={data.telefone} />
+            <Info label={t("crm.contacts.whatsapp")} value={formatPhone(data.whatsapp)} />
+            <Info label={t("crm.contacts.phone")} value={formatPhone(data.telefone)} />
             <Info label={t("crm.contacts.email")} value={data.email} />
             <Info label={t("crm.contacts.origin")} value={data.origem} />
             {(data.cpf || data.cnpj) && <Info label={data.cpf ? t("crm.contacts.cpf") : t("crm.contacts.cnpj")} value={data.cpf ?? data.cnpj} />}
@@ -260,6 +260,15 @@ export default function ContactDetailPage() {
       <ContactTasks contactId={params.id} />
     </div>
   );
+}
+
+/** Só usado na ficha de detalhe (somente leitura) — a lista de contatos e o formulário de edição continuam mostrando o número puro. */
+function formatPhone(raw: string | null): string | null {
+  if (!raw) return raw;
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length === 11) return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  if (digits.length === 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return raw;
 }
 
 function formatCustomFieldValue(value: unknown): string | null {

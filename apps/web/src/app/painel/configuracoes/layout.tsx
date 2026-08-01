@@ -6,8 +6,6 @@ import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 
 const TABS: { href: string; labelKey: DictionaryKey }[] = [
-  { href: "/painel/configuracoes/usuarios", labelKey: "tenantUsers.title" },
-  { href: "/painel/configuracoes/perfis", labelKey: "roles.title" },
   { href: "/painel/configuracoes/ia", labelKey: "ia.title" },
   { href: "/painel/configuracoes/origens", labelKey: "crm.origins.title" },
   { href: "/painel/configuracoes/lead-score", labelKey: "crm.leadScore.configTitle" },
@@ -16,6 +14,8 @@ const TABS: { href: string; labelKey: DictionaryKey }[] = [
   { href: "/painel/configuracoes/mensagens-rapidas", labelKey: "atendimento.quickMessages.title" },
   { href: "/painel/configuracoes/notificacoes", labelKey: "notifications.whatsappSettings.title" },
   { href: "/painel/configuracoes/auditoria", labelKey: "auditLog.title" },
+  { href: "/painel/configuracoes/perfis", labelKey: "roles.title" },
+  { href: "/painel/configuracoes/usuarios", labelKey: "tenantUsers.title" },
 ];
 
 export default function ConfiguracoesLayout({ children }: { children: React.ReactNode }) {

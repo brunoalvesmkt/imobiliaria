@@ -8,7 +8,6 @@ import {
   useCreateFunnel,
   useCreateOpportunity,
   useDeleteFunnel,
-  useDuplicateFunnel,
   useFunnels,
   useMoveOpportunityStage,
   useOpportunities,
@@ -76,30 +75,7 @@ function FunnelToolbar({
   onDeleted: () => void;
 }) {
   const { t } = useI18n();
-  const duplicateFunnel = useDuplicateFunnel();
-  const deleteFunnel = useDeleteFunnel();
   const [error, setError] = useState<string | null>(null);
-
-  async function onDuplicate() {
-    setError(null);
-    try {
-      const copy = await duplicateFunnel.mutateAsync(funnel.id);
-      onSelect(copy.id);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : t("crm.funnel.errorGeneric"));
-    }
-  }
-
-  async function onDelete() {
-    setError(null);
-    if (!window.confirm(t("crm.funnel.confirmDelete"))) return;
-    try {
-      await deleteFunnel.mutateAsync(funnel.id);
-      onDeleted();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : t("crm.funnel.errorGeneric"));
-    }
-  }
 
   return (
     <div className="flex flex-col gap-2">
@@ -115,13 +91,7 @@ function FunnelToolbar({
             </option>
           ))}
         </select>
-        <Button variant="secondary" onClick={onDuplicate} loading={duplicateFunnel.isPending}>
-          {t("crm.funnel.duplicate")}
-        </Button>
-        <Button variant="secondary" onClick={onDelete} loading={deleteFunnel.isPending}>
-          {t("crm.funnel.delete")}
-        </Button>
-        <FunnelSettingsMenu funnel={funnel} onFunnelCreated={onSelect} />
+        <FunnelSettingsMenu funnel={funnel} onFunnelCreated={onSelect} onFunnelDeleted={onDeleted} onError={setError} />
       </div>
       {error && <Alert tone="error">{error}</Alert>}
     </div>
@@ -130,9 +100,31 @@ function FunnelToolbar({
 
 type SettingsPanelKind = "createFunnel" | "editFunnel" | "newStage" | "editStage" | "deleteStage" | "reorderStages";
 
-function FunnelSettingsMenu({ funnel, onFunnelCreated }: { funnel: Funnel; onFunnelCreated: (id: string) => void }) {
+function FunnelSettingsMenu({
+  funnel,
+  onFunnelCreated,
+  onFunnelDeleted,
+  onError,
+}: {
+  funnel: Funnel;
+  onFunnelCreated: (id: string) => void;
+  onFunnelDeleted: () => void;
+  onError: (message: string | null) => void;
+}) {
   const { t } = useI18n();
   const [panel, setPanel] = useState<SettingsPanelKind | null>(null);
+  const deleteFunnel = useDeleteFunnel();
+
+  async function onDeleteFunnel() {
+    onError(null);
+    if (!window.confirm(t("crm.funnel.confirmDelete"))) return;
+    try {
+      await deleteFunnel.mutateAsync(funnel.id);
+      onFunnelDeleted();
+    } catch (err) {
+      onError(err instanceof ApiError ? err.message : t("crm.funnel.errorGeneric"));
+    }
+  }
 
   const items: DropdownMenuItem[] = [
     { label: t("crm.funnel.settingsMenu.createFunnel"), onClick: () => setPanel("createFunnel") },
@@ -141,6 +133,7 @@ function FunnelSettingsMenu({ funnel, onFunnelCreated }: { funnel: Funnel; onFun
     { label: t("crm.funnel.settingsMenu.editStage"), onClick: () => setPanel("editStage") },
     { label: t("crm.funnel.settingsMenu.deleteStage"), onClick: () => setPanel("deleteStage") },
     { label: t("crm.funnel.settingsMenu.reorderStages"), onClick: () => setPanel("reorderStages") },
+    { label: t("crm.funnel.delete"), onClick: onDeleteFunnel, disabled: deleteFunnel.isPending },
   ];
 
   return (

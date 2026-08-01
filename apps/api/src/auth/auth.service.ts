@@ -9,6 +9,7 @@ import { TokenService } from "./token.service";
 import { generateOpaqueToken, hashOpaqueToken, hashPassword, slugify, verifyPassword } from "./crypto.util";
 import { computeLockUntil, isCurrentlyLocked, minutesUntil } from "./account-lockout.util";
 import { ADMIN_DEFAULT_PERMISSIONS } from "./default-permissions";
+import { createDefaultFunnel } from "../crm/funnels/default-funnel.util";
 import type { SignupTenantDto } from "./dto/signup-tenant.dto";
 import type { LoginDto } from "./dto/login.dto";
 
@@ -96,6 +97,8 @@ export class AuthService {
           status: "trial",
         },
       });
+
+      await createDefaultFunnel(tx, tenant.id);
 
       // Fotografia das condições comerciais contratadas (documento de
       // alterações, item 2.6) — mudanças futuras no Plan não afetam esta

@@ -324,7 +324,7 @@ const dictionary: Record<DictionaryKey, string> = {
   "crm.contacts.merge.error": "Não foi possível unir os cadastros.",
   "crm.contacts.notes": "Observações",
   "crm.contacts.columnName": "Nome",
-  "crm.contacts.columnWhatsapp": "WhatsApp",
+  "crm.contacts.columnWhatsapp": "Telefone",
   "crm.contacts.columnEmail": "E-mail",
   "crm.contacts.columnOrigin": "Origem",
   "crm.contacts.empty": "Nenhum contacto encontrado.",

@@ -7,6 +7,7 @@ import { TokenService } from "../../auth/token.service";
 import { hashPassword, slugify } from "../../auth/crypto.util";
 import { toCsv } from "../../reports/csv.util";
 import { ADMIN_DEFAULT_PERMISSIONS } from "../../auth/default-permissions";
+import { createDefaultFunnel } from "../../crm/funnels/default-funnel.util";
 import type { MasterActorContext } from "../plans/plans.service";
 import type { UpdateTenantStatusDto } from "./dto/update-tenant-status.dto";
 import type { AssignPlanDto } from "./dto/assign-plan.dto";
@@ -101,6 +102,8 @@ export class MasterTenantsService {
           ...(plan ? { planId: plan.id } : {}),
         },
       });
+
+      await createDefaultFunnel(tx, tenant.id);
 
       const adminRole = await tx.role.create({
         data: { tenantId: tenant.id, nome: "admin", descricao: "Acesso total aos módulos ativos e a Configurações", isSystem: true },

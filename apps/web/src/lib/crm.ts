@@ -310,14 +310,6 @@ export function useUpdateStage(funnelId: string) {
   });
 }
 
-export function useDuplicateFunnel() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => apiPost<Funnel>(`/crm/funnels/${id}/duplicate`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["crm", "funnels"] }),
-  });
-}
-
 export function useDeleteFunnel() {
   const queryClient = useQueryClient();
   return useMutation({

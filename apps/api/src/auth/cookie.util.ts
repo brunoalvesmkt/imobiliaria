@@ -6,6 +6,7 @@ export const MASTER_ACCESS_COOKIE = "master_access_token";
 export const MASTER_REFRESH_COOKIE = "master_refresh_token";
 export const AFFILIATE_ACCESS_COOKIE = "affiliate_access_token";
 export const AFFILIATE_REFRESH_COOKIE = "affiliate_refresh_token";
+export const TENANT_2FA_CHALLENGE_COOKIE = "tenant_2fa_challenge";
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -45,4 +46,12 @@ export function setAuthCookies(
 export function clearAuthCookies(res: Response, accessCookieName: string, refreshCookieName: string): void {
   res.clearCookie(accessCookieName, baseCookieOptions);
   res.clearCookie(refreshCookieName, baseCookieOptions);
+}
+
+export function setTwoFactorChallengeCookie(res: Response, token: string): void {
+  res.cookie(TENANT_2FA_CHALLENGE_COOKIE, token, { ...baseCookieOptions, maxAge: 10 * 60 * 1000 });
+}
+
+export function clearTwoFactorChallengeCookie(res: Response): void {
+  res.clearCookie(TENANT_2FA_CHALLENGE_COOKIE, baseCookieOptions);
 }

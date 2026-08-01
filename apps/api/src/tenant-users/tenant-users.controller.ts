@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import type { Request } from "express";
 import { TenantAuthGuard } from "../auth/guards/tenant-auth.guard";
 import { PermissionsGuard } from "../common/permissions/permissions.guard";
@@ -8,6 +9,8 @@ import type { AuthenticatedRequestUser } from "../auth/jwt-payload.interface";
 import { TenantUsersService } from "./tenant-users.service";
 import { CreateTenantUserDto } from "./dto/create-tenant-user.dto";
 import { UpdateTenantUserDto } from "./dto/update-tenant-user.dto";
+import { ChangeOwnPasswordDto } from "./dto/change-password.dto";
+import { SetTwoFactorDto } from "./dto/set-two-factor.dto";
 
 @Controller("tenant-users")
 @UseGuards(TenantAuthGuard, PermissionsGuard)
@@ -54,5 +57,24 @@ export class TenantUsersController {
   @RequirePermission("configuracoes", "delete")
   remove(@Param("id") id: string, @CurrentUser() user: AuthenticatedRequestUser, @Req() req: Request) {
     return this.service.remove(id, { actorId: user.id, ip: req.ip, userAgent: req.get("user-agent") });
+  }
+
+  /** Segurança > Senha (documento de alterações, item 8.1) — sem checagem de permissão de "configuracoes", todo usuário troca a própria senha. */
+  @Post("me/password")
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  changeOwnPassword(@Body() dto: ChangeOwnPasswordDto, @CurrentUser() user: AuthenticatedRequestUser, @Req() req: Request) {
+    return this.service.changeOwnPassword(user.id, dto.senhaAtual, dto.novaSenha, {
+      actorId: user.id,
+      ip: req.ip,
+      userAgent: req.get("user-agent"),
+    });
+  }
+
+  /** Segurança > Verificação em duas etapas (documento de alterações, item 8.2). */
+  @Post("me/two-factor")
+  @HttpCode(HttpStatus.OK)
+  setTwoFactor(@Body() dto: SetTwoFactorDto, @CurrentUser() user: AuthenticatedRequestUser, @Req() req: Request) {
+    return this.service.setTwoFactorEnabled(user.id, dto.enabled, { actorId: user.id, ip: req.ip, userAgent: req.get("user-agent") });
   }
 }

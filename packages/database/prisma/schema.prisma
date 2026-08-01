@@ -181,6 +181,9 @@ model TenantUser {
   lockedUntil         DateTime?
   invitedBy    String?
   invitedAt    DateTime?
+  /// Verificação em duas etapas por e-mail (documento de alterações, item
+  /// 8.2) — independente da confirmação inicial da conta (Tenant.emailConfirmado).
+  twoFactorEnabled Boolean @default(false)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   deletedAt    DateTime?

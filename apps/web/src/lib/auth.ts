@@ -22,6 +22,7 @@ export interface MyProfile {
   email: string;
   roleId: string;
   status: string;
+  twoFactorEnabled?: boolean;
 }
 
 export interface TenantInfo {
@@ -80,7 +81,17 @@ export interface LoginInput {
 export function useLogin() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: LoginInput) => apiPost<{ status: "ok" }>("/auth/tenant/login", input),
+    mutationFn: (input: LoginInput) => apiPost<{ status: "ok" | "2fa_required" }>("/auth/tenant/login", input),
+    onSuccess: (result) => {
+      if (result.status === "ok") queryClient.invalidateQueries({ queryKey: ["auth"] });
+    },
+  });
+}
+
+export function useVerifyTwoFactor() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (codigo: string) => apiPost<{ status: "ok" }>("/auth/tenant/2fa/verify", { codigo }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["auth"] }),
   });
 }

@@ -9,7 +9,7 @@ export interface EmailMessage {
   to: string;
   assunto: string;
   corpo: string;
-  template: "welcome" | "password_reset" | "email_confirmation_code";
+  template: "welcome" | "password_reset" | "email_confirmation_code" | "two_factor_code";
 }
 
 export interface SendEmailResult {

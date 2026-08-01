@@ -17,3 +17,10 @@ export interface EmailConfirmationCodeJobData {
   email: string;
   codigo: string;
 }
+
+export interface TwoFactorLoginCodeJobData {
+  tenantId: string;
+  tenantUserId: string;
+  email: string;
+  codigo: string;
+}

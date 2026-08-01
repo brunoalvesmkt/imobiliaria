@@ -23,6 +23,11 @@ export interface TenantSession {
   refreshTtlMs: number;
 }
 
+export interface TwoFactorRequired {
+  requiresTwoFactor: true;
+  challengeToken: string;
+}
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -189,7 +194,7 @@ export class AuthService {
     await this.notifications.enqueueEmailConfirmationCode({ tenantId, tenantUserId, email, codigo });
   }
 
-  async loginTenant(dto: LoginDto, meta: RequestMeta): Promise<TenantSession> {
+  async loginTenant(dto: LoginDto, meta: RequestMeta): Promise<TenantSession | TwoFactorRequired> {
     const user = await this.prisma.tenantUser.findUnique({ where: { email: dto.email } });
 
     if (!user || user.deletedAt || user.status !== "active") {
@@ -228,6 +233,33 @@ export class AuthService {
       ip: meta.ip,
       userAgent: meta.userAgent,
     });
+
+    if (user.twoFactorEnabled) {
+      const codigo = String(randomInt(0, 1_000_000)).padStart(6, "0");
+      const challengeToken = this.tokenService.signTwoFactorChallenge({ sub: user.id, codeHash: hashOpaqueToken(codigo) });
+      await this.notifications.enqueueTwoFactorLoginCode({ tenantId: user.tenantId, tenantUserId: user.id, email: user.email, codigo });
+      return { requiresTwoFactor: true, challengeToken };
+    }
+
+    return this.issueTenantSession(user.id, user.tenantId, user.roleId);
+  }
+
+  async verifyTwoFactorLogin(challengeToken: string, codigo: string): Promise<TenantSession> {
+    let payload: { sub: string; codeHash: string };
+    try {
+      payload = this.tokenService.verifyTwoFactorChallenge(challengeToken);
+    } catch {
+      throw new UnauthorizedException("Código expirado — faça login novamente.");
+    }
+
+    if (payload.codeHash !== hashOpaqueToken(codigo)) {
+      throw new UnauthorizedException("Código inválido.");
+    }
+
+    const user = await this.prisma.tenantUser.findUnique({ where: { id: payload.sub } });
+    if (!user || user.deletedAt || user.status !== "active") {
+      throw new UnauthorizedException("Sessão inválida.");
+    }
 
     return this.issueTenantSession(user.id, user.tenantId, user.roleId);
   }

@@ -1,7 +1,12 @@
 import { Logger } from "@nestjs/common";
 import { Processor, WorkerHost } from "@nestjs/bullmq";
 import type { Job } from "bullmq";
-import type { EmailConfirmationCodeJobData, PasswordResetEmailJobData, TenantUserWelcomeJobData } from "@chatbot-saas/types";
+import type {
+  EmailConfirmationCodeJobData,
+  PasswordResetEmailJobData,
+  TenantUserWelcomeJobData,
+  TwoFactorLoginCodeJobData,
+} from "@chatbot-saas/types";
 import { PrismaService } from "../prisma/prisma.service";
 import { LogEmailProvider } from "../notifications/log-email.provider";
 
@@ -24,7 +29,9 @@ export class NotificationsProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job<TenantUserWelcomeJobData | PasswordResetEmailJobData | EmailConfirmationCodeJobData, unknown, string>): Promise<void> {
+  async process(
+    job: Job<TenantUserWelcomeJobData | PasswordResetEmailJobData | EmailConfirmationCodeJobData | TwoFactorLoginCodeJobData, unknown, string>,
+  ): Promise<void> {
     if (job.name === "tenant_user.welcome") {
       await this.processWelcome(job.data as TenantUserWelcomeJobData);
       return;
@@ -35,6 +42,10 @@ export class NotificationsProcessor extends WorkerHost {
     }
     if (job.name === "tenant.email_confirmation_code") {
       await this.processEmailConfirmationCode(job.data as EmailConfirmationCodeJobData);
+      return;
+    }
+    if (job.name === "tenant_user.two_factor_code") {
+      await this.processTwoFactorCode(job.data as TwoFactorLoginCodeJobData);
       return;
     }
   }
@@ -105,6 +116,34 @@ export class NotificationsProcessor extends WorkerHost {
       }),
       this.prisma.auditLog.create({
         data: { tenantId, actorId: tenantUserId, actorType: "tenant_user", action: "notification.email_confirmation_code_sent", entity: "TenantUser", entityId: tenantUserId },
+      }),
+    ]);
+  }
+
+  private async processTwoFactorCode(data: TwoFactorLoginCodeJobData): Promise<void> {
+    const { tenantId, tenantUserId, email, codigo } = data;
+    this.logger.log(`Processando código de verificação em duas etapas para ${email} (tenant ${tenantId})`);
+
+    const result = await this.emailProvider.send({
+      to: email,
+      assunto: "Código de verificação de login",
+      corpo: `Use o código a seguir para concluir seu login (válido por 10 minutos): ${codigo}`,
+      template: "two_factor_code",
+    });
+
+    await this.prisma.$transaction([
+      this.prisma.emailLog.create({
+        data: {
+          tenantId,
+          to: email,
+          assunto: "Código de verificação de login",
+          template: "two_factor_code",
+          provider: this.emailProvider.name,
+          providerRef: result.providerRef,
+        },
+      }),
+      this.prisma.auditLog.create({
+        data: { tenantId, actorId: tenantUserId, actorType: "tenant_user", action: "notification.two_factor_code_sent", entity: "TenantUser", entityId: tenantUserId },
       }),
     ]);
   }

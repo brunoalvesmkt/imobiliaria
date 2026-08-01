@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, HttpStatus, Patch, Post, UseGuards } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 import { TenantAuthGuard } from "../auth/guards/tenant-auth.guard";
 import { PermissionsGuard } from "../common/permissions/permissions.guard";
@@ -9,6 +9,8 @@ import { PrismaService } from "../prisma/prisma.service";
 import { TenantScopedPrismaService } from "../prisma/tenant-scoped-prisma.service";
 import { TenantsService } from "./tenants.service";
 import { ConfirmEmailChangeDto, RequestEmailChangeDto } from "./dto/email-confirmation.dto";
+import { UpdateTenantProfileDto } from "./dto/update-tenant-profile.dto";
+import { PlatformSettingsService } from "../master/settings/platform-settings.service";
 
 @Controller("tenants/me")
 @UseGuards(TenantAuthGuard)
@@ -17,6 +19,7 @@ export class TenantsController {
     private readonly prisma: PrismaService,
     private readonly tenantPrisma: TenantScopedPrismaService,
     private readonly tenantsService: TenantsService,
+    private readonly platformSettings: PlatformSettingsService,
   ) {}
 
   @Get()
@@ -25,6 +28,31 @@ export class TenantsController {
       where: { id: user.tenantId as string },
       select: { id: true, razaoSocial: true, subdominio: true, status: true, createdAt: true, email: true, emailConfirmado: true },
     });
+  }
+
+  /** Meus Dados (documento de alterações, item 7) — todos os campos do cadastro principal, mais o plano/assinatura (somente leitura). */
+  @Get("profile")
+  @UseGuards(PermissionsGuard)
+  @RequirePermission("configuracoes", "view")
+  async profile(@CurrentUser() user: AuthenticatedRequestUser) {
+    const [tenant, settings] = await Promise.all([
+      this.prisma.tenant.findUniqueOrThrow({
+        where: { id: user.tenantId as string },
+        include: {
+          segmento: true,
+          subscriptions: { orderBy: { startedAt: "desc" }, take: 1, include: { plan: true } },
+        },
+      }),
+      this.platformSettings.get(),
+    ]);
+    return { ...tenant, canEdit: settings.tenantCanEditProfile };
+  }
+
+  @Patch("profile")
+  @UseGuards(PermissionsGuard)
+  @RequirePermission("configuracoes", "administer")
+  updateProfile(@CurrentUser() user: AuthenticatedRequestUser, @Body() dto: UpdateTenantProfileDto) {
+    return this.tenantsService.updateProfile(user.tenantId as string, dto, user.id);
   }
 
   /**

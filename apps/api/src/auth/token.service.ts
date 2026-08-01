@@ -51,6 +51,25 @@ export class TokenService {
     });
   }
 
+  /**
+   * Token de curta duração (10min) carregando só o hash do código de 2FA
+   * (documento de alterações, item 8.2) — assinado, então o próprio token
+   * já garante que o hash não foi adulterado, sem precisar de uma tabela
+   * dedicada só para esse estado transitório de login.
+   */
+  signTwoFactorChallenge(payload: { sub: string; codeHash: string }): string {
+    return this.jwtService.sign(payload, {
+      secret: this.config.getOrThrow<string>("JWT_ACCESS_SECRET"),
+      expiresIn: "10m",
+    });
+  }
+
+  verifyTwoFactorChallenge(token: string): { sub: string; codeHash: string } {
+    return this.jwtService.verify<{ sub: string; codeHash: string }>(token, {
+      secret: this.config.getOrThrow<string>("JWT_ACCESS_SECRET"),
+    });
+  }
+
   getRefreshTokenTtlMs(): number {
     const raw = this.config.get<string>("JWT_REFRESH_EXPIRES_IN") ?? "7d";
     const match = /^(\d+)([smhd])$/.exec(raw);

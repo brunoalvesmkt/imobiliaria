@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useLogout, useMyProfile, useTenantInfo } from "@/lib/auth";
@@ -62,6 +63,20 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
                   <p className="truncate text-sm font-medium text-ink">{profile.data?.nome}</p>
                   <p className="truncate text-xs text-ink-faint">{profile.data?.email}</p>
                 </div>
+                <Link
+                  href="/painel/meus-dados"
+                  onClick={() => setMenuOpen(false)}
+                  className="block w-full px-3 py-2 text-left text-sm text-ink-dim hover:bg-surface-alt"
+                >
+                  {t("topbar.myData")}
+                </Link>
+                <Link
+                  href="/painel/seguranca"
+                  onClick={() => setMenuOpen(false)}
+                  className="block w-full px-3 py-2 text-left text-sm text-ink-dim hover:bg-surface-alt"
+                >
+                  {t("topbar.security")}
+                </Link>
                 <button type="button" onClick={onLogout} className="w-full px-3 py-2 text-left text-sm text-ink-dim hover:bg-surface-alt">
                   {t("topbar.signOut")}
                 </button>

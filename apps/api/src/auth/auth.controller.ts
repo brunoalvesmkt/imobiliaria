@@ -7,7 +7,16 @@ import { AuthService, type RequestMeta } from "./auth.service";
 import { SignupTenantDto } from "./dto/signup-tenant.dto";
 import { LoginDto } from "./dto/login.dto";
 import { ConfirmPasswordResetDto, RequestPasswordResetDto } from "./dto/password-reset.dto";
-import { TENANT_ACCESS_COOKIE, TENANT_REFRESH_COOKIE, clearAuthCookies, setAuthCookies } from "./cookie.util";
+import { VerifyTwoFactorDto } from "./dto/verify-two-factor.dto";
+import {
+  TENANT_2FA_CHALLENGE_COOKIE,
+  TENANT_ACCESS_COOKIE,
+  TENANT_REFRESH_COOKIE,
+  clearAuthCookies,
+  clearTwoFactorChallengeCookie,
+  setAuthCookies,
+  setTwoFactorChallengeCookie,
+} from "./cookie.util";
 import { TenantAuthGuard } from "./guards/tenant-auth.guard";
 import { CurrentUser } from "./current-user.decorator";
 import type { AuthenticatedRequestUser } from "./jwt-payload.interface";
@@ -39,8 +48,31 @@ export class AuthController {
     @Body(new ZodValidationPipe(loginSchema)) dto: LoginDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
+  ): Promise<{ status: "ok" | "2fa_required" }> {
+    const result = await this.authService.loginTenant(dto, requestMeta(req));
+    if ("requiresTwoFactor" in result) {
+      setTwoFactorChallengeCookie(res, result.challengeToken);
+      return { status: "2fa_required" };
+    }
+    setAuthCookies(res, TENANT_ACCESS_COOKIE, result.accessToken, TENANT_REFRESH_COOKIE, result.refreshToken, result.refreshTtlMs);
+    return { status: "ok" };
+  }
+
+  /** Segunda etapa do login quando a verificação em duas etapas está ativa (documento de alterações, item 8.2). */
+  @Post("2fa/verify")
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  async verifyTwoFactor(
+    @Body() dto: VerifyTwoFactorDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
   ): Promise<{ status: "ok" }> {
-    const session = await this.authService.loginTenant(dto, requestMeta(req));
+    const challengeToken = (req.cookies as Record<string, string> | undefined)?.[TENANT_2FA_CHALLENGE_COOKIE];
+    if (!challengeToken) {
+      throw new UnauthorizedException("Sessão de verificação expirada — faça login novamente.");
+    }
+    const session = await this.authService.verifyTwoFactorLogin(challengeToken, dto.codigo);
+    clearTwoFactorChallengeCookie(res);
     setAuthCookies(res, TENANT_ACCESS_COOKIE, session.accessToken, TENANT_REFRESH_COOKIE, session.refreshToken, session.refreshTtlMs);
     return { status: "ok" };
   }

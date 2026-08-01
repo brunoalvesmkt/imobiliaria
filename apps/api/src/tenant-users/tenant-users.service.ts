@@ -1,10 +1,10 @@
-import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import type { Prisma, TenantUser } from "@chatbot-saas/database";
 import { PrismaService } from "../prisma/prisma.service";
 import { TenantScopedPrismaService } from "../prisma/tenant-scoped-prisma.service";
 import { AuditService } from "../common/audit/audit.service";
 import { NotificationsProducer } from "../queues/notifications.producer";
-import { hashPassword } from "../auth/crypto.util";
+import { hashPassword, verifyPassword } from "../auth/crypto.util";
 import type { CreateTenantUserDto } from "./dto/create-tenant-user.dto";
 import type { UpdateTenantUserDto } from "./dto/update-tenant-user.dto";
 
@@ -154,5 +154,53 @@ export class TenantUsersService {
     });
 
     return { status: "ok" as const };
+  }
+
+  /** Segurança > Senha (documento de alterações, item 8.1) — diferente de `update`, exige a senha atual e revoga as outras sessões. */
+  async changeOwnPassword(userId: string, senhaAtual: string, novaSenha: string, actor: ActorContext) {
+    const user = await this.prisma.tenantUser.findUniqueOrThrow({ where: { id: userId } });
+
+    const currentValid = await verifyPassword(user.passwordHash, senhaAtual);
+    if (!currentValid) {
+      throw new UnauthorizedException("Senha atual incorreta.");
+    }
+    if (await verifyPassword(user.passwordHash, novaSenha)) {
+      throw new BadRequestException("A nova senha deve ser diferente da senha atual.");
+    }
+
+    const passwordHash = await hashPassword(novaSenha);
+    await this.prisma.$transaction([
+      this.prisma.tenantUser.update({ where: { id: userId }, data: { passwordHash } }),
+      this.prisma.refreshToken.updateMany({ where: { tenantUserId: userId, revokedAt: null }, data: { revokedAt: new Date() } }),
+    ]);
+
+    await this.audit.record({
+      actorId: actor.actorId,
+      actorType: "tenant_user",
+      action: "tenant_user.password_changed",
+      entity: "TenantUser",
+      entityId: userId,
+      ip: actor.ip,
+      userAgent: actor.userAgent,
+    });
+
+    return { status: "ok" as const };
+  }
+
+  /** Segurança > Verificação em duas etapas (documento de alterações, item 8.2). */
+  async setTwoFactorEnabled(userId: string, enabled: boolean, actor: ActorContext) {
+    await this.prisma.tenantUser.update({ where: { id: userId }, data: { twoFactorEnabled: enabled } });
+
+    await this.audit.record({
+      actorId: actor.actorId,
+      actorType: "tenant_user",
+      action: enabled ? "tenant_user.two_factor_enabled" : "tenant_user.two_factor_disabled",
+      entity: "TenantUser",
+      entityId: userId,
+      ip: actor.ip,
+      userAgent: actor.userAgent,
+    });
+
+    return { status: "ok" as const, twoFactorEnabled: enabled };
   }
 }

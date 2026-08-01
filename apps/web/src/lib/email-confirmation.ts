@@ -27,3 +27,10 @@ export function useResendEmailConfirmationCode() {
     mutationFn: () => apiPost<{ status: "ok" }>("/tenants/me/email/resend-code"),
   });
 }
+
+/** Meus Dados > alterar e-mail (documento de alterações, item 7.3). */
+export function useRequestEmailChange() {
+  return useMutation({
+    mutationFn: (novoEmail: string) => apiPost<{ status: "ok"; requiresConfirmation: boolean }>("/tenants/me/email/request-change", { novoEmail }),
+  });
+}

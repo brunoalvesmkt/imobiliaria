@@ -1,10 +1,11 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { randomInt } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/audit/audit.service";
 import { NotificationsProducer } from "../queues/notifications.producer";
 import { PlatformSettingsService } from "../master/settings/platform-settings.service";
 import { hashOpaqueToken } from "../auth/crypto.util";
+import type { UpdateTenantProfileDto } from "./dto/update-tenant-profile.dto";
 
 const CODE_TTL_MS = 15 * 60 * 1000;
 
@@ -104,6 +105,39 @@ export class TenantsService {
     await this.audit.record({ actorId: actorUserId, actorType: "tenant_user", action: "tenant.email_confirmed", entity: "Tenant", entityId: tenantId });
 
     return { status: "ok" };
+  }
+
+  /** Meus Dados (documento de alterações, item 7) — bloqueada quando o Master desativa `tenantCanEditProfile` (item 5.5). */
+  async updateProfile(tenantId: string, dto: UpdateTenantProfileDto, actorUserId: string) {
+    const settings = await this.platformSettings.get();
+    if (!settings.tenantCanEditProfile) {
+      throw new ForbiddenException("A edição dos dados cadastrais está desativada para esta plataforma.");
+    }
+
+    if (dto.segmentoId) {
+      const segmento = await this.prisma.segment.findFirst({ where: { id: dto.segmentoId, ativo: true } });
+      if (!segmento) {
+        throw new NotFoundException("Segmento inválido.");
+      }
+    }
+
+    const before = await this.prisma.tenant.findUniqueOrThrow({ where: { id: tenantId } });
+    const changedFields = Object.keys(dto) as (keyof UpdateTenantProfileDto)[];
+    const previousData = Object.fromEntries(changedFields.map((field) => [field, before[field] ?? null]));
+
+    const updated = await this.prisma.tenant.update({ where: { id: tenantId }, data: dto });
+
+    await this.audit.record({
+      actorId: actorUserId,
+      actorType: "tenant_user",
+      action: "tenant.profile_updated",
+      entity: "Tenant",
+      entityId: tenantId,
+      previousData,
+      newData: { ...dto },
+    });
+
+    return updated;
   }
 
   private generateCode(): string {

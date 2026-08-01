@@ -85,10 +85,21 @@ export interface SignupInput {
   razaoSocial: string;
   cnpj: string;
   responsavel: string;
+  telefone: string;
+  whatsapp: string;
+  segmentoId: string;
+  endereco: string;
+  numero: string;
+  bairro: string;
+  cidade: string;
+  uf: string;
+  cep: string;
   email: string;
   confirmacaoEmail: string;
   senha: string;
   confirmacaoSenha: string;
+  planId: string;
+  periodicidade: "mensal" | "anual";
   affiliateLinkCode?: string;
 }
 

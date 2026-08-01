@@ -51,7 +51,7 @@ export default function LoginPage() {
       subtitle={t("auth.login.subtitle")}
       footer={
         <>
-          {t("auth.login.noAccount")} <AuthLink href="/cadastro">{t("auth.login.signupLink")}</AuthLink>
+          {t("auth.login.noAccount")} <AuthLink href="/planos">{t("auth.login.signupLink")}</AuthLink>
         </>
       }
     >

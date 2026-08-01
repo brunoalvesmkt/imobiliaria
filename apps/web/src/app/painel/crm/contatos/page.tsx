@@ -7,10 +7,24 @@ import { LeadScoreBadge } from "@/components/crm/lead-score-badge";
 import { Field } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
+import { DropdownMenu, type DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { ApiError, apiUrl } from "@/lib/api-client";
 import { useI18n } from "@/lib/i18n";
 
 const PHONE_TYPES: ContactPhoneType[] = ["whatsapp", "residencial", "comercial"];
+
+/** `FileReader.readAsDataURL` prefixa com "data:...;base64," — o backend só quer o payload base64. */
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.slice(result.indexOf(",") + 1));
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function ContatosPage() {
   const { t } = useI18n();
@@ -20,21 +34,45 @@ export default function ContatosPage() {
   const origins = useContactOrigins();
   const contacts = useContacts(search, origemId || undefined);
   const importContacts = useImportContacts();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
+  const xlsxInputRef = useRef<HTMLInputElement>(null);
   const [importResult, setImportResult] = useState<{ imported: number; skipped: number; errors: { linha: number; mensagem: string }[] } | null>(null);
 
-  async function onImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onImportCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
     const text = await file.text();
     try {
-      const result = await importContacts.mutateAsync(text);
+      const result = await importContacts.mutateAsync({ format: "csv", content: text });
       setImportResult(result);
     } catch {
       // erro exibido via importContacts.error
     }
   }
+
+  async function onImportXlsxFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const base64 = await readFileAsBase64(file);
+      const result = await importContacts.mutateAsync({ format: "xlsx", content: base64 });
+      setImportResult(result);
+    } catch {
+      // erro exibido via importContacts.error
+    }
+  }
+
+  const exportItems: DropdownMenuItem[] = [
+    { label: t("relatorios.exportPdf"), onClick: () => window.open(apiUrl("/reports/export/contacts.pdf"), "_blank") },
+    { label: t("relatorios.exportXlsx"), onClick: () => window.open(apiUrl("/reports/export/contacts.xlsx"), "_blank") },
+    { label: t("relatorios.exportCsv"), onClick: () => window.open(apiUrl("/reports/export/contacts"), "_blank") },
+  ];
+  const importItems: DropdownMenuItem[] = [
+    { label: t("relatorios.exportXlsx"), onClick: () => xlsxInputRef.current?.click() },
+    { label: t("relatorios.exportCsv"), onClick: () => csvInputRef.current?.click() },
+  ];
 
   return (
     <div className="flex flex-col gap-4">
@@ -61,19 +99,10 @@ export default function ContatosPage() {
           </select>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <a href={apiUrl("/reports/export/contacts")} className="text-sm text-brand-700 hover:underline">
-            {t("crm.contacts.exportCsv")}
-          </a>
-          <a href={apiUrl("/reports/export/contacts.xlsx")} className="text-sm text-brand-700 hover:underline">
-            {t("crm.contacts.exportXlsx")}
-          </a>
-          <a href={apiUrl("/reports/export/contacts.pdf")} className="text-sm text-brand-700 hover:underline">
-            {t("crm.contacts.exportPdf")}
-          </a>
-          <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={onImportFile} />
-          <Button variant="secondary" loading={importContacts.isPending} onClick={() => fileInputRef.current?.click()}>
-            {t("crm.contacts.importCsv")}
-          </Button>
+          <DropdownMenu label={t("crm.contacts.export")} items={exportItems} />
+          <DropdownMenu label={t("crm.contacts.import")} items={importItems} />
+          <input ref={csvInputRef} type="file" accept=".csv" className="hidden" onChange={onImportCsvFile} />
+          <input ref={xlsxInputRef} type="file" accept=".xlsx" className="hidden" onChange={onImportXlsxFile} />
           <Button onClick={() => setShowForm((v) => !v)}>{showForm ? t("common.cancel") : t("crm.contacts.newContact")}</Button>
         </div>
       </div>

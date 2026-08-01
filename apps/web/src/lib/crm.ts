@@ -75,7 +75,8 @@ export function useDeleteContactOrigin() {
 export function useImportContacts() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (csv: string) => apiPost<{ imported: number; skipped: number; errors: { linha: number; mensagem: string }[] }>("/crm/contacts/import", { csv }),
+    mutationFn: (input: { format: "csv" | "xlsx"; content: string }) =>
+      apiPost<{ imported: number; skipped: number; errors: { linha: number; mensagem: string }[] }>("/crm/contacts/import", input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["crm", "contacts"] }),
   });
 }

@@ -335,6 +335,8 @@ const dictionary = {
   "crm.contacts.phoneType.residencial": "Residencial",
   "crm.contacts.phoneType.comercial": "Comercial",
   "crm.contacts.filterAllOrigins": "Todas as origens",
+  "crm.contacts.export": "Exportar",
+  "crm.contacts.import": "Importar",
   "crm.contacts.exportCsv": "Exportar CSV",
   "crm.contacts.exportXlsx": "Exportar Excel",
   "crm.contacts.exportPdf": "Exportar PDF",

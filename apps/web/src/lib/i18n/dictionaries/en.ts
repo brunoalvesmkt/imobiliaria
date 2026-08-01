@@ -337,6 +337,8 @@ const dictionary: Record<DictionaryKey, string> = {
   "crm.contacts.phoneType.residencial": "Home",
   "crm.contacts.phoneType.comercial": "Work",
   "crm.contacts.filterAllOrigins": "All origins",
+  "crm.contacts.export": "Export",
+  "crm.contacts.import": "Import",
   "crm.contacts.exportCsv": "Export CSV",
   "crm.contacts.exportXlsx": "Export Excel",
   "crm.contacts.exportPdf": "Export PDF",

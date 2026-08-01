@@ -20,7 +20,7 @@ export class TokenService {
       { ...payload, type: "tenant" } satisfies TenantAccessTokenPayload,
       {
         secret: this.config.getOrThrow<string>("JWT_ACCESS_SECRET"),
-        expiresIn: this.config.get<string>("JWT_ACCESS_EXPIRES_IN") ?? "15m",
+        expiresIn: this.config.get<string>("JWT_ACCESS_EXPIRES_IN") ?? "12h",
       },
     );
   }
@@ -30,7 +30,7 @@ export class TokenService {
       { ...payload, type: "master" } satisfies MasterAccessTokenPayload,
       {
         secret: this.config.getOrThrow<string>("JWT_ACCESS_SECRET"),
-        expiresIn: this.config.get<string>("JWT_ACCESS_EXPIRES_IN") ?? "15m",
+        expiresIn: this.config.get<string>("JWT_ACCESS_EXPIRES_IN") ?? "12h",
       },
     );
   }
@@ -40,7 +40,7 @@ export class TokenService {
       { ...payload, type: "affiliate" } satisfies AffiliateAccessTokenPayload,
       {
         secret: this.config.getOrThrow<string>("JWT_ACCESS_SECRET"),
-        expiresIn: this.config.get<string>("JWT_ACCESS_EXPIRES_IN") ?? "15m",
+        expiresIn: this.config.get<string>("JWT_ACCESS_EXPIRES_IN") ?? "12h",
       },
     );
   }
@@ -71,10 +71,10 @@ export class TokenService {
   }
 
   getRefreshTokenTtlMs(): number {
-    const raw = this.config.get<string>("JWT_REFRESH_EXPIRES_IN") ?? "7d";
+    const raw = this.config.get<string>("JWT_REFRESH_EXPIRES_IN") ?? "30d";
     const match = /^(\d+)([smhd])$/.exec(raw);
     if (!match) {
-      return 7 * 24 * 60 * 60 * 1000;
+      return 30 * 24 * 60 * 60 * 1000;
     }
     const [, amountRaw, unit] = match;
     const amount = Number(amountRaw);

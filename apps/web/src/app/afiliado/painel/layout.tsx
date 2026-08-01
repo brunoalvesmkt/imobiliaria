@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useCurrentAffiliate, useAffiliateLogout } from "@/lib/affiliate-auth";
+import { keepSessionAlive } from "@/lib/api-client";
 import { useI18n } from "@/lib/i18n";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
@@ -24,6 +25,13 @@ export default function AfiliadoPainelLayout({ children }: { children: React.Rea
       router.replace("/afiliado/login");
     }
   }, [currentAffiliate.isError, router]);
+
+  /** Mesmo raciocínio do painel do tenant: renova a sessão periodicamente enquanto a aba fica aberta, sem esperar por uma navegação/401. */
+  useEffect(() => {
+    if (!currentAffiliate.isSuccess) return;
+    const interval = setInterval(() => keepSessionAlive("affiliate"), 60 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [currentAffiliate.isSuccess]);
 
   async function onLogout() {
     await logout.mutateAsync();

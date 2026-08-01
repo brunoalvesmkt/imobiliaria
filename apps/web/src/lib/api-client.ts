@@ -25,7 +25,7 @@ function extractMessage(body: unknown, fallback: string): string {
   return fallback;
 }
 
-type AuthScope = "master" | "affiliate" | "tenant";
+export type AuthScope = "master" | "affiliate" | "tenant";
 
 const REFRESH_PATH: Record<AuthScope, string> = {
   master: "/auth/master/refresh",
@@ -55,13 +55,27 @@ function refreshSession(scope: AuthScope): Promise<boolean> {
 }
 
 /**
+ * Renovação periódica proativa, chamada por um `setInterval` nos layouts do
+ * painel (tenant/master/afiliado) enquanto a aba estiver aberta — sem isso,
+ * uma aba deixada aberta e ociosa por mais tempo que o access token (12h)
+ * só descobre a expiração na próxima ação do usuário, quando aí sim cai no
+ * fluxo reativo acima. Rodar isso a cada poucas horas mantém o token
+ * sempre renovado enquanto a aba existir, para a sessão só encerrar de
+ * fato no logout manual.
+ */
+export function keepSessionAlive(scope: AuthScope): void {
+  void refreshSession(scope);
+}
+
+/**
  * Cliente HTTP para a API (apps/api). `credentials: "include"` é o que faz
  * os cookies HttpOnly de sessão (setados pela API em outro domínio/porta em
  * dev) irem em toda requisição — a API já libera isso via CORS
  * (`enableCors({ credentials: true })`, ver apps/api/src/main.ts).
  *
  * Item 19 do documento de alterações ("sessões sem logout frequente"): o
- * access token dura só 15min (ver `TokenService`). Antes desta mudança um
+ * access token dura 12h e o refresh token 30d (ver `TokenService`), mas
+ * mesmo assim pode expirar em uso contínuo. Antes desta mudança um
  * 401 por token expirado derrubava o usuário na hora; agora, ao receber
  * 401 fora dos próprios endpoints de auth, tenta renovar a sessão via
  * refresh token (rota `/auth/<escopo>/refresh`, já existia no backend mas

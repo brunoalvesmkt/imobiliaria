@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useActiveModules, useCurrentUser, useModuleOrder } from "@/lib/auth";
+import { keepSessionAlive } from "@/lib/api-client";
 import { useI18n } from "@/lib/i18n";
 import { RealtimeProvider } from "@/lib/realtime";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -30,6 +31,16 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
       router.replace("/login");
     }
   }, [currentUser.isError, router]);
+
+  /** Enquanto a aba do painel ficar aberta, renova a sessão de tempos em
+   * tempos — sem isso, uma aba esquecida aberta e ociosa por mais tempo
+   * que o access token só descobriria a expiração na próxima ação do
+   * usuário. A sessão deve encerrar só no logout manual. */
+  useEffect(() => {
+    if (!currentUser.isSuccess) return;
+    const interval = setInterval(() => keepSessionAlive("tenant"), 60 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [currentUser.isSuccess]);
 
   if (currentUser.isLoading || currentUser.isError) {
     return (

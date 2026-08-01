@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCurrentMasterUser, useMasterLogout } from "@/lib/master-auth";
+import { keepSessionAlive } from "@/lib/api-client";
 import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -38,6 +39,13 @@ export default function MasterPainelLayout({ children }: { children: React.React
       router.replace("/master/login");
     }
   }, [currentUser.isError, router]);
+
+  /** Mesmo raciocínio do painel do tenant: renova a sessão periodicamente enquanto a aba fica aberta, sem esperar por uma navegação/401. */
+  useEffect(() => {
+    if (!currentUser.isSuccess) return;
+    const interval = setInterval(() => keepSessionAlive("master"), 60 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [currentUser.isSuccess]);
 
   async function onLogout() {
     await logout.mutateAsync();

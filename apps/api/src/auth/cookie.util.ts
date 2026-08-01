@@ -23,6 +23,35 @@ const isProduction = process.env.NODE_ENV === "production";
 // "api.chatbot.agenciaclamber.com.br") — deixe vazio em dev.
 const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
 
+/**
+ * Mesmo parser de duração usado em `TokenService.getRefreshTokenTtlMs()` —
+ * duplicado aqui porque este arquivo não é um provider Nest (lê
+ * `process.env` direto, igual `isProduction`/`cookieDomain` acima) e não
+ * tem acesso ao `ConfigService`.
+ */
+function parseDurationMs(raw: string | undefined, fallbackMs: number): number {
+  if (!raw) return fallbackMs;
+  const match = /^(\d+)([smhd])$/.exec(raw);
+  if (!match) return fallbackMs;
+  const [, amountRaw, unit] = match;
+  const unitMs = { s: 1000, m: 60_000, h: 3_600_000, d: 86_400_000 }[unit as "s" | "m" | "h" | "d"];
+  return Number(amountRaw) * unitMs;
+}
+
+// Item 19 do documento de alterações ("sessões sem logout frequente"),
+// revisitado: mesmo com o middleware tentando refresh antes de redirecionar
+// pro login, um access token de 15min gerava renovações frequentes o
+// suficiente para expor uma corrida real entre o refresh disparado pelo
+// middleware (a cada navegação) e o disparado pelo cliente (a cada 401) —
+// os dois usando o mesmo refresh token rotativo (uso único), então quem
+// perdesse a corrida recebia um refresh token já invalidado e caía pro
+// login sozinho, mesmo com pouca inatividade. Alongar o access token reduz
+// drasticamente a frequência de refresh (e logo a chance de corrida) sem
+// abrir mão de expiração — а sessão deve permanecer aberta enquanto a aba
+// estiver em uso, só encerrando de fato no logout manual ou após
+// inatividade real (JWT_REFRESH_EXPIRES_IN).
+const accessTokenTtlMs = parseDurationMs(process.env.JWT_ACCESS_EXPIRES_IN, 12 * 3_600_000);
+
 const baseCookieOptions = {
   httpOnly: true,
   secure: isProduction,
@@ -39,7 +68,7 @@ export function setAuthCookies(
   refreshToken: string,
   refreshTtlMs: number,
 ): void {
-  res.cookie(accessCookieName, accessToken, { ...baseCookieOptions, maxAge: 15 * 60 * 1000 });
+  res.cookie(accessCookieName, accessToken, { ...baseCookieOptions, maxAge: accessTokenTtlMs });
   res.cookie(refreshCookieName, refreshToken, { ...baseCookieOptions, maxAge: refreshTtlMs });
 }
 

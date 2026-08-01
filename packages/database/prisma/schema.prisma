@@ -640,6 +640,7 @@ model CrmTask {
 model WhatsAppNumber {
   id            String    @id @default(uuid())
   tenantId      String
+  nome          String? // apelido da conexão (item 14.1 do documento) — ex.: "Atendimento SP", exibido em vez do número cru quando preenchido
   tipo          String // chatbot | atendente
   modalidade    String // official_api | unofficial
   numero        String
@@ -1100,6 +1101,12 @@ model PlatformSettings {
   // Seções 5.5/5.6 — edição pela própria empresa.
   tenantCanEditProfile     Boolean @default(true)
   requireCodeOnEmailChange Boolean @default(true)
+
+  // Item 14.3 — termo de risco da conexão não oficial de WhatsApp,
+  // versionado pelo Master; ao mudar `riskTermVersion`, aceites antigos
+  // (RiskAcceptance.versaoTermo != versão atual) deixam de valer.
+  riskTermVersion String @default("1")
+  riskTermText    String @default("Ao conectar um número não oficial, você reconhece que este método não é suportado oficialmente pela Meta e pode resultar em bloqueio do número.")
 
   updatedAt DateTime @updatedAt
 

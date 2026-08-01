@@ -19,6 +19,8 @@ export interface PlatformSettings {
   emailConfirmCodeEnabled: boolean;
   tenantCanEditProfile: boolean;
   requireCodeOnEmailChange: boolean;
+  riskTermVersion: string;
+  riskTermText: string;
   updatedAt: string;
 }
 

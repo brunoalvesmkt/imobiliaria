@@ -13,10 +13,21 @@ export default function MasterConfiguracoesEmpresasPage() {
   const settings = useMasterSettings();
   const update = useUpdateMasterSettings();
   const [buttonText, setButtonText] = useState("");
+  const [riskTermText, setRiskTermText] = useState("");
 
   useEffect(() => {
     if (settings.data) setButtonText(settings.data.subscribeButtonText);
   }, [settings.data]);
+
+  useEffect(() => {
+    if (settings.data) setRiskTermText(settings.data.riskTermText);
+  }, [settings.data]);
+
+  function publishRiskTerm() {
+    if (!settings.data || !riskTermText.trim()) return;
+    const nextVersion = String((Number(settings.data.riskTermVersion) || 0) + 1);
+    update.mutate({ riskTermText: riskTermText.trim(), riskTermVersion: nextVersion });
+  }
 
   function toggle(field: BoolField, value: boolean) {
     update.mutate({ [field]: value } as UpdatePlatformSettingsInput);
@@ -84,6 +95,29 @@ export default function MasterConfiguracoesEmpresasPage() {
           onChange={(v) => toggle("requireCodeOnEmailChange", v)}
           label={t("master.settings.tenantEditing.requireCodeOnEmailChange")}
         />
+      </Section>
+
+      <Section title={t("master.settings.riskTerm.title")}>
+        <p className="text-xs text-ink-faint">{t("master.settings.riskTerm.subtitle")}</p>
+        <p className="text-xs text-ink-faint">
+          {t("master.settings.riskTerm.currentVersion")}: {s.riskTermVersion}
+        </p>
+        <textarea
+          value={riskTermText}
+          onChange={(e) => setRiskTermText(e.target.value)}
+          rows={4}
+          className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
+        />
+        <div>
+          <button
+            type="button"
+            onClick={publishRiskTerm}
+            disabled={!riskTermText.trim() || riskTermText === s.riskTermText}
+            className="rounded-md bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+          >
+            {t("master.settings.riskTerm.publish")}
+          </button>
+        </div>
       </Section>
     </div>
   );

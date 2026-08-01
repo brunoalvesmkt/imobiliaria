@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiGet, apiPatch, apiPost } from "./api-client";
+import { apiDelete, apiGet, apiPatch, apiPost } from "./api-client";
 
 export interface WhatsAppNumber {
   id: string;
+  nome: string | null;
   tipo: "chatbot" | "atendente";
   modalidade: "official_api" | "unofficial";
   numero: string;
@@ -24,9 +25,32 @@ export function useNumbers() {
 export function useCreateNumber() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { tipo: "chatbot" | "atendente"; modalidade: "official_api" | "unofficial"; numero: string }) =>
+    mutationFn: (input: { nome?: string; tipo: "chatbot" | "atendente"; modalidade: "official_api" | "unofficial"; numero: string }) =>
       apiPost<WhatsAppNumber>("/whatsapp/numbers", input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["whatsapp", "numbers"] }),
+  });
+}
+
+export function useUpdateNumber() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, nome }: { id: string; nome: string }) => apiPatch<WhatsAppNumber>(`/whatsapp/numbers/${id}`, { nome }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["whatsapp", "numbers"] }),
+  });
+}
+
+export function useDeleteNumber() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiDelete<{ status: "ok" }>(`/whatsapp/numbers/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["whatsapp", "numbers"] }),
+  });
+}
+
+export function useRiskTerm() {
+  return useQuery({
+    queryKey: ["whatsapp", "risk-term"],
+    queryFn: () => apiGet<{ versao: string; texto: string }>("/whatsapp/numbers/risk-term"),
   });
 }
 
@@ -64,8 +88,7 @@ export function useConfirmConnection() {
 export function useAcceptRisk() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, versaoTermo }: { id: string; versaoTermo: string }) =>
-      apiPost(`/whatsapp/numbers/${id}/accept-risk`, { versaoTermo }),
+    mutationFn: (id: string) => apiPost(`/whatsapp/numbers/${id}/accept-risk`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["whatsapp", "numbers"] }),
   });
 }

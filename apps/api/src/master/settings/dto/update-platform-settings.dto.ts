@@ -45,4 +45,14 @@ export class UpdatePlatformSettingsDto {
   @IsOptional()
   @IsBoolean()
   requireCodeOnEmailChange?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  riskTermVersion?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  riskTermText?: string;
 }

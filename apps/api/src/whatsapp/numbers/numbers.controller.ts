@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
 import type { Request } from "express";
 import { TenantAuthGuard } from "../../auth/guards/tenant-auth.guard";
 import { ModuleActiveGuard } from "../../common/modules/module-active.guard";
@@ -9,6 +9,7 @@ import { CurrentUser } from "../../auth/current-user.decorator";
 import type { AuthenticatedRequestUser } from "../../auth/jwt-payload.interface";
 import { NumbersService } from "./numbers.service";
 import { CreateNumberDto } from "./dto/create-number.dto";
+import { UpdateNumberDto } from "./dto/update-number.dto";
 import { AcceptRiskDto } from "./dto/accept-risk.dto";
 import { SetChatbotFlowDto } from "./dto/set-chatbot-flow.dto";
 
@@ -24,6 +25,12 @@ export class NumbersController {
     return this.service.list();
   }
 
+  @Get("risk-term")
+  @RequirePermission("whatsapp", "view")
+  getRiskTerm() {
+    return this.service.getRiskTerm();
+  }
+
   @Get(":id")
   @RequirePermission("whatsapp", "view")
   get(@Param("id") id: string) {
@@ -34,6 +41,18 @@ export class NumbersController {
   @RequirePermission("whatsapp", "administer")
   create(@Body() dto: CreateNumberDto, @CurrentUser() user: AuthenticatedRequestUser) {
     return this.service.create(dto, user.id);
+  }
+
+  @Patch(":id")
+  @RequirePermission("whatsapp", "administer")
+  update(@Param("id") id: string, @Body() dto: UpdateNumberDto, @CurrentUser() user: AuthenticatedRequestUser) {
+    return this.service.update(id, dto, user.id);
+  }
+
+  @Delete(":id")
+  @RequirePermission("whatsapp", "administer")
+  remove(@Param("id") id: string, @CurrentUser() user: AuthenticatedRequestUser) {
+    return this.service.remove(id, user.id);
   }
 
   @Post(":id/connect")

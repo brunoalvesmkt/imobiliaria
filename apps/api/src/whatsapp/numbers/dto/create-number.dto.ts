@@ -1,6 +1,11 @@
-import { IsIn, IsOptional, IsString, IsUUID, Matches } from "class-validator";
+import { IsIn, IsOptional, IsString, IsUUID, Matches, MaxLength } from "class-validator";
 
 export class CreateNumberDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  nome?: string;
+
   @IsIn(["chatbot", "atendente"])
   tipo!: "chatbot" | "atendente";
 

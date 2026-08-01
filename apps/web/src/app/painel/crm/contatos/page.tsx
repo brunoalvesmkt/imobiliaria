@@ -137,7 +137,7 @@ export default function ContatosPage() {
                     {contact.nome} {contact.sobrenome ?? ""}
                   </Link>
                 </td>
-                <td className="px-4 py-2 text-ink-dim">{contact.whatsapp ?? t("common.none")}</td>
+                <td className="px-4 py-2 text-ink-dim">{contact.phones.find((p) => p.principal)?.numero ?? t("common.none")}</td>
                 <td className="px-4 py-2 text-ink-dim">{contact.email ?? t("common.none")}</td>
                 <td className="px-4 py-2 text-ink-dim">{contact.origemRef?.nome ?? contact.origem ?? t("common.none")}</td>
                 <td className="px-4 py-2">

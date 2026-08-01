@@ -283,6 +283,32 @@ export function useAddStage(funnelId: string) {
   });
 }
 
+export function useUpdateFunnel(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { nome?: string; descricao?: string; status?: string }) => apiPatch<Funnel>(`/crm/funnels/${id}`, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["crm", "funnels"] }),
+  });
+}
+
+export function useUpdateStage(funnelId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      stageId,
+      ...input
+    }: {
+      stageId: string;
+      nome?: string;
+      ordem?: number;
+      cor?: string;
+      probabilidade?: number;
+      slaHoras?: number;
+    }) => apiPatch<FunnelStage>(`/crm/funnels/${funnelId}/stages/${stageId}`, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["crm", "funnels"] }),
+  });
+}
+
 export function useDuplicateFunnel() {
   const queryClient = useQueryClient();
   return useMutation({

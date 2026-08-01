@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import ExcelJS from "exceljs";
 import { Prisma } from "@chatbot-saas/database";
 import type { Contact, ContactOrigin, ContactPhone } from "@chatbot-saas/database";
 
@@ -464,32 +465,83 @@ export class ContactsService {
   }
 
   /**
-   * Importação de contatos via CSV (documento de alterações, item 10.5) —
-   * cobre o caminho CSV, com cabeçalho flexível (nome das colunas em vez de
-   * posição fixa) e reaproveitando a mesma deduplicação/validação do
-   * cadastro manual. Fica como pendência do relatório final: o wizard com
-   * pré-visualização e mapeamento de colunas, e os formatos `.xlsx`/`.xls`.
+   * Importação de contatos (documento de alterações, item 10.5) — cabeçalho
+   * flexível (nome das colunas em vez de posição fixa), reaproveitando a
+   * mesma deduplicação/validação do cadastro manual. `importCsv`/`importXlsx`
+   * só extraem `headers`/linhas de cada formato; `importRows` faz o trabalho
+   * de verdade e é comum aos dois. Fica como pendência do relatório final: o
+   * wizard com pré-visualização e mapeamento de colunas.
    */
   async importCsv(csv: string, actorId: string): Promise<{ imported: number; skipped: number; errors: { linha: number; mensagem: string }[] }> {
     const lines = csv.split(/\r?\n/).filter((line) => line.trim().length > 0);
     if (lines.length < 2) {
       throw new BadRequestException("Arquivo CSV vazio ou sem linhas de dados.");
     }
+    const headers = parseCsvLine(lines[0] as string);
+    const rows = lines.slice(1).map((line) => parseCsvLine(line));
+    return this.importRows(headers, rows, actorId);
+  }
 
-    const headers = parseCsvLine(lines[0] as string).map((h) => h.toLowerCase());
+  /** `base64` é o conteúdo bruto do arquivo `.xlsx` codificado em base64 (o upload chega como JSON, não multipart). Só a primeira planilha do arquivo é lida. */
+  async importXlsx(base64: string, actorId: string): Promise<{ imported: number; skipped: number; errors: { linha: number; mensagem: string }[] }> {
+    let buffer: Buffer;
+    try {
+      buffer = Buffer.from(base64, "base64");
+    } catch {
+      throw new BadRequestException("Arquivo XLSX inválido — conteúdo não é base64 válido.");
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    try {
+      // Cast necessário — divergência de tipos entre versões de @types/node no monorepo (Buffer<ArrayBufferLike> vs Buffer); mesmo valor em runtime.
+      await workbook.xlsx.load(buffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+    } catch {
+      throw new BadRequestException("Não foi possível ler o arquivo — confirme que é um .xlsx válido.");
+    }
+
+    const sheet = workbook.worksheets[0];
+    if (!sheet || sheet.rowCount < 2) {
+      throw new BadRequestException("Planilha vazia ou sem linhas de dados.");
+    }
+
+    const toRow = (row: ExcelJS.Row): string[] => {
+      const values: string[] = [];
+      for (let col = 1; col <= sheet.columnCount; col++) {
+        const cell = row.getCell(col).value;
+        values.push(cell === null || cell === undefined ? "" : String(cell).trim());
+      }
+      return values;
+    };
+
+    const headers = toRow(sheet.getRow(1));
+    const rows: string[][] = [];
+    for (let r = 2; r <= sheet.rowCount; r++) {
+      const row = toRow(sheet.getRow(r));
+      if (row.some((v) => v !== "")) rows.push(row);
+    }
+
+    return this.importRows(headers, rows, actorId);
+  }
+
+  private async importRows(
+    rawHeaders: string[],
+    rows: string[][],
+    actorId: string,
+  ): Promise<{ imported: number; skipped: number; errors: { linha: number; mensagem: string }[] }> {
+    const headers = rawHeaders.map((h) => h.toLowerCase());
     const columnIndex = (name: string) => headers.indexOf(name);
     const nomeIdx = columnIndex("nome");
     if (nomeIdx === -1) {
-      throw new BadRequestException('Coluna obrigatória "nome" não encontrada no cabeçalho do CSV.');
+      throw new BadRequestException('Coluna obrigatória "nome" não encontrada no cabeçalho.');
     }
 
     let imported = 0;
     let skipped = 0;
     const errors: { linha: number; mensagem: string }[] = [];
 
-    for (let i = 1; i < lines.length; i++) {
-      const linha = i + 1; // 1-based, contando o cabeçalho
-      const fields = parseCsvLine(lines[i] as string);
+    for (let i = 0; i < rows.length; i++) {
+      const linha = i + 2; // 1-based, contando o cabeçalho
+      const fields = rows[i] as string[];
       const get = (name: string) => {
         const idx = columnIndex(name);
         return idx === -1 ? undefined : (fields[idx]?.trim() || undefined);
@@ -535,7 +587,7 @@ export class ContactsService {
     await this.audit.record({
       actorId,
       actorType: "tenant_user",
-      action: "contact.import_csv",
+      action: "contact.import",
       entity: "Contact",
       newData: { imported, skipped, errorCount: errors.length },
     });

@@ -2,12 +2,33 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NAV_ITEMS } from "./nav-items";
+import { NAV_ITEMS, type NavItem } from "./nav-items";
 import { useI18n } from "@/lib/i18n";
 
-export function Sidebar({ activeModules, open, onClose }: { activeModules: Set<string>; open: boolean; onClose: () => void }) {
+/** Aplica a ordem definida pelo Master (chaves de NavItem.key); itens não listados mantêm a ordem original, ao final. "Início" nunca é reordenado. */
+function applyModuleOrder(items: NavItem[], moduleOrder: string[] | undefined): NavItem[] {
+  if (!moduleOrder || moduleOrder.length === 0) return items;
+  const [first, ...rest] = items;
+  const byKey = new Map(rest.map((item) => [item.key, item]));
+  const ordered = moduleOrder.map((key) => byKey.get(key)).filter((item): item is NavItem => !!item);
+  const remaining = rest.filter((item) => !moduleOrder.includes(item.key));
+  return first ? [first, ...ordered, ...remaining] : [...ordered, ...remaining];
+}
+
+export function Sidebar({
+  activeModules,
+  moduleOrder,
+  open,
+  onClose,
+}: {
+  activeModules: Set<string>;
+  moduleOrder?: string[] | undefined;
+  open: boolean;
+  onClose: () => void;
+}) {
   const pathname = usePathname();
   const { t } = useI18n();
+  const items = applyModuleOrder(NAV_ITEMS, moduleOrder);
 
   return (
     <>
@@ -22,7 +43,7 @@ export function Sidebar({ activeModules, open, onClose }: { activeModules: Set<s
           <span className="text-sm font-semibold text-ink">{t("nav.brand")}</span>
         </div>
 
-        {NAV_ITEMS.filter((item) => !item.module || activeModules.has(item.module)).map((item) => {
+        {items.filter((item) => !item.module || activeModules.has(item.module)).map((item) => {
           const isActive = item.href === "/painel" ? pathname === item.href : pathname?.startsWith(item.href);
           const isDisabled = !item.builtInPhase;
 

@@ -1108,6 +1108,11 @@ model PlatformSettings {
   riskTermVersion String @default("1")
   riskTermText    String @default("Ao conectar um número não oficial, você reconhece que este método não é suportado oficialmente pela Meta e pode resultar em bloqueio do número.")
 
+  // Ordem de exibição dos módulos no menu lateral do painel do tenant —
+  // lista de chaves de módulo (ex.: "crm", "whatsapp") na ordem desejada.
+  // Vazio = usa a ordem padrão definida no frontend (NAV_ITEMS).
+  moduleOrder String[] @default([])
+
   updatedAt DateTime @updatedAt
 
   @@map("platform_settings")

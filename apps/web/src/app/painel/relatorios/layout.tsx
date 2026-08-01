@@ -11,7 +11,6 @@ const TABS: { labelKey: DictionaryKey; href: string }[] = [
   { labelKey: "relatorios.tabs.atendimento", href: "/painel/relatorios/atendimento" },
   { labelKey: "relatorios.tabs.chatbot", href: "/painel/relatorios/chatbot" },
   { labelKey: "relatorios.tabs.automacao", href: "/painel/relatorios/automacao" },
-  { labelKey: "relatorios.tabs.financeiro", href: "/painel/relatorios/financeiro" },
   { labelKey: "relatorios.tabs.qualidade", href: "/painel/relatorios/qualidade" },
 ];
 

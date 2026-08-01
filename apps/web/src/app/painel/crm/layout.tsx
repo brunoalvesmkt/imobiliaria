@@ -6,8 +6,8 @@ import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 
 const TABS: { labelKey: DictionaryKey; href: string }[] = [
-  { labelKey: "crm.tabs.contacts", href: "/painel/crm/contatos" },
   { labelKey: "crm.tabs.funnel", href: "/painel/crm/funil" },
+  { labelKey: "crm.tabs.contacts", href: "/painel/crm/contatos" },
   { labelKey: "crm.tabs.tasks", href: "/painel/crm/tarefas" },
 ];
 

@@ -15,13 +15,17 @@ import {
   useRemoveStage,
   useReorderOpportunities,
   useTransferOpportunity,
+  useUpdateFunnel,
+  useUpdateStage,
   type Funnel,
+  type FunnelStage,
   type Opportunity,
 } from "@/lib/crm";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
 import { HorizontalScroller } from "@/components/ui/horizontal-scroller";
+import { DropdownMenu, type DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { useI18n } from "@/lib/i18n";
 import { ApiError } from "@/lib/api-client";
 
@@ -117,8 +121,371 @@ function FunnelToolbar({
         <Button variant="secondary" onClick={onDelete} loading={deleteFunnel.isPending}>
           {t("crm.funnel.delete")}
         </Button>
+        <FunnelSettingsMenu funnel={funnel} onFunnelCreated={onSelect} />
       </div>
       {error && <Alert tone="error">{error}</Alert>}
+    </div>
+  );
+}
+
+type SettingsPanelKind = "createFunnel" | "editFunnel" | "newStage" | "editStage" | "deleteStage" | "reorderStages";
+
+function FunnelSettingsMenu({ funnel, onFunnelCreated }: { funnel: Funnel; onFunnelCreated: (id: string) => void }) {
+  const { t } = useI18n();
+  const [panel, setPanel] = useState<SettingsPanelKind | null>(null);
+
+  const items: DropdownMenuItem[] = [
+    { label: t("crm.funnel.settingsMenu.createFunnel"), onClick: () => setPanel("createFunnel") },
+    { label: t("crm.funnel.settingsMenu.editFunnel"), onClick: () => setPanel("editFunnel") },
+    { label: t("crm.funnel.settingsMenu.newStage"), onClick: () => setPanel("newStage") },
+    { label: t("crm.funnel.settingsMenu.editStage"), onClick: () => setPanel("editStage") },
+    { label: t("crm.funnel.settingsMenu.deleteStage"), onClick: () => setPanel("deleteStage") },
+    { label: t("crm.funnel.settingsMenu.reorderStages"), onClick: () => setPanel("reorderStages") },
+  ];
+
+  return (
+    <>
+      <DropdownMenu label={t("crm.funnel.settings")} items={items} />
+      {panel === "createFunnel" && (
+        <SettingsPanel title={t("crm.funnel.settingsMenu.createFunnel")} onClose={() => setPanel(null)}>
+          <CreateFunnelPanel
+            onDone={(id) => {
+              onFunnelCreated(id);
+              setPanel(null);
+            }}
+          />
+        </SettingsPanel>
+      )}
+      {panel === "editFunnel" && (
+        <SettingsPanel title={t("crm.funnel.settingsMenu.editFunnel")} onClose={() => setPanel(null)}>
+          <EditFunnelPanel funnel={funnel} onDone={() => setPanel(null)} />
+        </SettingsPanel>
+      )}
+      {panel === "newStage" && (
+        <SettingsPanel title={t("crm.funnel.settingsMenu.newStage")} onClose={() => setPanel(null)}>
+          <AddStagePanel funnel={funnel} onDone={() => setPanel(null)} />
+        </SettingsPanel>
+      )}
+      {panel === "editStage" && (
+        <SettingsPanel title={t("crm.funnel.settingsMenu.editStage")} onClose={() => setPanel(null)}>
+          <EditStagePanel funnel={funnel} onDone={() => setPanel(null)} />
+        </SettingsPanel>
+      )}
+      {panel === "deleteStage" && (
+        <SettingsPanel title={t("crm.funnel.settingsMenu.deleteStage")} onClose={() => setPanel(null)}>
+          <DeleteStagePanel funnel={funnel} onDone={() => setPanel(null)} />
+        </SettingsPanel>
+      )}
+      {panel === "reorderStages" && (
+        <SettingsPanel title={t("crm.funnel.settingsMenu.reorderStages")} onClose={() => setPanel(null)}>
+          <ReorderStagesPanel funnel={funnel} />
+        </SettingsPanel>
+      )}
+    </>
+  );
+}
+
+function SettingsPanel({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  const { t } = useI18n();
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-sm rounded-lg border border-line bg-surface p-5 shadow-lg"
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-ink">{title}</h2>
+          <button type="button" onClick={onClose} className="text-ink-faint hover:text-ink" aria-label={t("common.close")}>
+            ×
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function CreateFunnelPanel({ onDone }: { onDone: (id: string) => void }) {
+  const { t } = useI18n();
+  const createFunnel = useCreateFunnel();
+  const [nome, setNome] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    try {
+      const created = await createFunnel.mutateAsync({ nome });
+      onDone(created.id);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t("crm.funnel.errorGeneric"));
+    }
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col gap-3">
+      {error && <Alert tone="error">{error}</Alert>}
+      <Field label={t("crm.funnel.funnelName")} required value={nome} onChange={(e) => setNome(e.target.value)} placeholder={t("crm.funnel.funnelNamePlaceholder")} />
+      <div>
+        <Button type="submit" loading={createFunnel.isPending}>
+          {t("crm.funnel.createFunnel")}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function EditFunnelPanel({ funnel, onDone }: { funnel: Funnel; onDone: () => void }) {
+  const { t } = useI18n();
+  const updateFunnel = useUpdateFunnel(funnel.id);
+  const [nome, setNome] = useState(funnel.nome);
+  const [descricao, setDescricao] = useState(funnel.descricao ?? "");
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    try {
+      await updateFunnel.mutateAsync({ nome, descricao });
+      onDone();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t("crm.funnel.errorGeneric"));
+    }
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col gap-3">
+      {error && <Alert tone="error">{error}</Alert>}
+      <Field label={t("crm.funnel.funnelName")} required value={nome} onChange={(e) => setNome(e.target.value)} />
+      <Field label={t("crm.funnel.funnelDescription")} value={descricao} onChange={(e) => setDescricao(e.target.value)} />
+      <div>
+        <Button type="submit" loading={updateFunnel.isPending}>
+          {t("common.save")}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function AddStagePanel({ funnel, onDone }: { funnel: Funnel; onDone: () => void }) {
+  const { t } = useI18n();
+  const addStage = useAddStage(funnel.id);
+  const [nome, setNome] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    try {
+      await addStage.mutateAsync({ nome, ordem: funnel.stages.length });
+      onDone();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t("crm.funnel.errorGeneric"));
+    }
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col gap-3">
+      {error && <Alert tone="error">{error}</Alert>}
+      <Field label={t("crm.funnel.stageName")} required value={nome} onChange={(e) => setNome(e.target.value)} placeholder={t("crm.funnel.stageNamePlaceholder")} />
+      <div>
+        <Button type="submit" loading={addStage.isPending}>
+          {t("crm.funnel.addStage")}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function EditStagePanel({ funnel, onDone }: { funnel: Funnel; onDone: () => void }) {
+  const { t } = useI18n();
+  const [stageId, setStageId] = useState("");
+  const stage = funnel.stages.find((s) => s.id === stageId);
+  const updateStage = useUpdateStage(funnel.id);
+  const [nome, setNome] = useState("");
+  const [cor, setCor] = useState("");
+  const [probabilidade, setProbabilidade] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  function selectStage(s: FunnelStage) {
+    setStageId(s.id);
+    setNome(s.nome);
+    setCor(s.cor ?? "");
+    setProbabilidade(s.probabilidade != null ? String(s.probabilidade) : "");
+    setError(null);
+  }
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!stageId) return;
+    setError(null);
+    try {
+      await updateStage.mutateAsync({
+        stageId,
+        nome,
+        ...(cor ? { cor } : {}),
+        ...(probabilidade ? { probabilidade: Number(probabilidade) } : {}),
+      });
+      onDone();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t("crm.funnel.errorGeneric"));
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <select
+        value={stageId}
+        onChange={(e) => {
+          const s = funnel.stages.find((st) => st.id === e.target.value);
+          if (s) selectStage(s);
+          else setStageId("");
+        }}
+        className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
+      >
+        <option value="">{t("crm.funnel.chooseStage")}</option>
+        {funnel.stages.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.nome}
+          </option>
+        ))}
+      </select>
+      {stage && (
+        <form onSubmit={onSubmit} className="flex flex-col gap-3">
+          {error && <Alert tone="error">{error}</Alert>}
+          <Field label={t("crm.funnel.stageName")} required value={nome} onChange={(e) => setNome(e.target.value)} />
+          <Field label={t("crm.funnel.stageColor")} type="color" value={cor || "#1f6f5c"} onChange={(e) => setCor(e.target.value)} />
+          <Field label={t("crm.funnel.stageProbability")} type="number" min="0" max="100" value={probabilidade} onChange={(e) => setProbabilidade(e.target.value)} />
+          <div>
+            <Button type="submit" loading={updateStage.isPending}>
+              {t("common.save")}
+            </Button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
+function DeleteStagePanel({ funnel, onDone }: { funnel: Funnel; onDone: () => void }) {
+  const { t } = useI18n();
+  const removeStage = useRemoveStage(funnel.id);
+  const [stageId, setStageId] = useState("");
+  const [targetStageId, setTargetStageId] = useState("");
+  const [needsTarget, setNeedsTarget] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onDelete() {
+    if (!stageId) return;
+    setError(null);
+    try {
+      await removeStage.mutateAsync({ stageId, targetStageId: targetStageId || undefined });
+      onDone();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        const body = err.body as { opportunitiesCount?: number } | undefined;
+        if (body?.opportunitiesCount) {
+          setNeedsTarget(true);
+          return;
+        }
+      }
+      setError(err instanceof ApiError ? err.message : t("crm.funnel.errorGeneric"));
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {error && <Alert tone="error">{error}</Alert>}
+      <select
+        value={stageId}
+        onChange={(e) => {
+          setStageId(e.target.value);
+          setTargetStageId("");
+          setNeedsTarget(false);
+          setError(null);
+        }}
+        className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
+      >
+        <option value="">{t("crm.funnel.chooseStage")}</option>
+        {funnel.stages.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.nome}
+          </option>
+        ))}
+      </select>
+      {needsTarget && (
+        <select
+          value={targetStageId}
+          onChange={(e) => setTargetStageId(e.target.value)}
+          className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
+        >
+          <option value="">{t("crm.funnel.chooseTargetStage")}</option>
+          {funnel.stages
+            .filter((s) => s.id !== stageId)
+            .map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.nome}
+              </option>
+            ))}
+        </select>
+      )}
+      {stageId && (
+        <div>
+          <Button
+            variant="secondary"
+            onClick={onDelete}
+            loading={removeStage.isPending}
+            disabled={needsTarget && !targetStageId}
+          >
+            {t("crm.funnel.removeStage")}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ReorderStagesPanel({ funnel }: { funnel: Funnel }) {
+  const { t } = useI18n();
+  const updateStage = useUpdateStage(funnel.id);
+  const stages = [...funnel.stages].sort((a, b) => a.ordem - b.ordem);
+
+  function swap(index: number, direction: "up" | "down") {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    const current = stages[index];
+    const target = stages[targetIndex];
+    if (!current || !target) return;
+    updateStage.mutate({ stageId: current.id, ordem: target.ordem });
+    updateStage.mutate({ stageId: target.id, ordem: current.ordem });
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      {stages.map((s, i) => (
+        <div key={s.id} className="flex items-center justify-between gap-2 rounded-md border border-line px-3 py-2">
+          <span className="text-sm text-ink">{s.nome}</span>
+          <div className="flex gap-1">
+            <button
+              type="button"
+              disabled={i === 0}
+              onClick={() => swap(i, "up")}
+              className="rounded border border-line px-1.5 py-0.5 text-xs text-ink-dim hover:bg-surface-alt disabled:opacity-30"
+            >
+              ↑
+            </button>
+            <button
+              type="button"
+              disabled={i === stages.length - 1}
+              onClick={() => swap(i, "down")}
+              className="rounded border border-line px-1.5 py-0.5 text-xs text-ink-dim hover:bg-surface-alt disabled:opacity-30"
+            >
+              ↓
+            </button>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

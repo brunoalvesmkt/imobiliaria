@@ -72,3 +72,21 @@ body {
 * {
   scrollbar-color: rgb(var(--line)) transparent;
 }
+
+/* Exportação de dashboards em PDF via impressão do navegador (Relatórios):
+   qualquer elemento marcado com .print-area fica visível; o resto do
+   chrome (sidebar, abas, filtros) some só na hora de imprimir. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    inset: 0;
+    padding: 1.5rem;
+  }
+}

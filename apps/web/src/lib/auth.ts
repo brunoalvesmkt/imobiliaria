@@ -73,6 +73,16 @@ export function useActiveModules(enabled: boolean) {
   });
 }
 
+/** Ordem dos módulos no menu lateral, definida pelo Master em "Configurações para Empresas". */
+export function useModuleOrder(enabled: boolean) {
+  return useQuery({
+    queryKey: ["tenants", "me", "module-order"],
+    queryFn: () => apiGet<{ moduleOrder: string[] }>("/tenants/me/module-order"),
+    enabled,
+    select: (data) => data.moduleOrder,
+  });
+}
+
 export interface LoginInput {
   email: string;
   senha: string;

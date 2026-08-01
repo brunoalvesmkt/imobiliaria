@@ -67,6 +67,13 @@ export class TenantsController {
     return flags.map((flag) => ({ module: flag.module, enabled: flag.enabled }));
   }
 
+  /** Ordem dos módulos no menu lateral, definida pelo Master em "Configurações para Empresas". */
+  @Get("module-order")
+  async moduleOrder() {
+    const settings = await this.platformSettings.get();
+    return { moduleOrder: settings.moduleOrder };
+  }
+
   @Post("email/request-change")
   @HttpCode(HttpStatus.OK)
   @UseGuards(PermissionsGuard)

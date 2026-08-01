@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useActiveModules, useCurrentUser } from "@/lib/auth";
+import { useActiveModules, useCurrentUser, useModuleOrder } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { RealtimeProvider } from "@/lib/realtime";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -22,6 +22,7 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
   const { t } = useI18n();
   const currentUser = useCurrentUser();
   const activeModules = useActiveModules(currentUser.isSuccess);
+  const moduleOrder = useModuleOrder(currentUser.isSuccess);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -43,7 +44,12 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
       <div className="flex min-h-screen flex-col bg-surface-alt">
         {currentUser.data?.impersonation && <ImpersonationBanner impersonation={currentUser.data.impersonation} />}
         <div className="flex min-h-0 flex-1">
-          <Sidebar activeModules={activeModules.data ?? new Set()} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+          <Sidebar
+            activeModules={activeModules.data ?? new Set()}
+            moduleOrder={moduleOrder.data}
+            open={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+          />
           <div className="flex min-w-0 flex-1 flex-col">
             <Topbar onMenuClick={() => setSidebarOpen(true)} />
             <main className="flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>

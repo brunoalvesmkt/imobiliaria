@@ -1,4 +1,4 @@
-import { IsBoolean, IsOptional, IsString, MaxLength } from "class-validator";
+import { IsArray, IsBoolean, IsOptional, IsString, MaxLength } from "class-validator";
 
 export class UpdatePlatformSettingsDto {
   @IsOptional()
@@ -55,4 +55,9 @@ export class UpdatePlatformSettingsDto {
   @IsString()
   @MaxLength(4000)
   riskTermText?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  moduleOrder?: string[];
 }

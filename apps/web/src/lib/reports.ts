@@ -35,6 +35,8 @@ export interface CrmReport {
   opportunitiesByStage: { stageId: string; nome: string; count: number }[];
   opportunitiesWon: number;
   opportunitiesLost: number;
+  opportunitiesWonValue: number;
+  opportunitiesLostValue: number;
   conversionRate: number;
   tasksPending: number;
   tasksOverdue: number;

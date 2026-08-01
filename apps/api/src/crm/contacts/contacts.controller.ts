@@ -88,7 +88,7 @@ export class ContactsController {
 
   @Post("import")
   @RequirePermission("crm", "create")
-  importCsv(@Body() dto: ImportContactsDto, @CurrentUser() user: AuthenticatedRequestUser) {
-    return this.service.importCsv(dto.csv, user.id);
+  importContacts(@Body() dto: ImportContactsDto, @CurrentUser() user: AuthenticatedRequestUser) {
+    return dto.format === "xlsx" ? this.service.importXlsx(dto.content, user.id) : this.service.importCsv(dto.content, user.id);
   }
 }

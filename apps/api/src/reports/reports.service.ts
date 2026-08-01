@@ -96,7 +96,7 @@ export class ReportsService {
     const tenantId = requireCurrentTenantId();
     const { from, to } = resolveDateRange(dto);
 
-    const [contactsCreated, opportunitiesByStage, opportunitiesWon, opportunitiesLost, tasksPending, tasksOverdue] = await Promise.all([
+    const [contactsCreated, opportunitiesByStage, opportunitiesWon, opportunitiesLost, opportunitiesWonValue, opportunitiesLostValue, tasksPending, tasksOverdue] = await Promise.all([
       this.prisma.contact.count({ where: { tenantId, deletedAt: null, createdAt: { gte: from, lte: to } } }),
       this.prisma.opportunity.groupBy({
         by: ["stageId"],
@@ -105,6 +105,14 @@ export class ReportsService {
       }),
       this.prisma.opportunity.count({ where: { tenantId, status: "won", updatedAt: { gte: from, lte: to } } }),
       this.prisma.opportunity.count({ where: { tenantId, status: "lost", updatedAt: { gte: from, lte: to } } }),
+      this.prisma.opportunity.aggregate({
+        where: { tenantId, status: "won", updatedAt: { gte: from, lte: to } },
+        _sum: { valor: true },
+      }),
+      this.prisma.opportunity.aggregate({
+        where: { tenantId, status: "lost", updatedAt: { gte: from, lte: to } },
+        _sum: { valor: true },
+      }),
       this.prisma.crmTask.count({ where: { tenantId, status: "pending" } }),
       this.prisma.crmTask.count({ where: { tenantId, status: "pending", dataHora: { lt: new Date() } } }),
     ]);
@@ -125,6 +133,8 @@ export class ReportsService {
       })),
       opportunitiesWon,
       opportunitiesLost,
+      opportunitiesWonValue: Number(opportunitiesWonValue._sum.valor ?? 0),
+      opportunitiesLostValue: Number(opportunitiesLostValue._sum.valor ?? 0),
       conversionRate: opportunitiesWon + opportunitiesLost > 0 ? opportunitiesWon / (opportunitiesWon + opportunitiesLost) : 0,
       tasksPending,
       tasksOverdue,

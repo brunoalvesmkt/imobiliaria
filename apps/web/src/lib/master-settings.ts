@@ -21,6 +21,7 @@ export interface PlatformSettings {
   requireCodeOnEmailChange: boolean;
   riskTermVersion: string;
   riskTermText: string;
+  moduleOrder: string[];
   updatedAt: string;
 }
 

@@ -1,6 +1,8 @@
-import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma } from "@chatbot-saas/database";
-import type { Contact } from "@chatbot-saas/database";
+import type { Contact, ContactOrigin, ContactPhone } from "@chatbot-saas/database";
+
+type ContactWithRelations = Contact & { phones: ContactPhone[]; origemRef: ContactOrigin | null };
 import { PrismaService } from "../../prisma/prisma.service";
 import { TenantScopedPrismaService } from "../../prisma/tenant-scoped-prisma.service";
 import { AuditService } from "../../common/audit/audit.service";
@@ -9,6 +11,36 @@ import { DomainEventsService } from "../../common/events/domain-events.service";
 import type { CreateContactDto } from "./dto/create-contact.dto";
 import type { UpdateContactDto } from "./dto/update-contact.dto";
 import type { BlockContactDto } from "./dto/block-contact.dto";
+import type { ContactPhoneDto } from "./dto/contact-phone.dto";
+
+/** Parser simples de linha CSV (RFC4180: campos entre aspas podem conter vírgula/quebra de linha/aspas duplicadas escapadas). */
+function parseCsvLine(line: string): string[] {
+  const fields: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (inQuotes) {
+      if (char === '"' && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else if (char === '"') {
+        inQuotes = false;
+      } else {
+        current += char;
+      }
+    } else if (char === '"') {
+      inQuotes = true;
+    } else if (char === ",") {
+      fields.push(current);
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  fields.push(current);
+  return fields.map((f) => f.trim());
+}
 
 const DEDUP_FIELDS = ["whatsapp", "telefone", "email", "cpf", "cnpj"] as const;
 type DedupField = (typeof DEDUP_FIELDS)[number];
@@ -48,8 +80,10 @@ export class ContactsService {
     return { ...contact, cpf: maskDocument(contact.cpf), cnpj: maskDocument(contact.cnpj) };
   }
 
-  async list(search?: string, roleId?: string) {
+  async list(search?: string, roleId?: string, origemId?: string, responsavelId?: string) {
     const where: Prisma.ContactWhereInput = { deletedAt: null };
+    if (origemId) where.origemId = origemId;
+    if (responsavelId) where.responsavelId = responsavelId;
     if (search) {
       where.OR = [
         { nome: { contains: search, mode: "insensitive" } },
@@ -57,17 +91,30 @@ export class ContactsService {
         { email: { contains: search, mode: "insensitive" } },
         { whatsapp: { contains: search } },
         { telefone: { contains: search } },
+        { phones: { some: { numero: { contains: search } } } },
       ];
     }
-    const contacts = await this.tenantPrisma.contact.findMany({ where, orderBy: { createdAt: "desc" } });
+    const contacts = await this.tenantPrisma.contact.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      include: { phones: true, origemRef: true },
+    });
     if (await this.hasSensitiveAccess(roleId)) {
       return contacts;
     }
     return contacts.map((c) => this.maskContact(c));
   }
 
-  async get(id: string, roleId?: string): Promise<Contact> {
-    const contact = await this.tenantPrisma.contact.findFirst({ where: { id, deletedAt: null } });
+  async get(id: string, roleId?: string): Promise<ContactWithRelations> {
+    // `TenantScopedPrismaService.contact.findFirst` não é genérico o
+    // suficiente para o TypeScript inferir o retorno com `include` — usa o
+    // Prisma direto (com `tenantId` explícito) só aqui, igual já é feito em
+    // `exportPersonalData` abaixo.
+    const tenantId = requireCurrentTenantId();
+    const contact = await this.prisma.contact.findFirst({
+      where: { id, tenantId, deletedAt: null },
+      include: { phones: true, origemRef: true },
+    });
     if (!contact) {
       throw new NotFoundException("Contato não encontrado.");
     }
@@ -105,6 +152,21 @@ export class ContactsService {
     return null;
   }
 
+  /**
+   * `telefone`/`whatsapp` continuam sendo o telefone "principal" de cada
+   * tipo, derivado de `phones` — mantém funcionando, sem alteração, a busca
+   * de conversa por WhatsApp e todo o resto da suíte já testada em cima
+   * desses dois campos (documento de alterações, item 10.1).
+   */
+  private legacyPhonesFromList(phones: ContactPhoneDto[] | undefined): { telefone?: string | null; whatsapp?: string | null } {
+    if (!phones) return {};
+    const pick = (tipo: string) => phones.find((p) => p.tipo === tipo && p.principal) ?? phones.find((p) => p.tipo === tipo);
+    return {
+      whatsapp: pick("whatsapp")?.numero ?? null,
+      telefone: pick("residencial")?.numero ?? pick("comercial")?.numero ?? null,
+    };
+  }
+
   async create(dto: CreateContactDto, actorId: string) {
     const duplicate = await this.findDuplicate(dto);
     if (duplicate) {
@@ -114,6 +176,7 @@ export class ContactsService {
       });
     }
 
+    const legacyPhones = this.legacyPhonesFromList(dto.phones);
     const contact = await this.tenantPrisma.contact.create({
       data: {
         nome: dto.nome,
@@ -121,10 +184,11 @@ export class ContactsService {
         cpf: dto.cpf ?? null,
         cnpj: dto.cnpj ?? null,
         razaoSocial: dto.razaoSocial ?? null,
-        telefone: dto.telefone ?? null,
-        whatsapp: dto.whatsapp ?? null,
+        telefone: legacyPhones.telefone ?? dto.telefone ?? null,
+        whatsapp: legacyPhones.whatsapp ?? dto.whatsapp ?? null,
         email: dto.email ?? null,
         origem: dto.origem ?? null,
+        origemId: dto.origemId ?? null,
         campanha: dto.campanha ?? null,
         produto: dto.produto ?? null,
         servico: dto.servico ?? null,
@@ -132,6 +196,7 @@ export class ContactsService {
         observacoes: dto.observacoes ?? null,
         tags: dto.tags ?? [],
         ...(dto.customFields !== undefined ? { customFields: dto.customFields as Prisma.InputJsonValue } : {}),
+        ...(dto.phones ? { phones: { create: dto.phones.map((p) => ({ numero: p.numero, tipo: p.tipo, principal: p.principal ?? false })) } } : {}),
       },
     });
 
@@ -155,12 +220,25 @@ export class ContactsService {
 
   async update(id: string, dto: UpdateContactDto, actorId: string) {
     const before = await this.get(id);
+    const { phones, ...rest } = dto;
 
     const data: Prisma.ContactUncheckedUpdateInput = {};
-    for (const key of Object.keys(dto) as Array<keyof UpdateContactDto>) {
-      const value = dto[key];
+    for (const key of Object.keys(rest) as Array<keyof typeof rest>) {
+      const value = rest[key];
       if (value !== undefined) {
         (data as Record<string, unknown>)[key] = value;
+      }
+    }
+
+    if (phones !== undefined) {
+      const legacyPhones = this.legacyPhonesFromList(phones);
+      if (legacyPhones.telefone !== undefined) data.telefone = legacyPhones.telefone;
+      if (legacyPhones.whatsapp !== undefined) data.whatsapp = legacyPhones.whatsapp;
+      // Substitui a lista inteira — mais simples e seguro que tentar
+      // diffar item a item, e o formulário sempre envia a lista completa.
+      await this.prisma.contactPhone.deleteMany({ where: { contactId: id } });
+      if (phones.length > 0) {
+        data.phones = { create: phones.map((p) => ({ numero: p.numero, tipo: p.tipo, principal: p.principal ?? false })) };
       }
     }
 
@@ -210,6 +288,7 @@ export class ContactsService {
         opportunities: true,
         tasks: true,
         conversations: { include: { messages: true } },
+        phones: true,
       },
     });
     if (!contact) {
@@ -232,6 +311,8 @@ export class ContactsService {
     if (contact.anonymizedAt) {
       return contact; // idempotente — já anonimizado
     }
+
+    await this.prisma.contactPhone.deleteMany({ where: { contactId: id } });
 
     const anonymized = await this.tenantPrisma.contact.update({
       where: { id },
@@ -333,6 +414,8 @@ export class ContactsService {
     const [primary, duplicate] = await Promise.all([this.get(primaryId), this.get(duplicateId)]);
 
     const mergedTags = Array.from(new Set([...primary.tags, ...duplicate.tags]));
+    const existingPhoneNumbers = new Set(primary.phones.map((p) => p.numero));
+    const phonesToAdopt = duplicate.phones.filter((p) => !existingPhoneNumbers.has(p.numero));
     const duplicateFields = (duplicate.customFields ?? {}) as Record<string, unknown>;
     const primaryFields = (primary.customFields ?? {}) as Record<string, unknown>;
     const mergedCustomFields = { ...duplicateFields, ...primaryFields }; // principal tem prioridade em conflito
@@ -341,6 +424,14 @@ export class ContactsService {
       this.prisma.opportunity.updateMany({ where: { tenantId, contactId: duplicateId }, data: { contactId: primaryId } }),
       this.prisma.crmTask.updateMany({ where: { tenantId, contactId: duplicateId }, data: { contactId: primaryId } }),
       this.prisma.conversation.updateMany({ where: { tenantId, contactId: duplicateId }, data: { contactId: primaryId } }),
+      ...(phonesToAdopt.length > 0
+        ? [
+            this.prisma.contactPhone.updateMany({
+              where: { id: { in: phonesToAdopt.map((p) => p.id) } },
+              data: { contactId: primaryId, principal: false },
+            }),
+          ]
+        : []),
       this.prisma.contact.update({
         where: { id: primaryId },
         data: {
@@ -370,5 +461,85 @@ export class ContactsService {
     });
 
     return this.get(primaryId, undefined);
+  }
+
+  /**
+   * Importação de contatos via CSV (documento de alterações, item 10.5) —
+   * cobre o caminho CSV, com cabeçalho flexível (nome das colunas em vez de
+   * posição fixa) e reaproveitando a mesma deduplicação/validação do
+   * cadastro manual. Fica como pendência do relatório final: o wizard com
+   * pré-visualização e mapeamento de colunas, e os formatos `.xlsx`/`.xls`.
+   */
+  async importCsv(csv: string, actorId: string): Promise<{ imported: number; skipped: number; errors: { linha: number; mensagem: string }[] }> {
+    const lines = csv.split(/\r?\n/).filter((line) => line.trim().length > 0);
+    if (lines.length < 2) {
+      throw new BadRequestException("Arquivo CSV vazio ou sem linhas de dados.");
+    }
+
+    const headers = parseCsvLine(lines[0] as string).map((h) => h.toLowerCase());
+    const columnIndex = (name: string) => headers.indexOf(name);
+    const nomeIdx = columnIndex("nome");
+    if (nomeIdx === -1) {
+      throw new BadRequestException('Coluna obrigatória "nome" não encontrada no cabeçalho do CSV.');
+    }
+
+    let imported = 0;
+    let skipped = 0;
+    const errors: { linha: number; mensagem: string }[] = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const linha = i + 1; // 1-based, contando o cabeçalho
+      const fields = parseCsvLine(lines[i] as string);
+      const get = (name: string) => {
+        const idx = columnIndex(name);
+        return idx === -1 ? undefined : (fields[idx]?.trim() || undefined);
+      };
+
+      const nome = fields[nomeIdx]?.trim();
+      if (!nome) {
+        errors.push({ linha, mensagem: "Nome em branco — linha ignorada." });
+        continue;
+      }
+
+      const sobrenome = get("sobrenome");
+      const telefone = get("telefone");
+      const whatsapp = get("whatsapp");
+      const email = get("email");
+      const origem = get("origem");
+      const campanha = get("campanha");
+      const documento = get("documento") ?? get("cpf") ?? get("cnpj");
+
+      const dto: CreateContactDto = {
+        nome,
+        ...(sobrenome !== undefined ? { sobrenome } : {}),
+        ...(telefone !== undefined ? { telefone } : {}),
+        ...(whatsapp !== undefined ? { whatsapp } : {}),
+        ...(email !== undefined ? { email } : {}),
+        ...(origem !== undefined ? { origem } : {}),
+        ...(campanha !== undefined ? { campanha } : {}),
+        ...(documento ? (documento.replace(/\D/g, "").length > 11 ? { cnpj: documento } : { cpf: documento }) : {}),
+      };
+
+      try {
+        await this.create(dto, actorId);
+        imported++;
+      } catch (error) {
+        if (error instanceof ConflictException) {
+          skipped++;
+        } else {
+          errors.push({ linha, mensagem: error instanceof Error ? error.message : "Erro desconhecido." });
+        }
+      }
+    }
+
+    await this.audit.record({
+      actorId,
+      actorType: "tenant_user",
+      action: "contact.import_csv",
+      entity: "Contact",
+      newData: { imported, skipped, errorCount: errors.length },
+    });
+
+    return { imported, skipped, errors };
   }
 }

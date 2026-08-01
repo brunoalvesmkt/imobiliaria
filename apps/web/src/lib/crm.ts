@@ -1,5 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiGet, apiPatch, apiPost, omitEmptyStrings } from "./api-client";
+import { apiDelete, apiGet, apiPatch, apiPost, omitEmptyStrings } from "./api-client";
+
+export type ContactPhoneType = "whatsapp" | "residencial" | "comercial";
+
+export interface ContactPhone {
+  id: string;
+  numero: string;
+  tipo: ContactPhoneType;
+  principal: boolean;
+}
 
 export interface Contact {
   id: string;
@@ -12,6 +21,9 @@ export interface Contact {
   whatsapp: string | null;
   email: string | null;
   origem: string | null;
+  origemId: string | null;
+  origemRef: { id: string; nome: string } | null;
+  phones: ContactPhone[];
   observacoes: string | null;
   tags: string[];
   customFields: Record<string, unknown> | null;
@@ -21,6 +33,51 @@ export interface Contact {
   bloqueado: boolean;
   bloqueadoEm: string | null;
   bloqueadoMotivo: string | null;
+}
+
+export interface ContactOrigin {
+  id: string;
+  nome: string;
+  ativo: boolean;
+  ordem: number;
+}
+
+export function useContactOrigins() {
+  return useQuery({ queryKey: ["crm", "contact-origins"], queryFn: () => apiGet<ContactOrigin[]>("/crm/contact-origins") });
+}
+
+export function useCreateContactOrigin() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (nome: string) => apiPost<ContactOrigin>("/crm/contact-origins", { nome }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["crm", "contact-origins"] }),
+  });
+}
+
+export function useUpdateContactOrigin() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...input }: { id: string; nome?: string; ativo?: boolean; ordem?: number }) =>
+      apiPatch<ContactOrigin>(`/crm/contact-origins/${id}`, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["crm", "contact-origins"] }),
+  });
+}
+
+export function useDeleteContactOrigin() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, substitutaId }: { id: string; substitutaId?: string }) =>
+      apiDelete<{ status: "ok" }>(`/crm/contact-origins/${id}${substitutaId ? `?substitutaId=${substitutaId}` : ""}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["crm", "contact-origins"] }),
+  });
+}
+
+export function useImportContacts() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (csv: string) => apiPost<{ imported: number; skipped: number; errors: { linha: number; mensagem: string }[] }>("/crm/contacts/import", { csv }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["crm", "contacts"] }),
+  });
 }
 
 export interface LeadScoreThresholds {
@@ -59,13 +116,19 @@ export interface CreateContactInput {
   whatsapp?: string;
   email?: string;
   origem?: string;
+  origemId?: string;
+  phones?: { numero: string; tipo: ContactPhoneType; principal?: boolean }[];
   observacoes?: string;
 }
 
-export function useContacts(search: string) {
+export function useContacts(search: string, origemId?: string) {
+  const params = new URLSearchParams();
+  if (search) params.set("search", search);
+  if (origemId) params.set("origemId", origemId);
+  const qs = params.toString();
   return useQuery({
-    queryKey: ["crm", "contacts", search],
-    queryFn: () => apiGet<Contact[]>(`/crm/contacts${search ? `?search=${encodeURIComponent(search)}` : ""}`),
+    queryKey: ["crm", "contacts", search, origemId ?? ""],
+    queryFn: () => apiGet<Contact[]>(`/crm/contacts${qs ? `?${qs}` : ""}`),
   });
 }
 

@@ -1,4 +1,6 @@
-import { IsArray, IsEmail, IsObject, IsOptional, IsString, IsUUID, MinLength } from "class-validator";
+import { Type } from "class-transformer";
+import { IsArray, IsEmail, IsObject, IsOptional, IsString, IsUUID, MinLength, ValidateNested } from "class-validator";
+import { ContactPhoneDto } from "./contact-phone.dto";
 
 export class CreateContactDto {
   @IsString()
@@ -36,6 +38,18 @@ export class CreateContactDto {
   @IsOptional()
   @IsString()
   origem?: string;
+
+  /** Origem via lista configurável (documento de alterações, item 10.2) — tem prioridade sobre `origem` quando informada. */
+  @IsOptional()
+  @IsUUID()
+  origemId?: string;
+
+  /** Múltiplos telefones (item 10.1) — quando informado, substitui `telefone`/`whatsapp` como fonte de verdade. */
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ContactPhoneDto)
+  phones?: ContactPhoneDto[];
 
   @IsOptional()
   @IsString()

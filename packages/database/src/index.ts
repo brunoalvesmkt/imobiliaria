@@ -13,6 +13,8 @@ export type {
   Plan,
   Subscription,
   Contact,
+  ContactPhone,
+  ContactOrigin,
   DeduplicationRule,
   Funnel,
   FunnelStage,

@@ -17,6 +17,8 @@ import { LeadScoreConfigController } from "./lead-score-config.controller";
 import { LeadScoreConfigModule } from "./lead-score-config.module";
 import { CustomFieldsController } from "./custom-fields/custom-fields.controller";
 import { CustomFieldsService } from "./custom-fields/custom-fields.service";
+import { ContactOriginsController } from "./contact-origins/contact-origins.controller";
+import { ContactOriginsService } from "./contact-origins/contact-origins.service";
 
 @Module({
   imports: [
@@ -37,7 +39,8 @@ import { CustomFieldsService } from "./custom-fields/custom-fields.service";
     MasterCrmTasksController,
     LeadScoreConfigController,
     CustomFieldsController,
+    ContactOriginsController,
   ],
-  providers: [ContactsService, FunnelsService, OpportunitiesService, CrmTasksService, CrmTasksOverdueScheduler, CustomFieldsService],
+  providers: [ContactsService, FunnelsService, OpportunitiesService, CrmTasksService, CrmTasksOverdueScheduler, CustomFieldsService, ContactOriginsService],
 })
 export class CrmModule {}

@@ -404,11 +404,11 @@ export class ReportsService {
     const contacts = await this.prisma.contact.findMany({
       where: { tenantId, deletedAt: null },
       orderBy: { createdAt: "desc" },
-      include: { responsavel: { select: { nome: true } } },
+      include: { responsavel: { select: { nome: true } }, origemRef: { select: { nome: true } }, phones: true },
     });
 
     return {
-      headers: ["id", "nome", "sobrenome", "documento", "telefone", "whatsapp", "email", "origem", "campanha", "responsavel", "criadoEm"],
+      headers: ["id", "nome", "sobrenome", "documento", "telefone", "whatsapp", "outrosTelefones", "email", "origem", "campanha", "responsavel", "criadoEm"],
       rows: contacts.map((c) => [
         c.id,
         csvEscape(c.nome),
@@ -416,8 +416,9 @@ export class ReportsService {
         c.cpf ?? c.cnpj ?? "",
         c.telefone ?? "",
         c.whatsapp ?? "",
+        csvEscape(c.phones.map((p) => `${p.tipo}: ${p.numero}`).join("; ")),
         c.email ?? "",
-        csvEscape(c.origem ?? ""),
+        csvEscape(c.origemRef?.nome ?? c.origem ?? ""),
         csvEscape(c.campanha ?? ""),
         csvEscape(c.responsavel?.nome ?? ""),
         c.createdAt.toISOString(),

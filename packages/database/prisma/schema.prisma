@@ -71,6 +71,7 @@ model Tenant {
   refreshTokens RefreshToken[]
   subscriptions Subscription[]
   contacts      Contact[]
+  contactOrigins ContactOrigin[]
   funnels       Funnel[]
   opportunities Opportunity[]
   crmTasks      CrmTask[]
@@ -455,11 +456,24 @@ model Contact {
   bloqueadoEm     DateTime?
   bloqueadoMotivo String?
 
+  // Origem como referência (documento de alterações, item 10.2) — `origem`
+  // (string livre) fica preservado para não quebrar registros/relatórios
+  // antigos; `origemId` é o campo novo, alimentado pela lista configurável
+  // em Configurações do CRM (item 11.1). Os dois convivem de propósito.
+  origemId String?
+
   tenant       Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   responsavel  TenantUser? @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
+  origemRef    ContactOrigin? @relation(fields: [origemId], references: [id], onDelete: SetNull)
   opportunities Opportunity[]
   tasks        CrmTask[]
   conversations Conversation[]
+  // Múltiplos telefones (documento de alterações, item 10.1) — `telefone`/
+  // `whatsapp` (acima) continuam sincronizados com o telefone "principal" de
+  // cada tipo, para não quebrar a busca de conversa por WhatsApp
+  // (`Conversation`/webhooks) nem o resto da suíte já testada. `phones` é a
+  // fonte de verdade para a UI (que pode ter vários números por tipo).
+  phones       ContactPhone[]
 
   @@index([tenantId, deletedAt])
   @@index([tenantId, whatsapp])
@@ -467,6 +481,38 @@ model Contact {
   @@index([tenantId, cpf])
   @@index([tenantId, cnpj])
   @@map("contacts")
+}
+
+/// Múltiplos telefones por contato (documento de alterações, item 10.1).
+model ContactPhone {
+  id        String  @id @default(uuid())
+  contactId String
+  numero    String
+  tipo      String // whatsapp | residencial | comercial
+  principal Boolean @default(false)
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([contactId, numero])
+  @@index([contactId])
+  @@map("contact_phones")
+}
+
+/// Lista de origens de contato configurável pelo tenant (documento de
+/// alterações, item 11.1 — "Configurações do CRM > Origens dos contatos"),
+/// mesmo padrão do model `Segment` (Painel Master).
+model ContactOrigin {
+  id       String  @id @default(uuid())
+  tenantId String
+  nome     String
+  ativo    Boolean @default(true)
+  ordem    Int     @default(0)
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contacts Contact[]
+
+  @@unique([tenantId, nome])
+  @@map("contact_origins")
 }
 
 model DeduplicationRule {

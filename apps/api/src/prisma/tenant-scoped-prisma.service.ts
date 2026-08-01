@@ -89,6 +89,28 @@ export class TenantScopedPrismaService {
 
       update: (args: { where: { id: string }; data: Prisma.ContactUncheckedUpdateInput }) =>
         this.prisma.contact.update({ where: { id: args.where.id, tenantId }, data: args.data }),
+
+      updateMany: (args: Omit<Prisma.ContactUpdateManyArgs, "where"> & { where?: Prisma.ContactWhereInput } = { data: {} }) =>
+        this.prisma.contact.updateMany({ ...args, where: { ...args.where, tenantId } }),
+    };
+  }
+
+  get contactOrigin() {
+    const tenantId = requireCurrentTenantId();
+    return {
+      findMany: (args: Omit<Prisma.ContactOriginFindManyArgs, "where"> & { where?: Prisma.ContactOriginWhereInput } = {}) =>
+        this.prisma.contactOrigin.findMany({ ...args, where: { ...args.where, tenantId } }),
+
+      findFirst: (args: Omit<Prisma.ContactOriginFindFirstArgs, "where"> & { where?: Prisma.ContactOriginWhereInput } = {}) =>
+        this.prisma.contactOrigin.findFirst({ ...args, where: { ...args.where, tenantId } }),
+
+      create: (args: Omit<Prisma.ContactOriginCreateArgs, "data"> & { data: Omit<Prisma.ContactOriginUncheckedCreateInput, "tenantId"> }) =>
+        this.prisma.contactOrigin.create({ ...args, data: { ...args.data, tenantId } }),
+
+      update: (args: { where: { id: string }; data: Prisma.ContactOriginUncheckedUpdateInput }) =>
+        this.prisma.contactOrigin.update({ where: { id: args.where.id, tenantId }, data: args.data }),
+
+      delete: (args: { where: { id: string } }) => this.prisma.contactOrigin.delete({ where: { id: args.where.id, tenantId } }),
     };
   }
 

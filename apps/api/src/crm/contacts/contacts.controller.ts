@@ -13,6 +13,7 @@ import { CreateContactDto } from "./dto/create-contact.dto";
 import { UpdateContactDto } from "./dto/update-contact.dto";
 import { BlockContactDto } from "./dto/block-contact.dto";
 import { MergeContactsDto } from "./dto/merge-contacts.dto";
+import { ImportContactsDto } from "./dto/import-contacts.dto";
 
 @Controller("crm/contacts")
 @UseGuards(TenantAuthGuard, ModuleActiveGuard, PermissionsGuard)
@@ -22,8 +23,13 @@ export class ContactsController {
 
   @Get()
   @RequirePermission("crm", "view")
-  list(@Query("search") search: string | undefined, @CurrentUser() user: AuthenticatedRequestUser) {
-    return this.service.list(search, user.roleId);
+  list(
+    @Query("search") search: string | undefined,
+    @Query("origemId") origemId: string | undefined,
+    @Query("responsavelId") responsavelId: string | undefined,
+    @CurrentUser() user: AuthenticatedRequestUser,
+  ) {
+    return this.service.list(search, user.roleId, origemId, responsavelId);
   }
 
   @Get(":id")
@@ -78,5 +84,11 @@ export class ContactsController {
   @RequirePermission("crm", "administer")
   merge(@Param("id") id: string, @Body() dto: MergeContactsDto, @CurrentUser() user: AuthenticatedRequestUser) {
     return this.service.merge(id, dto.duplicateId, user.id);
+  }
+
+  @Post("import")
+  @RequirePermission("crm", "create")
+  importCsv(@Body() dto: ImportContactsDto, @CurrentUser() user: AuthenticatedRequestUser) {
+    return this.service.importCsv(dto.csv, user.id);
   }
 }

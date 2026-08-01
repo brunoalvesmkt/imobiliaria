@@ -1,5 +1,12 @@
 import { z } from "zod";
 
+/** Um telefone do contato — item 10.1 do documento de alterações. */
+export const contactPhoneSchema = z.object({
+  numero: z.string().trim().min(1, "Informe o número."),
+  tipo: z.enum(["whatsapp", "residencial", "comercial"], { errorMap: () => ({ message: "Tipo de telefone inválido." }) }),
+  principal: z.boolean().optional(),
+});
+
 /** Espelha `apps/api/src/crm/contacts/dto/create-contact.dto.ts`. */
 export const createContactSchema = z.object({
   nome: z.string().trim().min(1, "Informe o nome."),
@@ -11,6 +18,8 @@ export const createContactSchema = z.object({
   whatsapp: z.string().trim().optional(),
   email: z.string().email("E-mail inválido.").optional().or(z.literal("")),
   origem: z.string().trim().optional(),
+  origemId: z.string().uuid().optional(),
+  phones: z.array(contactPhoneSchema).optional(),
   campanha: z.string().trim().optional(),
   produto: z.string().trim().optional(),
   servico: z.string().trim().optional(),

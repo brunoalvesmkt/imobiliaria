@@ -16,6 +16,7 @@ const TABS: { href: string; labelKey: DictionaryKey }[] = [
   { href: "/painel/configuracoes/campos-personalizados", labelKey: "crm.customFields.title" },
   { href: "/painel/configuracoes/mensagens-rapidas", labelKey: "atendimento.quickMessages.title" },
   { href: "/painel/configuracoes/notificacoes", labelKey: "notifications.whatsappSettings.title" },
+  { href: "/painel/configuracoes/auditoria", labelKey: "auditLog.title" },
 ];
 
 export default function ConfiguracoesLayout({ children }: { children: React.ReactNode }) {

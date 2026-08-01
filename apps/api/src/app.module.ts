@@ -29,6 +29,7 @@ import { AffiliatesModule } from "./affiliates/affiliates.module";
 import { PublicCatalogModule } from "./public-catalog/public-catalog.module";
 import { ReportsModule } from "./reports/reports.module";
 import { NotificationsModule } from "./notifications/notifications.module";
+import { AuditLogModule } from "./audit-log/audit-log.module";
 
 @Module({
   imports: [
@@ -61,6 +62,7 @@ import { NotificationsModule } from "./notifications/notifications.module";
     BillingModule,
     ReportsModule,
     NotificationsModule,
+    AuditLogModule,
   ],
   controllers: [HealthController],
   providers: [

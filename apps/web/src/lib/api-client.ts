@@ -25,13 +25,51 @@ function extractMessage(body: unknown, fallback: string): string {
   return fallback;
 }
 
+type AuthScope = "master" | "affiliate" | "tenant";
+
+const REFRESH_PATH: Record<AuthScope, string> = {
+  master: "/auth/master/refresh",
+  affiliate: "/auth/affiliate/refresh",
+  tenant: "/auth/tenant/refresh",
+};
+
+function scopeFor(path: string): AuthScope {
+  if (path.startsWith("/master")) return "master";
+  if (path.startsWith("/affiliate") || path.startsWith("/auth/affiliate")) return "affiliate";
+  return "tenant";
+}
+
+/** Uma única chamada de refresh em voo por escopo — evita disparar N refreshes quando várias requisições expiram juntas (ex.: várias queries React Query na mesma tela). */
+const refreshInFlight = new Map<AuthScope, Promise<boolean>>();
+
+function refreshSession(scope: AuthScope): Promise<boolean> {
+  const existing = refreshInFlight.get(scope);
+  if (existing) return existing;
+
+  const promise = fetch(`${API_URL}${REFRESH_PATH[scope]}`, { method: "POST", credentials: "include" })
+    .then((res) => res.ok)
+    .catch(() => false)
+    .finally(() => refreshInFlight.delete(scope));
+  refreshInFlight.set(scope, promise);
+  return promise;
+}
+
 /**
  * Cliente HTTP para a API (apps/api). `credentials: "include"` é o que faz
  * os cookies HttpOnly de sessão (setados pela API em outro domínio/porta em
  * dev) irem em toda requisição — a API já libera isso via CORS
  * (`enableCors({ credentials: true })`, ver apps/api/src/main.ts).
+ *
+ * Item 19 do documento de alterações ("sessões sem logout frequente"): o
+ * access token dura só 15min (ver `TokenService`). Antes desta mudança um
+ * 401 por token expirado derrubava o usuário na hora; agora, ao receber
+ * 401 fora dos próprios endpoints de auth, tenta renovar a sessão via
+ * refresh token (rota `/auth/<escopo>/refresh`, já existia no backend mas
+ * nunca era chamada pelo frontend) e repete a requisição original uma vez.
+ * Só sobra como logout de fato quando o refresh token também expirou/foi
+ * revogado.
  */
-export async function apiFetch<T = unknown>(path: string, init: RequestInit = {}): Promise<T> {
+export async function apiFetch<T = unknown>(path: string, init: RequestInit = {}, _retried = false): Promise<T> {
   const hasBody = init.body !== undefined;
   const res = await fetch(`${API_URL}${path}`, {
     ...init,
@@ -41,6 +79,13 @@ export async function apiFetch<T = unknown>(path: string, init: RequestInit = {}
       ...init.headers,
     },
   });
+
+  if (res.status === 401 && !_retried && !path.startsWith("/auth/")) {
+    const refreshed = await refreshSession(scopeFor(path));
+    if (refreshed) {
+      return apiFetch<T>(path, init, true);
+    }
+  }
 
   const text = await res.text();
   const body = text ? safeJsonParse(text) : undefined;

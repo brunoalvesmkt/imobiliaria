@@ -64,4 +64,36 @@ export class AuditService {
       },
     });
   }
+
+  /**
+   * Consulta de auditoria (documento de alterações, item 20 — "Histórico e
+   * Auditoria"): o registro em si já existia desde a Fase 1.6, mas nunca
+   * havia uma tela para consultá-lo — só gravação. `tenantId` explícito
+   * (em vez de resolvido do contexto) porque o Master também consulta,
+   * inclusive entre tenants.
+   */
+  async list(filter: {
+    tenantId?: string | null;
+    entity?: string;
+    action?: string;
+    actorId?: string;
+    from?: Date;
+    to?: Date;
+    limit?: number;
+  }) {
+    const limit = Math.min(filter.limit ?? 50, 200);
+    return this.prisma.auditLog.findMany({
+      where: {
+        ...(filter.tenantId !== undefined ? { tenantId: filter.tenantId } : {}),
+        ...(filter.entity ? { entity: filter.entity } : {}),
+        ...(filter.action ? { action: filter.action } : {}),
+        ...(filter.actorId ? { actorId: filter.actorId } : {}),
+        ...(filter.from || filter.to
+          ? { timestamp: { ...(filter.from ? { gte: filter.from } : {}), ...(filter.to ? { lte: filter.to } : {}) } }
+          : {}),
+      },
+      orderBy: { timestamp: "desc" },
+      take: limit,
+    });
+  }
 }

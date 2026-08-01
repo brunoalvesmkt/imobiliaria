@@ -21,6 +21,7 @@ export interface MasterTenant {
   updatedAt: string;
   plan: { id: string; nome: string } | null;
   impersonationActive: boolean;
+  hasOverdueInvoices: boolean;
 }
 
 export interface MasterTenantDetail extends MasterTenant {
@@ -33,6 +34,15 @@ export function useMasterTenants(status?: TenantStatus) {
   return useQuery({
     queryKey: ["master-tenants", status ?? ""],
     queryFn: () => apiGet<MasterTenant[]>(`/master/tenants${qs}`),
+  });
+}
+
+export function useCreateManualTenant() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { razaoSocial: string; cnpj: string; responsavel: string; email: string; senha: string; planId?: string }) =>
+      apiPost<MasterTenant>("/master/tenants", input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["master-tenants"] }),
   });
 }
 

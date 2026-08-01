@@ -1,15 +1,18 @@
-import { ForbiddenException, NotFoundException } from "@nestjs/common";
+import { ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { Injectable } from "@nestjs/common";
 import type { MasterRole, Prisma, TenantStatus } from "@chatbot-saas/database";
 import { PrismaService } from "../../prisma/prisma.service";
 import { AuditService } from "../../common/audit/audit.service";
 import { TokenService } from "../../auth/token.service";
+import { hashPassword, slugify } from "../../auth/crypto.util";
 import { toCsv } from "../../reports/csv.util";
+import { ADMIN_DEFAULT_PERMISSIONS } from "../../auth/default-permissions";
 import type { MasterActorContext } from "../plans/plans.service";
 import type { UpdateTenantStatusDto } from "./dto/update-tenant-status.dto";
 import type { AssignPlanDto } from "./dto/assign-plan.dto";
 import type { ToggleModuleDto } from "./dto/toggle-module.dto";
 import type { ImpersonateDto } from "./dto/impersonate.dto";
+import type { CreateManualTenantDto } from "./dto/create-manual-tenant.dto";
 
 @Injectable()
 export class MasterTenantsService {
@@ -26,13 +29,139 @@ export class MasterTenantsService {
       include: { plan: { select: { id: true, nome: true } } },
     });
 
-    const activeSessions = await this.prisma.impersonationSession.findMany({
-      where: { tenantId: { in: tenants.map((t) => t.id) }, endedAt: null, expiresAt: { gt: new Date() } },
-      select: { tenantId: true },
-    });
+    const [activeSessions, overdueGroups] = await Promise.all([
+      this.prisma.impersonationSession.findMany({
+        where: { tenantId: { in: tenants.map((t) => t.id) }, endedAt: null, expiresAt: { gt: new Date() } },
+        select: { tenantId: true },
+      }),
+      this.prisma.invoice.groupBy({
+        by: ["tenantId"],
+        where: { tenantId: { in: tenants.map((t) => t.id) }, status: "overdue" },
+        _count: true,
+      }),
+    ]);
     const activeTenantIds = new Set(activeSessions.map((s) => s.tenantId));
+    const overdueTenantIds = new Set(overdueGroups.map((g) => g.tenantId));
 
-    return tenants.map((tenant) => ({ ...tenant, impersonationActive: activeTenantIds.has(tenant.id) }));
+    return tenants.map((tenant) => ({
+      ...tenant,
+      impersonationActive: activeTenantIds.has(tenant.id),
+      hasOverdueInvoices: overdueTenantIds.has(tenant.id),
+    }));
+  }
+
+  private async generateUniqueSubdomain(razaoSocial: string): Promise<string> {
+    const base = slugify(razaoSocial) || "empresa";
+    let candidate = base;
+    let attempt = 0;
+    while (await this.prisma.tenant.findUnique({ where: { subdominio: candidate } })) {
+      attempt += 1;
+      candidate = `${base}-${attempt}`;
+    }
+    return candidate;
+  }
+
+  /**
+   * Cadastro manual de empresa pelo Master (documento de alterações, item
+   * 18.1) — mesma estrutura mínima do signup público (tenant + papel admin
+   * + primeiro usuário), mas com e-mail já confirmado (o Master valida a
+   * empresa por fora do fluxo) e, opcionalmente, plano/assinatura já
+   * atribuídos direto (mesma lógica de fatura manual paga do `assignPlan`).
+   */
+  async createManual(dto: CreateManualTenantDto, actor: MasterActorContext) {
+    const [existingCnpj, existingEmail] = await Promise.all([
+      this.prisma.tenant.findUnique({ where: { cnpj: dto.cnpj } }),
+      this.prisma.tenantUser.findUnique({ where: { email: dto.email } }),
+    ]);
+    if (existingCnpj) {
+      throw new ConflictException("Já existe uma empresa cadastrada com esse CNPJ/CPF.");
+    }
+    if (existingEmail) {
+      throw new ConflictException("Já existe um usuário cadastrado com esse e-mail.");
+    }
+
+    const plan = dto.planId ? await this.prisma.plan.findUnique({ where: { id: dto.planId } }) : null;
+    if (dto.planId && !plan) {
+      throw new NotFoundException("Plano não encontrado.");
+    }
+
+    const subdominio = await this.generateUniqueSubdomain(dto.razaoSocial);
+    const passwordHash = await hashPassword(dto.senha);
+
+    const { tenant } = await this.prisma.$transaction(async (tx) => {
+      const tenant = await tx.tenant.create({
+        data: {
+          razaoSocial: dto.razaoSocial,
+          cnpj: dto.cnpj,
+          responsavel: dto.responsavel,
+          email: dto.email,
+          emailConfirmado: true,
+          subdominio,
+          status: "active",
+          ...(plan ? { planId: plan.id } : {}),
+        },
+      });
+
+      const adminRole = await tx.role.create({
+        data: { tenantId: tenant.id, nome: "admin", descricao: "Acesso total aos módulos ativos e a Configurações", isSystem: true },
+      });
+      await tx.permission.createMany({
+        data: ADMIN_DEFAULT_PERMISSIONS.map((p) => ({ roleId: adminRole.id, module: p.module, action: p.action })),
+      });
+
+      await tx.tenantUser.create({
+        data: {
+          tenantId: tenant.id,
+          nome: dto.responsavel,
+          email: dto.email,
+          passwordHash,
+          roleId: adminRole.id,
+          status: "active",
+          invitedBy: actor.actorId,
+          invitedAt: new Date(),
+        },
+      });
+
+      if (plan) {
+        const modulos = Array.isArray(plan.modulos) ? (plan.modulos as unknown[]).filter((m): m is string => typeof m === "string") : [];
+        if (modulos.length > 0) {
+          await tx.featureFlag.createMany({
+            data: modulos.map((module) => ({ tenantId: tenant.id, module, enabled: true, enabledAt: new Date() })),
+          });
+        }
+
+        const subscription = await tx.subscription.create({
+          data: { tenantId: tenant.id, planId: plan.id, status: "active", startedAt: new Date() },
+        });
+        await tx.invoice.create({
+          data: {
+            tenantId: tenant.id,
+            subscriptionId: subscription.id,
+            valor: plan.preco,
+            status: "paid",
+            metodo: "manual",
+            vencimento: new Date(),
+            pagoEm: new Date(),
+          },
+        });
+      }
+
+      return { tenant };
+    });
+
+    await this.audit.record({
+      actorId: actor.actorId,
+      actorType: "master",
+      tenantId: tenant.id,
+      action: "tenant.create_manual",
+      entity: "Tenant",
+      entityId: tenant.id,
+      newData: { razaoSocial: tenant.razaoSocial, planId: plan?.id ?? null },
+      ip: actor.ip,
+      userAgent: actor.userAgent,
+    });
+
+    return this.get(tenant.id);
   }
 
   async get(id: string) {

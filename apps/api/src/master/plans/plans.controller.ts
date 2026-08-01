@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Req, Res, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req, Res, UseGuards } from "@nestjs/common";
 import type { Request, Response } from "express";
 import { MasterAuthGuard } from "../../auth/guards/master-auth.guard";
 import { MasterRolesGuard } from "../../common/master-roles/master-roles.guard";
@@ -47,5 +47,11 @@ export class PlansController {
     @Req() req: Request,
   ) {
     return this.service.update(id, dto, { actorId: user.id, ip: req.ip, userAgent: req.get("user-agent") });
+  }
+
+  @Delete(":id")
+  @RequireMasterRole("super_admin")
+  remove(@Param("id") id: string, @CurrentUser() user: AuthenticatedRequestUser, @Req() req: Request) {
+    return this.service.remove(id, { actorId: user.id, ip: req.ip, userAgent: req.get("user-agent") });
   }
 }

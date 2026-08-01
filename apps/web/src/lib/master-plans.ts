@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiGet, apiPatch, apiPost } from "./api-client";
+import { apiDelete, apiGet, apiPatch, apiPost } from "./api-client";
 
 export interface MasterPlan {
   id: string;
@@ -53,6 +53,14 @@ export function useUpdateMasterPlan(id: string) {
       apiOficial: boolean;
       ativo: boolean;
     }>) => apiPatch<MasterPlan>(`/master/plans/${id}`, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["master-plans"] }),
+  });
+}
+
+export function useDeleteMasterPlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiDelete<{ status: "ok" }>(`/master/plans/${id}`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["master-plans"] }),
   });
 }

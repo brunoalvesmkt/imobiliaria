@@ -1,23 +1,34 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { useMasterTenants, type MasterTenant } from "@/lib/master-tenants";
+import { useCreateManualTenant, useMasterTenants, type MasterTenant } from "@/lib/master-tenants";
+import { useMasterPlans } from "@/lib/master-plans";
+import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/input";
+import { Alert } from "@/components/ui/alert";
 import { useI18n } from "@/lib/i18n";
-import { apiUrl } from "@/lib/api-client";
+import { apiUrl, ApiError } from "@/lib/api-client";
 import { StatusBadge } from "./status-badge";
 
 export default function MasterTenantsPage() {
   const { t } = useI18n();
   const tenants = useMasterTenants();
+  const [showForm, setShowForm] = useState(false);
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-lg font-semibold text-ink">{t("master.tenants.title")}</h1>
-        <a href={apiUrl("/master/tenants/export")} className="text-sm text-accent hover:underline">
-          {t("master.export.csv")}
-        </a>
+        <div className="flex items-center gap-3">
+          <a href={apiUrl("/master/tenants/export")} className="text-sm text-accent hover:underline">
+            {t("master.export.csv")}
+          </a>
+          <Button onClick={() => setShowForm((v) => !v)}>{showForm ? t("common.cancel") : t("master.tenants.new")}</Button>
+        </div>
       </div>
+
+      {showForm && <NewTenantForm onDone={() => setShowForm(false)} />}
 
       <div className="overflow-x-auto rounded-lg border border-line bg-surface">
         <table className="w-full text-sm">
@@ -60,6 +71,11 @@ function TenantRow({ tenant }: { tenant: MasterTenant }) {
             {t("master.tenants.impersonationActive")}
           </span>
         )}
+        {tenant.hasOverdueInvoices && (
+          <span className="ml-2 inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-medium text-red-900 dark:bg-red-950/60 dark:text-red-200">
+            {t("master.tenants.overdue")}
+          </span>
+        )}
       </td>
       <td className="px-4 py-2 text-ink-dim">{tenant.cnpj}</td>
       <td className="px-4 py-2">
@@ -67,5 +83,81 @@ function TenantRow({ tenant }: { tenant: MasterTenant }) {
       </td>
       <td className="px-4 py-2 text-ink-dim">{tenant.plan?.nome ?? t("master.tenants.noPlan")}</td>
     </tr>
+  );
+}
+
+function NewTenantForm({ onDone }: { onDone: () => void }) {
+  const { t } = useI18n();
+  const plans = useMasterPlans();
+  const createTenant = useCreateManualTenant();
+  const [form, setForm] = useState({ razaoSocial: "", cnpj: "", responsavel: "", email: "", senha: "", planId: "" });
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    try {
+      await createTenant.mutateAsync({ ...form, ...(form.planId ? { planId: form.planId } : {}) });
+      setForm({ razaoSocial: "", cnpj: "", responsavel: "", email: "", senha: "", planId: "" });
+      onDone();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t("master.tenants.errorGeneric"));
+    }
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4">
+      {error && <Alert tone="error">{error}</Alert>}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field
+          label={t("master.tenants.razaoSocial")}
+          required
+          value={form.razaoSocial}
+          onChange={(e) => setForm({ ...form, razaoSocial: e.target.value })}
+        />
+        <Field label={t("master.tenants.cnpj")} required value={form.cnpj} onChange={(e) => setForm({ ...form, cnpj: e.target.value })} />
+        <Field
+          label={t("master.tenants.responsavel")}
+          required
+          value={form.responsavel}
+          onChange={(e) => setForm({ ...form, responsavel: e.target.value })}
+        />
+        <Field
+          label={t("master.tenants.email")}
+          type="email"
+          required
+          value={form.email}
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
+        />
+        <Field
+          label={t("master.tenants.password")}
+          type="password"
+          required
+          minLength={10}
+          value={form.senha}
+          onChange={(e) => setForm({ ...form, senha: e.target.value })}
+        />
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-ink">{t("master.tenants.columnPlan")}</label>
+          <select
+            value={form.planId}
+            onChange={(e) => setForm({ ...form, planId: e.target.value })}
+            className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
+          >
+            <option value="">{t("master.tenants.noPlan")}</option>
+            {plans.data?.map((plan) => (
+              <option key={plan.id} value={plan.id}>
+                {plan.nome}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div>
+        <Button type="submit" loading={createTenant.isPending}>
+          {t("master.tenants.create")}
+        </Button>
+      </div>
+    </form>
   );
 }

@@ -97,6 +97,37 @@ export class PlansService {
     return updated;
   }
 
+  /** Excluir plano (documento de alterações, item 17.1) — bloqueado enquanto houver empresa ou assinatura vinculada, para não deixar registros órfãos; a alternativa é desativar (`ativo: false`), que já esconde o plano da seleção pública sem apagar histórico. */
+  async remove(id: string, actor: MasterActorContext) {
+    const plan = await this.get(id);
+
+    const [tenantsCount, subscriptionsCount] = await Promise.all([
+      this.prisma.tenant.count({ where: { planId: id } }),
+      this.prisma.subscription.count({ where: { planId: id } }),
+    ]);
+    if (tenantsCount > 0 || subscriptionsCount > 0) {
+      throw new ConflictException(
+        `Este plano está em uso por ${tenantsCount} empresa(s) e ${subscriptionsCount} assinatura(s). Desative o plano em vez de excluir, para não perder o histórico.`,
+      );
+    }
+
+    await this.prisma.plan.delete({ where: { id } });
+
+    await this.audit.record({
+      actorId: actor.actorId,
+      actorType: "master",
+      tenantId: null,
+      action: "plan.remove",
+      entity: "Plan",
+      entityId: id,
+      previousData: { nome: plan.nome },
+      ip: actor.ip,
+      userAgent: actor.userAgent,
+    });
+
+    return { status: "ok" as const };
+  }
+
   async exportCsv(): Promise<string> {
     const plans = await this.prisma.plan.findMany({ orderBy: { createdAt: "asc" } });
     return toCsv(

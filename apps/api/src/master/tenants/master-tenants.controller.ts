@@ -12,6 +12,7 @@ import { UpdateTenantStatusDto } from "./dto/update-tenant-status.dto";
 import { AssignPlanDto } from "./dto/assign-plan.dto";
 import { ToggleModuleDto } from "./dto/toggle-module.dto";
 import { ImpersonateDto } from "./dto/impersonate.dto";
+import { CreateManualTenantDto } from "./dto/create-manual-tenant.dto";
 
 function actorFrom(user: AuthenticatedRequestUser, req: Request) {
   return { actorId: user.id, ip: req.ip, userAgent: req.get("user-agent") };
@@ -38,6 +39,12 @@ export class MasterTenantsController {
   @Get(":id")
   get(@Param("id") id: string) {
     return this.service.get(id);
+  }
+
+  @Post()
+  @RequireMasterRole("super_admin")
+  createManual(@Body() dto: CreateManualTenantDto, @CurrentUser() user: AuthenticatedRequestUser, @Req() req: Request) {
+    return this.service.createManual(dto, actorFrom(user, req));
   }
 
   @Get(":id/consumption")

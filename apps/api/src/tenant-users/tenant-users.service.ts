@@ -34,7 +34,20 @@ export class TenantUsersService {
     if (!user) {
       throw new NotFoundException("Usuário não encontrado.");
     }
-    return toPublicTenantUser(user);
+    return { ...toPublicTenantUser(user), isAdmin: await this.hasAdminPermission(user.roleId) };
+  }
+
+  /**
+   * "Administrador", do ponto de vista do frontend (para esconder botões
+   * como "Configurações"), é definido exatamente como o backend já define
+   * para autorizar ações administrativas: papel com a permissão
+   * `configuracoes:administer` — não um nome de papel fixo.
+   */
+  private async hasAdminPermission(roleId: string): Promise<boolean> {
+    const permission = await this.prisma.permission.findFirst({
+      where: { roleId, module: "configuracoes", action: "administer" },
+    });
+    return !!permission;
   }
 
   /**
@@ -53,6 +66,7 @@ export class TenantUsersService {
       email: masterUser.email,
       roleId,
       status: "active",
+      isAdmin: await this.hasAdminPermission(roleId),
     };
   }
 

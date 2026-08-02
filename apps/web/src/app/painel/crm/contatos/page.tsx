@@ -12,6 +12,7 @@ import { Alert } from "@/components/ui/alert";
 import { DropdownMenu, type DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { ApiError, apiUrl } from "@/lib/api-client";
 import { useI18n } from "@/lib/i18n";
+import { useIsAdmin } from "@/lib/auth";
 
 const PHONE_TYPES: ContactPhoneType[] = ["whatsapp", "residencial", "comercial"];
 
@@ -31,6 +32,7 @@ function readFileAsBase64(file: File): Promise<string> {
 export default function ContatosPage() {
   const { t } = useI18n();
   const router = useRouter();
+  const isAdmin = useIsAdmin();
   const [search, setSearch] = useState("");
   const [origemId, setOrigemId] = useState("");
   const [phoneType, setPhoneType] = useState<ContactPhoneType | "">("");
@@ -105,7 +107,7 @@ export default function ContatosPage() {
         <div className="flex flex-wrap items-center gap-2">
           <DropdownMenu label={t("crm.contacts.export")} items={exportItems} />
           <DropdownMenu label={t("crm.contacts.import")} items={importItems} />
-          <DropdownMenu label={t("crm.funnel.settings")} items={settingsItems} />
+          {isAdmin && <DropdownMenu label={t("crm.funnel.settings")} items={settingsItems} />}
           <input ref={csvInputRef} type="file" accept=".csv" className="hidden" onChange={onImportCsvFile} />
           <input ref={xlsxInputRef} type="file" accept=".xlsx" className="hidden" onChange={onImportXlsxFile} />
           <Button onClick={() => setShowForm((v) => !v)}>{showForm ? t("common.cancel") : t("crm.contacts.newContact")}</Button>

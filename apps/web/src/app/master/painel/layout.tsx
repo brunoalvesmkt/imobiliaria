@@ -11,6 +11,8 @@ import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { MenuLayoutToggle } from "@/components/layout/menu-layout-toggle";
+import { LogoImage } from "@/components/layout/logo-image";
+import { useMasterBranding } from "@/lib/branding";
 
 const NAV_ITEMS: { labelKey: DictionaryKey; href: string; roles?: ("super_admin" | "financeiro" | "suporte")[] }[] = [
   { labelKey: "master.nav.empresas", href: "/master/painel/empresas" },
@@ -19,6 +21,7 @@ const NAV_ITEMS: { labelKey: DictionaryKey; href: string; roles?: ("super_admin"
   { labelKey: "master.nav.ia", href: "/master/painel/ia", roles: ["super_admin"] },
   { labelKey: "master.nav.usuarios", href: "/master/painel/usuarios", roles: ["super_admin"] },
   { labelKey: "master.nav.configuracoesEmpresas", href: "/master/painel/configuracoes-empresas", roles: ["super_admin"] },
+  { labelKey: "master.nav.configuracoes", href: "/master/painel/configuracoes", roles: ["super_admin"] },
   { labelKey: "auditLog.title", href: "/master/painel/auditoria", roles: ["super_admin"] },
 ];
 
@@ -36,6 +39,7 @@ export default function MasterPainelLayout({ children }: { children: React.React
   const logout = useMasterLogout();
   const { layout } = useMenuLayout();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const branding = useMasterBranding(currentUser.isSuccess);
 
   useEffect(() => {
     if (currentUser.isError) {
@@ -97,7 +101,16 @@ export default function MasterPainelLayout({ children }: { children: React.React
     return (
       <div className="flex min-h-screen flex-col bg-surface-alt">
         {header}
-        <nav className="flex flex-none gap-1 overflow-x-auto border-b border-line bg-surface px-4 py-2 sm:px-6">
+        <nav className="flex flex-none items-center gap-1 overflow-x-auto border-b border-line bg-surface px-4 py-2 sm:px-6">
+          <div className="mr-2 flex-none">
+            <LogoImage
+              lightUrl={branding.data?.logoLightUrl}
+              darkUrl={branding.data?.logoDarkUrl}
+              sizePercent={branding.data?.sizePercent}
+              fallbackLetter="M"
+              fallbackClassName="flex h-8 w-8 flex-none items-center justify-center rounded-md bg-ink text-sm font-bold text-surface"
+            />
+          </div>
           {visibleItems.map((item) => {
             const isActive = pathname?.startsWith(item.href);
             return (
@@ -129,7 +142,13 @@ export default function MasterPainelLayout({ children }: { children: React.React
         }`}
       >
         <div className="mb-4 flex items-center gap-2 px-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-md bg-ink text-sm font-bold text-surface">M</span>
+          <LogoImage
+            lightUrl={branding.data?.logoLightUrl}
+            darkUrl={branding.data?.logoDarkUrl}
+            sizePercent={branding.data?.sizePercent}
+            fallbackLetter="M"
+            fallbackClassName="flex h-8 w-8 items-center justify-center rounded-md bg-ink text-sm font-bold text-surface"
+          />
           <span className="text-sm font-semibold text-ink">{t("master.brand")}</span>
         </div>
         {visibleItems.map((item) => {

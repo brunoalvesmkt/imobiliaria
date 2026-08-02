@@ -28,13 +28,16 @@ import { DropdownMenu, type DropdownMenuItem } from "@/components/ui/dropdown-me
 import { ContactForm } from "@/components/crm/contact-form";
 import { useI18n } from "@/lib/i18n";
 import { ApiError } from "@/lib/api-client";
+import { useIsAdmin } from "@/lib/auth";
 
 export default function FunilPage() {
   const { t } = useI18n();
   const funnels = useFunnels();
+  const isAdmin = useIsAdmin();
   const [selectedFunnelId, setSelectedFunnelId] = useState("");
   const [showNewContact, setShowNewContact] = useState(false);
   const [showNewOpportunity, setShowNewOpportunity] = useState(false);
+  const [funnelError, setFunnelError] = useState<string | null>(null);
 
   useEffect(() => {
     const firstId = funnels.data?.[0]?.id;
@@ -55,20 +58,25 @@ export default function FunilPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <FunnelToolbar
-          funnels={funnels.data}
-          funnel={funnel}
-          onSelect={setSelectedFunnelId}
-          onDeleted={() => setSelectedFunnelId("")}
-        />
+        <FunnelToolbar funnels={funnels.data} funnel={funnel} onSelect={setSelectedFunnelId} />
         {funnel.stages.length > 0 && (
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <FunnelSettingsMenu
+                funnel={funnel}
+                onFunnelCreated={setSelectedFunnelId}
+                onFunnelDeleted={() => setSelectedFunnelId("")}
+                onError={setFunnelError}
+              />
+            )}
             <Button onClick={() => setShowNewOpportunity((v) => !v)}>
               {showNewOpportunity ? t("common.cancel") : t("crm.funnel.newOpportunity")}
             </Button>
           </div>
         )}
       </div>
+
+      {funnelError && <Alert tone="error">{funnelError}</Alert>}
 
       {showNewContact && (
         <SettingsPanel title={t("crm.funnel.newContact")} onClose={() => setShowNewContact(false)} maxWidth="max-w-xl">
@@ -95,34 +103,23 @@ function FunnelToolbar({
   funnels,
   funnel,
   onSelect,
-  onDeleted,
 }: {
   funnels: Funnel[];
   funnel: Funnel;
   onSelect: (id: string) => void;
-  onDeleted: () => void;
 }) {
-  const { t } = useI18n();
-  const [error, setError] = useState<string | null>(null);
-
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-3">
-        <select
-          value={funnel.id}
-          onChange={(e) => onSelect(e.target.value)}
-          className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
-        >
-          {funnels.map((f) => (
-            <option key={f.id} value={f.id}>
-              {f.nome}
-            </option>
-          ))}
-        </select>
-        <FunnelSettingsMenu funnel={funnel} onFunnelCreated={onSelect} onFunnelDeleted={onDeleted} onError={setError} />
-      </div>
-      {error && <Alert tone="error">{error}</Alert>}
-    </div>
+    <select
+      value={funnel.id}
+      onChange={(e) => onSelect(e.target.value)}
+      className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
+    >
+      {funnels.map((f) => (
+        <option key={f.id} value={f.id}>
+          {f.nome}
+        </option>
+      ))}
+    </select>
   );
 }
 

@@ -960,6 +960,9 @@ const dictionary = {
   "master.nav.ia": "IA",
   "master.nav.usuarios": "Usuários Master",
   "master.nav.configuracoesEmpresas": "Configurações para Empresas",
+  "master.nav.configuracoes": "Configurações",
+
+  "master.settingsOwn.subtitle": "Personalização do próprio painel Master.",
 
   "master.settings.title": "Configurações para Empresas",
   "master.settings.subtitle": "Regras globais do fluxo de contratação, cadastro e confirmação das empresas.",
@@ -985,6 +988,17 @@ const dictionary = {
   "master.settings.riskTerm.publish": "Publicar nova versão",
   "master.settings.modules.title": "Ordem dos módulos",
   "master.settings.modules.subtitle": "Defina a ordem em que os módulos aparecem no menu do painel das empresas.",
+
+  "branding.title": "Personalização",
+  "branding.tenantSubtitle": "Logotipo exibido no menu do painel das empresas (lateral e horizontal).",
+  "branding.masterSubtitle": "Logotipo exibido no menu do painel Master (lateral e horizontal).",
+  "branding.logoLight": "Logotipo para modo claro",
+  "branding.logoDark": "Logotipo para modo escuro",
+  "branding.size": "Tamanho do logotipo",
+  "branding.formatHint": "PNG, até 200KB.",
+  "branding.errorFormat": "O arquivo precisa estar no formato PNG.",
+  "branding.errorSize": "O arquivo excede o tamanho máximo de 200KB.",
+  "branding.errorGeneric": "Não foi possível carregar a imagem. Tente novamente.",
 
   "master.tenants.title": "Empresas",
   "master.tenants.columnName": "Empresa",

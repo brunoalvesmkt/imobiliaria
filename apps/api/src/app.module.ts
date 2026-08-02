@@ -16,6 +16,7 @@ import { FilesModule } from "./files/files.module";
 import { QueuesModule } from "./queues/queues.module";
 import { PlansModule } from "./master/plans/plans.module";
 import { PlatformSettingsModule } from "./master/settings/platform-settings.module";
+import { BrandingModule } from "./branding/branding.module";
 import { MasterTenantsModule } from "./master/tenants/master-tenants.module";
 import { MasterUsersModule } from "./master/master-users/master-users.module";
 import { CrmModule } from "./crm/crm.module";
@@ -49,6 +50,7 @@ import { AuditLogModule } from "./audit-log/audit-log.module";
     QueuesModule,
     PlansModule,
     PlatformSettingsModule,
+    BrandingModule,
     MasterTenantsModule,
     MasterUsersModule,
     CrmModule,

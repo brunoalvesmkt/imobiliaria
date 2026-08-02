@@ -23,6 +23,8 @@ export interface MyProfile {
   roleId: string;
   status: string;
   twoFactorEnabled?: boolean;
+  /** Papel com a permissão `configuracoes:administer` — usado para esconder botões administrativos (ex.: "Configurações") de usuários comuns. */
+  isAdmin: boolean;
 }
 
 export interface TenantInfo {
@@ -54,6 +56,12 @@ export function useMyProfile(enabled: boolean) {
     queryFn: () => apiGet<MyProfile>("/tenant-users/me"),
     enabled,
   });
+}
+
+/** Botões administrativos (ex.: "Configurações" nas abas do CRM) só aparecem para quem tem `configuracoes:administer`. */
+export function useIsAdmin(): boolean {
+  const profile = useMyProfile(true);
+  return profile.data?.isAdmin ?? false;
 }
 
 export function useTenantInfo(enabled: boolean) {

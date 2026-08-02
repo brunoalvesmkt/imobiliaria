@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_ITEMS, applyModuleOrder } from "./nav-items";
 import { useI18n } from "@/lib/i18n";
+import { useTenantBranding } from "@/lib/branding";
+import { LogoImage } from "./logo-image";
 
 export function Sidebar({
   activeModules,
@@ -19,6 +21,7 @@ export function Sidebar({
   const pathname = usePathname();
   const { t } = useI18n();
   const items = applyModuleOrder(NAV_ITEMS, moduleOrder);
+  const branding = useTenantBranding();
 
   return (
     <>
@@ -29,7 +32,13 @@ export function Sidebar({
         }`}
       >
         <div className="mb-4 flex items-center gap-2 px-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-md bg-brand-500 text-sm font-bold text-white">C</span>
+          <LogoImage
+            lightUrl={branding.data?.logoLightUrl}
+            darkUrl={branding.data?.logoDarkUrl}
+            sizePercent={branding.data?.sizePercent}
+            fallbackLetter="C"
+            fallbackClassName="flex h-8 w-8 items-center justify-center rounded-md bg-brand-500 text-sm font-bold text-white"
+          />
           <span className="text-sm font-semibold text-ink">{t("nav.brand")}</span>
         </div>
 

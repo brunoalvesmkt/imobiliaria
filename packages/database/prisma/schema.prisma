@@ -1128,6 +1128,17 @@ model PlatformSettings {
   // Vazio = usa a ordem padrão definida no frontend (NAV_ITEMS).
   moduleOrder String[] @default([])
 
+  // Personalização de logotipo — armazenada como data URI (PNG base64,
+  // até 200KB) diretamente na linha singleton, já que o logo não pertence
+  // a nenhum tenant (o model File é tenant-scoped) e não precisa do fluxo
+  // de upload assinado do S3.
+  tenantLogoLightUrl    String? @db.Text
+  tenantLogoDarkUrl     String? @db.Text
+  tenantLogoSizePercent Int     @default(100)
+  masterLogoLightUrl    String? @db.Text
+  masterLogoDarkUrl     String? @db.Text
+  masterLogoSizePercent Int     @default(100)
+
   updatedAt DateTime @updatedAt
 
   @@map("platform_settings")

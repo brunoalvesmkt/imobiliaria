@@ -962,6 +962,9 @@ const dictionary: Record<DictionaryKey, string> = {
   "master.nav.ia": "AI",
   "master.nav.usuarios": "Master Users",
   "master.nav.configuracoesEmpresas": "Company Settings",
+  "master.nav.configuracoes": "Settings",
+
+  "master.settingsOwn.subtitle": "Personalization of the Master panel itself.",
 
   "master.settings.title": "Company Settings",
   "master.settings.subtitle": "Global rules for the signup, registration, and confirmation flow.",
@@ -987,6 +990,17 @@ const dictionary: Record<DictionaryKey, string> = {
   "master.settings.riskTerm.publish": "Publish new version",
   "master.settings.modules.title": "Module order",
   "master.settings.modules.subtitle": "Set the order in which modules appear in the tenant panel's menu.",
+
+  "branding.title": "Branding",
+  "branding.tenantSubtitle": "Logo shown in the tenant panel's menu (sidebar and top bar).",
+  "branding.masterSubtitle": "Logo shown in the Master panel's menu (sidebar and top bar).",
+  "branding.logoLight": "Light mode logo",
+  "branding.logoDark": "Dark mode logo",
+  "branding.size": "Logo size",
+  "branding.formatHint": "PNG, up to 200KB.",
+  "branding.errorFormat": "The file must be a PNG.",
+  "branding.errorSize": "The file exceeds the 200KB size limit.",
+  "branding.errorGeneric": "Couldn't load the image. Please try again.",
 
   "master.tenants.title": "Companies",
   "master.tenants.columnName": "Company",

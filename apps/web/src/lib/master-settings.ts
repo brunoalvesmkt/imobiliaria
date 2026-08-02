@@ -22,6 +22,12 @@ export interface PlatformSettings {
   riskTermVersion: string;
   riskTermText: string;
   moduleOrder: string[];
+  tenantLogoLightUrl: string | null;
+  tenantLogoDarkUrl: string | null;
+  tenantLogoSizePercent: number;
+  masterLogoLightUrl: string | null;
+  masterLogoDarkUrl: string | null;
+  masterLogoSizePercent: number;
   updatedAt: string;
 }
 

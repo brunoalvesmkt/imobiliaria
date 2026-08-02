@@ -19,6 +19,7 @@ import { Alert } from "@/components/ui/alert";
 import { DropdownMenu, type DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { ApiError } from "@/lib/api-client";
 import { useI18n } from "@/lib/i18n";
+import { useIsAdmin } from "@/lib/auth";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 
 /** Documento de alterações, item 12: ao abrir Tarefas, iniciar em "Hoje". */
@@ -241,6 +242,7 @@ type TaskTypePanelKind = "create" | "edit" | "delete";
 
 function TaskTypesMenu() {
   const { t } = useI18n();
+  const isAdmin = useIsAdmin();
   const [panel, setPanel] = useState<TaskTypePanelKind | null>(null);
 
   const items: DropdownMenuItem[] = [
@@ -248,6 +250,8 @@ function TaskTypesMenu() {
     { label: t("crm.tasks.typesMenu.edit"), onClick: () => setPanel("edit") },
     { label: t("crm.tasks.typesMenu.delete"), onClick: () => setPanel("delete") },
   ];
+
+  if (!isAdmin) return null;
 
   return (
     <>

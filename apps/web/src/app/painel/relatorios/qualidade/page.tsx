@@ -2,6 +2,7 @@
 
 import { useQualidadeReport } from "@/lib/reports";
 import { useI18n } from "@/lib/i18n";
+import { Button } from "@/components/ui/button";
 import { PeriodFilter, usePeriodFilter, StatGrid, StatCard, BreakdownTable, ReportError } from "../report-shell";
 
 export default function QualidadeReportPage() {
@@ -13,12 +14,16 @@ export default function QualidadeReportPage() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <PeriodFilter draft={draft} setDraft={setDraft} onApply={apply} />
+        <Button variant="secondary" onClick={() => window.print()}>
+          {t("relatorios.exportPdfButton")}
+        </Button>
       </div>
 
       {report.isError && <ReportError />}
 
       {report.data && (
-        <>
+        <div className="print-area flex flex-col gap-4">
+          <h2 className="hidden text-lg font-semibold text-ink print:block">{t("relatorios.tabs.qualidade")}</h2>
           <StatGrid>
             <StatCard label={t("relatorios.qualidade.totalAvaliacoes")} value={report.data.totalAvaliacoes} />
             <StatCard label={t("relatorios.qualidade.notaMedia")} value={report.data.notaMedia} />
@@ -36,7 +41,7 @@ export default function QualidadeReportPage() {
 
           <RecurrentList title={t("relatorios.qualidade.pontosFortesRecorrentes")} items={report.data.pontosFortesRecorrentes} />
           <RecurrentList title={t("relatorios.qualidade.pontosFracosRecorrentes")} items={report.data.pontosFracosRecorrentes} />
-        </>
+        </div>
       )}
     </div>
   );

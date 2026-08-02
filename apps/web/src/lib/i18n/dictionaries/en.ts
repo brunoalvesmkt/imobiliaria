@@ -905,6 +905,7 @@ const dictionary: Record<DictionaryKey, string> = {
   "relatorios.exportCsv": "CSV",
   "relatorios.exportXlsx": "XLSX",
   "relatorios.exportPdf": "PDF",
+  "relatorios.exportPdfButton": "Export PDF",
   "relatorios.columnStatus": "Status",
   "relatorios.columnCount": "Count",
   "relatorios.columnTotal": "Total",

@@ -63,9 +63,6 @@ export default function FunilPage() {
         />
         {funnel.stages.length > 0 && (
           <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => setShowNewContact(true)}>
-              {t("crm.funnel.newContact")}
-            </Button>
             <Button onClick={() => setShowNewOpportunity((v) => !v)}>
               {showNewOpportunity ? t("common.cancel") : t("crm.funnel.newOpportunity")}
             </Button>
@@ -87,6 +84,7 @@ export default function FunilPage() {
           otherFunnels={funnels.data.filter((f) => f.id !== funnel.id)}
           showNewOpportunity={showNewOpportunity}
           onCloseNewOpportunity={() => setShowNewOpportunity(false)}
+          onOpenNewContact={() => setShowNewContact(true)}
         />
       )}
     </div>
@@ -581,11 +579,13 @@ function Board({
   otherFunnels,
   showNewOpportunity,
   onCloseNewOpportunity,
+  onOpenNewContact,
 }: {
   funnel: Funnel;
   otherFunnels: Funnel[];
   showNewOpportunity: boolean;
   onCloseNewOpportunity: () => void;
+  onOpenNewContact: () => void;
 }) {
   const { t, locale } = useI18n();
   const opportunities = useOpportunities(funnel.id);
@@ -636,7 +636,9 @@ function Board({
 
   return (
     <div className="flex flex-col gap-3">
-      {showNewOpportunity && <NewOpportunityForm funnel={funnel} onDone={onCloseNewOpportunity} />}
+      {showNewOpportunity && (
+        <NewOpportunityForm funnel={funnel} onDone={onCloseNewOpportunity} onOpenNewContact={onOpenNewContact} />
+      )}
 
       {funnel.stages.length > 1 && (
         <p className="px-1 text-xs text-ink-faint sm:hidden">{t("crm.funnel.swipeHint")}</p>
@@ -774,7 +776,15 @@ function Board({
   );
 }
 
-function NewOpportunityForm({ funnel, onDone }: { funnel: Funnel; onDone: () => void }) {
+function NewOpportunityForm({
+  funnel,
+  onDone,
+  onOpenNewContact,
+}: {
+  funnel: Funnel;
+  onDone: () => void;
+  onOpenNewContact: () => void;
+}) {
   const { t } = useI18n();
   const createOpportunity = useCreateOpportunity();
   const [search, setSearch] = useState("");
@@ -846,7 +856,10 @@ function NewOpportunityForm({ funnel, onDone }: { funnel: Funnel; onDone: () => 
         </div>
         <Field label={t("crm.funnel.value")} type="number" min="0" value={valor} onChange={(e) => setValor(e.target.value)} />
       </div>
-      <div>
+      <div className="flex gap-2">
+        <Button type="button" variant="secondary" onClick={onOpenNewContact}>
+          {t("crm.funnel.newContact")}
+        </Button>
         <Button type="submit" loading={createOpportunity.isPending} disabled={!selectedContact}>
           {t("crm.funnel.createOpportunity")}
         </Button>

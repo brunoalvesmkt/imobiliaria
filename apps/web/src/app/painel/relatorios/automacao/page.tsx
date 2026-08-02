@@ -3,7 +3,8 @@
 import { useAutomacaoReport } from "@/lib/reports";
 import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
-import { PeriodFilter, usePeriodFilter, StatGrid, StatCard, BreakdownTable, ReportError, ExportLink } from "../report-shell";
+import { Button } from "@/components/ui/button";
+import { PeriodFilter, usePeriodFilter, StatGrid, StatCard, BreakdownTable, ReportError } from "../report-shell";
 
 export default function AutomacaoReportPage() {
   const { t } = useI18n();
@@ -14,13 +15,16 @@ export default function AutomacaoReportPage() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <PeriodFilter draft={draft} setDraft={setDraft} onApply={apply} />
-        <ExportLink path="/reports/export/automation-executions" label={t("relatorios.automacao.exportExecutions")} />
+        <Button variant="secondary" onClick={() => window.print()}>
+          {t("relatorios.exportPdfButton")}
+        </Button>
       </div>
 
       {report.isError && <ReportError />}
 
       {report.data && (
-        <>
+        <div className="print-area flex flex-col gap-4">
+          <h2 className="hidden text-lg font-semibold text-ink print:block">{t("relatorios.tabs.automacao")}</h2>
           <StatGrid>
             <StatCard label={t("relatorios.automacao.deadLetterCount")} value={report.data.deadLetterCount} />
           </StatGrid>
@@ -32,7 +36,7 @@ export default function AutomacaoReportPage() {
               count: s.count,
             }))}
           />
-        </>
+        </div>
       )}
     </div>
   );

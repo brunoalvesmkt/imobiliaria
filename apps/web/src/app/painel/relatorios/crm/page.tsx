@@ -15,7 +15,7 @@ export default function CrmReportPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <PeriodFilter draft={draft} setDraft={setDraft} onApply={apply} />
         <Button variant="secondary" onClick={() => window.print()}>
-          {t("relatorios.exportPdf")}
+          {t("relatorios.exportPdfButton")}
         </Button>
       </div>
 

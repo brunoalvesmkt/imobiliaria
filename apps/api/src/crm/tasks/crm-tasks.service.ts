@@ -29,13 +29,15 @@ export class CrmTasksService {
     view?: "hoje" | "atrasadas" | "futuras" | "todas" | "periodo" | undefined;
     dataInicio?: string | undefined;
     dataFim?: string | undefined;
+    tipo?: string | undefined;
   }) {
-    const { contactId, opportunityId, responsavelId, status, view, dataInicio, dataFim } = params;
+    const { contactId, opportunityId, responsavelId, status, view, dataInicio, dataFim, tipo } = params;
     const where: Prisma.CrmTaskWhereInput = {};
     if (contactId) where.contactId = contactId;
     if (opportunityId) where.opportunityId = opportunityId;
     if (responsavelId) where.responsavelId = responsavelId;
     if (status) where.status = status;
+    if (tipo) where.tipo = tipo;
 
     const now = new Date();
     switch (view) {

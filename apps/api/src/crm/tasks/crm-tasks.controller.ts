@@ -28,8 +28,9 @@ export class CrmTasksController {
     @Query("view") view?: "hoje" | "atrasadas" | "futuras" | "todas" | "periodo",
     @Query("dataInicio") dataInicio?: string,
     @Query("dataFim") dataFim?: string,
+    @Query("tipo") tipo?: string,
   ) {
-    return this.service.list({ contactId, opportunityId, responsavelId, status, view, dataInicio, dataFim });
+    return this.service.list({ contactId, opportunityId, responsavelId, status, view, dataInicio, dataFim, tipo });
   }
 
   @Get(":id")

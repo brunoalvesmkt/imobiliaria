@@ -11,11 +11,13 @@ export interface DropdownMenuItem {
 /** Botão + lista suspensa simples (sem dependência externa) — fecha ao clicar fora ou em Escape. */
 export function DropdownMenu({
   label,
+  ariaLabel,
   items,
   align = "left",
   buttonClassName,
 }: {
-  label: string;
+  label: React.ReactNode;
+  ariaLabel?: string;
   items: DropdownMenuItem[];
   align?: "left" | "right";
   buttonClassName?: string;
@@ -46,6 +48,7 @@ export function DropdownMenu({
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-label={ariaLabel}
         className={
           buttonClassName ??
           "inline-flex items-center gap-1.5 rounded-md border border-line bg-surface px-4 py-2 text-sm font-medium text-ink hover:bg-surface-alt"

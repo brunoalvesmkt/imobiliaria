@@ -453,6 +453,7 @@ export function useTasks(
   status?: string,
   view?: CrmTaskView,
   range?: { dataInicio?: string; dataFim?: string },
+  tipo?: string,
 ) {
   const params = new URLSearchParams();
   if (contactId) params.set("contactId", contactId);
@@ -460,9 +461,10 @@ export function useTasks(
   if (view) params.set("view", view);
   if (range?.dataInicio) params.set("dataInicio", range.dataInicio);
   if (range?.dataFim) params.set("dataFim", range.dataFim);
+  if (tipo) params.set("tipo", tipo);
   const qs = params.toString();
   return useQuery({
-    queryKey: ["crm", "tasks", contactId ?? "", status ?? "", view ?? "", range?.dataInicio ?? "", range?.dataFim ?? ""],
+    queryKey: ["crm", "tasks", contactId ?? "", status ?? "", view ?? "", range?.dataInicio ?? "", range?.dataFim ?? "", tipo ?? ""],
     queryFn: () => apiGet<CrmTask[]>(`/crm/tasks${qs ? `?${qs}` : ""}`),
   });
 }

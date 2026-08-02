@@ -111,20 +111,22 @@ export default function MasterPainelLayout({ children }: { children: React.React
               fallbackClassName="flex h-8 w-8 flex-none items-center justify-center rounded-md bg-ink text-sm font-bold text-surface"
             />
           </div>
-          {visibleItems.map((item) => {
-            const isActive = pathname?.startsWith(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex-none whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                  isActive ? "bg-brand-50 text-brand-700" : "text-ink-dim hover:bg-surface-alt hover:text-ink"
-                }`}
-              >
-                {t(item.labelKey)}
-              </Link>
-            );
-          })}
+          <div className="flex flex-1 items-center justify-center gap-1">
+            {visibleItems.map((item) => {
+              const isActive = pathname?.startsWith(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex-none whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                    isActive ? "bg-brand-50 text-brand-700" : "text-ink-dim hover:bg-surface-alt hover:text-ink"
+                  }`}
+                >
+                  {t(item.labelKey)}
+                </Link>
+              );
+            })}
+          </div>
         </nav>
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>
       </div>

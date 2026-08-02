@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   useContacts,
   useCreateTask,
@@ -22,6 +22,12 @@ import { useI18n } from "@/lib/i18n";
 import { useIsAdmin } from "@/lib/auth";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 
+const STATUS_OPTIONS: { labelKey: DictionaryKey; value: string }[] = [
+  { labelKey: "crm.tasks.status.pending", value: "pending" },
+  { labelKey: "crm.tasks.status.done", value: "done" },
+  { labelKey: "crm.tasks.status.overdue", value: "overdue" },
+];
+
 /** Documento de alterações, item 12: ao abrir Tarefas, iniciar em "Hoje". */
 const VIEW_TABS: { labelKey: DictionaryKey; value: CrmTaskView }[] = [
   { labelKey: "crm.tasks.view.hoje", value: "hoje" },
@@ -38,27 +44,44 @@ export default function TarefasPage() {
   const { t } = useI18n();
   const [view, setView] = useState<CrmTaskView>("hoje");
   const [showForm, setShowForm] = useState(false);
-  const tasks = useTasks(undefined, undefined, view);
+  const [statusFilter, setStatusFilter] = useState("");
+  const [tipoFilter, setTipoFilter] = useState("");
+  const [dataFilter, setDataFilter] = useState("");
+  const taskTypes = useTaskTypes();
+
+  const effectiveView = dataFilter ? "periodo" : view;
+  const effectiveRange = dataFilter ? { dataInicio: `${dataFilter}T00:00:00`, dataFim: `${dataFilter}T23:59:59` } : undefined;
+  const tasks = useTasks(undefined, statusFilter || undefined, effectiveView, effectiveRange, tipoFilter || undefined);
   const contacts = useContacts("");
   const updateTask = useUpdateTask();
 
   const contactNameById = useMemo(() => new Map((contacts.data ?? []).map((c) => [c.id, c.nome])), [contacts.data]);
+  const tipoOptions = useMemo(() => (taskTypes.data ?? []).filter((tt) => tt.ativo).map((tt) => tt.nome), [taskTypes.data]);
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex gap-1">
+        <div className="flex flex-wrap items-center gap-1">
           {VIEW_TABS.map((tab) => (
             <button
               key={tab.value}
               onClick={() => setView(tab.value)}
               className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                view === tab.value ? "bg-brand-500 text-white" : "text-ink-dim hover:bg-surface-muted"
+                view === tab.value && !dataFilter ? "bg-brand-500 text-white" : "text-ink-dim hover:bg-surface-muted"
               }`}
             >
               {t(tab.labelKey)}
             </button>
           ))}
+          <TaskFilterButton
+            status={statusFilter}
+            onStatusChange={setStatusFilter}
+            tipo={tipoFilter}
+            onTipoChange={setTipoFilter}
+            tipoOptions={tipoOptions}
+            data={dataFilter}
+            onDataChange={setDataFilter}
+          />
         </div>
         <div className="flex items-center gap-2">
           <TaskTypesMenu />
@@ -236,6 +259,105 @@ function NewTaskForm({ onDone }: { onDone: () => void }) {
         </Button>
       </div>
     </form>
+  );
+}
+
+function TaskFilterButton({
+  status,
+  onStatusChange,
+  tipo,
+  onTipoChange,
+  tipoOptions,
+  data,
+  onDataChange,
+}: {
+  status: string;
+  onStatusChange: (value: string) => void;
+  tipo: string;
+  onTipoChange: (value: string) => void;
+  tipoOptions: string[];
+  data: string;
+  onDataChange: (value: string) => void;
+}) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const activeCount = (status ? 1 : 0) + (tipo ? 1 : 0) + (data ? 1 : 0);
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative inline-block">
+      <Button variant="secondary" onClick={() => setOpen((v) => !v)}>
+        {t("crm.tasks.filter")}
+        {activeCount > 0 ? ` (${activeCount})` : ""}
+      </Button>
+      {open && (
+        <div className="absolute z-20 mt-1 w-64 rounded-md border border-line bg-surface p-3 shadow-lg">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-ink-dim">{t("crm.tasks.filterStatus")}</label>
+              <select
+                value={status}
+                onChange={(e) => onStatusChange(e.target.value)}
+                className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
+              >
+                <option value="">{t("crm.tasks.filterAllStatus")}</option>
+                {STATUS_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {t(opt.labelKey)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-ink-dim">{t("crm.tasks.filterType")}</label>
+              <select
+                value={tipo}
+                onChange={(e) => onTipoChange(e.target.value)}
+                className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
+              >
+                <option value="">{t("crm.tasks.filterAllTypes")}</option>
+                {tipoOptions.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {capitalize(opt)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-ink-dim">{t("crm.tasks.filterDate")}</label>
+              <input
+                type="date"
+                value={data}
+                onChange={(e) => onDataChange(e.target.value)}
+                className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
+              />
+            </div>
+            {activeCount > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  onStatusChange("");
+                  onTipoChange("");
+                  onDataChange("");
+                }}
+                className="self-start text-xs font-medium text-ink-faint hover:text-red-600"
+              >
+                {t("crm.contacts.filterClear")}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

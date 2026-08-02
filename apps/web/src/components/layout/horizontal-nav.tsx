@@ -25,39 +25,41 @@ export function HorizontalNav({ activeModules, moduleOrder }: { activeModules: S
           fallbackClassName="flex h-8 w-8 flex-none items-center justify-center rounded-md bg-brand-500 text-sm font-bold text-white"
         />
       </div>
-      {items
-        .filter((item) => !item.module || activeModules.has(item.module))
-        .map((item) => {
-          const isActive = item.href === "/painel" ? pathname === item.href : pathname?.startsWith(item.href);
-          const isDisabled = !item.builtInPhase;
+      <div className="flex flex-1 items-center justify-center gap-1">
+        {items
+          .filter((item) => !item.module || activeModules.has(item.module))
+          .map((item) => {
+            const isActive = item.href === "/painel" ? pathname === item.href : pathname?.startsWith(item.href);
+            const isDisabled = !item.builtInPhase;
 
-          if (isDisabled) {
+            if (isDisabled) {
+              return (
+                <span
+                  key={item.href}
+                  title={t("nav.comingSoonTitle")}
+                  className="flex flex-none items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-sm text-ink-faint"
+                >
+                  {t(item.labelKey)}
+                  <span className="rounded-full bg-surface-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-faint">
+                    {t("nav.comingSoon")}
+                  </span>
+                </span>
+              );
+            }
+
             return (
-              <span
+              <Link
                 key={item.href}
-                title={t("nav.comingSoonTitle")}
-                className="flex flex-none items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-sm text-ink-faint"
+                href={item.href}
+                className={`flex-none whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                  isActive ? "bg-brand-50 text-brand-700" : "text-ink-dim hover:bg-surface-alt hover:text-ink"
+                }`}
               >
                 {t(item.labelKey)}
-                <span className="rounded-full bg-surface-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-faint">
-                  {t("nav.comingSoon")}
-                </span>
-              </span>
+              </Link>
             );
-          }
-
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex-none whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                isActive ? "bg-brand-50 text-brand-700" : "text-ink-dim hover:bg-surface-alt hover:text-ink"
-              }`}
-            >
-              {t(item.labelKey)}
-            </Link>
-          );
-        })}
+          })}
+      </div>
     </nav>
   );
 }

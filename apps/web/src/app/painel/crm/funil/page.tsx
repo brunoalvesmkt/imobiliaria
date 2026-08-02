@@ -33,6 +33,8 @@ export default function FunilPage() {
   const { t } = useI18n();
   const funnels = useFunnels();
   const [selectedFunnelId, setSelectedFunnelId] = useState("");
+  const [showNewContact, setShowNewContact] = useState(false);
+  const [showNewOpportunity, setShowNewOpportunity] = useState(false);
 
   useEffect(() => {
     const firstId = funnels.data?.[0]?.id;
@@ -52,14 +54,41 @@ export default function FunilPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <FunnelToolbar
-        funnels={funnels.data}
-        funnel={funnel}
-        onSelect={setSelectedFunnelId}
-        onDeleted={() => setSelectedFunnelId("")}
-      />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <FunnelToolbar
+          funnels={funnels.data}
+          funnel={funnel}
+          onSelect={setSelectedFunnelId}
+          onDeleted={() => setSelectedFunnelId("")}
+        />
+        {funnel.stages.length > 0 && (
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={() => setShowNewContact(true)}>
+              {t("crm.funnel.newContact")}
+            </Button>
+            <Button onClick={() => setShowNewOpportunity((v) => !v)}>
+              {showNewOpportunity ? t("common.cancel") : t("crm.funnel.newOpportunity")}
+            </Button>
+          </div>
+        )}
+      </div>
 
-      {funnel.stages.length === 0 ? <NewStageForm funnel={funnel} /> : <Board funnel={funnel} otherFunnels={funnels.data.filter((f) => f.id !== funnel.id)} />}
+      {showNewContact && (
+        <SettingsPanel title={t("crm.funnel.newContact")} onClose={() => setShowNewContact(false)} maxWidth="max-w-xl">
+          <ContactForm onDone={() => setShowNewContact(false)} />
+        </SettingsPanel>
+      )}
+
+      {funnel.stages.length === 0 ? (
+        <NewStageForm funnel={funnel} />
+      ) : (
+        <Board
+          funnel={funnel}
+          otherFunnels={funnels.data.filter((f) => f.id !== funnel.id)}
+          showNewOpportunity={showNewOpportunity}
+          onCloseNewOpportunity={() => setShowNewOpportunity(false)}
+        />
+      )}
     </div>
   );
 }
@@ -547,15 +576,23 @@ function NewStageForm({ funnel }: { funnel: Funnel }) {
   );
 }
 
-function Board({ funnel, otherFunnels }: { funnel: Funnel; otherFunnels: Funnel[] }) {
+function Board({
+  funnel,
+  otherFunnels,
+  showNewOpportunity,
+  onCloseNewOpportunity,
+}: {
+  funnel: Funnel;
+  otherFunnels: Funnel[];
+  showNewOpportunity: boolean;
+  onCloseNewOpportunity: () => void;
+}) {
   const { t, locale } = useI18n();
   const opportunities = useOpportunities(funnel.id);
   const moveStage = useMoveOpportunityStage();
   const reorderOpportunities = useReorderOpportunities();
   const closeOpportunity = useCloseOpportunity();
   const transferOpportunity = useTransferOpportunity();
-  const [showNewOpportunity, setShowNewOpportunity] = useState(false);
-  const [showNewContact, setShowNewContact] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
 
@@ -599,22 +636,7 @@ function Board({ funnel, otherFunnels }: { funnel: Funnel; otherFunnels: Funnel[
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex justify-end gap-2">
-        <Button variant="secondary" onClick={() => setShowNewContact(true)}>
-          {t("crm.funnel.newContact")}
-        </Button>
-        <Button onClick={() => setShowNewOpportunity((v) => !v)}>
-          {showNewOpportunity ? t("common.cancel") : t("crm.funnel.newOpportunity")}
-        </Button>
-      </div>
-
-      {showNewContact && (
-        <SettingsPanel title={t("crm.funnel.newContact")} onClose={() => setShowNewContact(false)} maxWidth="max-w-xl">
-          <ContactForm onDone={() => setShowNewContact(false)} />
-        </SettingsPanel>
-      )}
-
-      {showNewOpportunity && <NewOpportunityForm funnel={funnel} onDone={() => setShowNewOpportunity(false)} />}
+      {showNewOpportunity && <NewOpportunityForm funnel={funnel} onDone={onCloseNewOpportunity} />}
 
       {funnel.stages.length > 1 && (
         <p className="px-1 text-xs text-ink-faint sm:hidden">{t("crm.funnel.swipeHint")}</p>

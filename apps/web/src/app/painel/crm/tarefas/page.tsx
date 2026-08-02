@@ -30,8 +30,6 @@ const VIEW_TABS: { labelKey: DictionaryKey; value: CrmTaskView }[] = [
   { labelKey: "crm.tasks.view.todas", value: "todas" },
 ];
 
-const TIPOS_PADRAO = ["retorno", "ligacao", "reuniao", "proposta", "cobranca", "pos_venda", "avaliacao", "custom"];
-
 function capitalize(value: string): string {
   return value.length > 0 ? value.charAt(0).toUpperCase() + value.slice(1) : value;
 }
@@ -137,13 +135,12 @@ function NewTaskForm({ onDone }: { onDone: () => void }) {
   const [selectedContact, setSelectedContact] = useState<{ id: string; nome: string } | null>(null);
   const contacts = useContacts(search);
   const taskTypes = useTaskTypes();
-  const [form, setForm] = useState({ contactId: "", titulo: "", tipo: "ligacao", dataHora: "" });
+  const [form, setForm] = useState({ contactId: "", titulo: "", tipo: "", dataHora: "" });
 
-  const tipoOptions = useMemo(() => {
-    const customNomes = (taskTypes.data ?? []).map((tt) => tt.nome);
-    const all = [...TIPOS_PADRAO, ...customNomes.filter((nome) => !TIPOS_PADRAO.includes(nome))];
-    return all;
-  }, [taskTypes.data]);
+  const tipoOptions = useMemo(
+    () => (taskTypes.data ?? []).filter((tt) => tt.ativo).map((tt) => tt.nome),
+    [taskTypes.data],
+  );
 
   function selectContact(c: { id: string; nome: string }) {
     setSelectedContact(c);
@@ -210,10 +207,14 @@ function NewTaskForm({ onDone }: { onDone: () => void }) {
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-ink">{t("crm.tasks.type")}</label>
           <select
+            required
             value={form.tipo}
             onChange={(e) => setForm({ ...form, tipo: e.target.value })}
             className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
           >
+            <option value="" disabled>
+              {t("crm.tasks.typesMenu.chooseType")}
+            </option>
             {tipoOptions.map((tipo) => (
               <option key={tipo} value={tipo}>
                 {capitalize(tipo)}

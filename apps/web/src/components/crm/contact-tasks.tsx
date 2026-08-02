@@ -1,25 +1,29 @@
 "use client";
 
-import { useState } from "react";
-import { useCreateTask, useTasks, useUpdateTask } from "@/lib/crm";
+import { useMemo, useState } from "react";
+import { useCreateTask, useTasks, useTaskTypes, useUpdateTask } from "@/lib/crm";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n";
-
-const TIPOS = ["retorno", "ligacao", "reuniao", "proposta", "cobranca", "pos_venda", "avaliacao", "custom"];
 
 export function ContactTasks({ contactId }: { contactId: string }) {
   const { t } = useI18n();
   const tasks = useTasks(contactId);
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
+  const taskTypes = useTaskTypes();
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ titulo: "", tipo: "ligacao", dataHora: "" });
+  const [form, setForm] = useState({ titulo: "", tipo: "", dataHora: "" });
+
+  const tipoOptions = useMemo(
+    () => (taskTypes.data ?? []).filter((tt) => tt.ativo).map((tt) => tt.nome),
+    [taskTypes.data],
+  );
 
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
     await createTask.mutateAsync({ contactId, titulo: form.titulo, tipo: form.tipo, dataHora: new Date(form.dataHora).toISOString() });
-    setForm({ titulo: "", tipo: "ligacao", dataHora: "" });
+    setForm({ titulo: "", tipo: "", dataHora: "" });
     setShowForm(false);
   }
 
@@ -39,11 +43,15 @@ export function ContactTasks({ contactId }: { contactId: string }) {
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-ink">{t("crm.tasks.type")}</label>
               <select
+                required
                 value={form.tipo}
                 onChange={(e) => setForm({ ...form, tipo: e.target.value })}
                 className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
               >
-                {TIPOS.map((tipo) => (
+                <option value="" disabled>
+                  {t("crm.tasks.typesMenu.chooseType")}
+                </option>
+                {tipoOptions.map((tipo) => (
                   <option key={tipo} value={tipo}>
                     {tipo}
                   </option>

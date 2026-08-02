@@ -237,6 +237,18 @@ function FilterButton({
                 ))}
               </select>
             </div>
+            {activeCount > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  onOrigemChange("");
+                  onPhoneTypeChange("");
+                }}
+                className="self-start text-xs font-medium text-ink-faint hover:text-red-600"
+              >
+                {t("crm.contacts.filterClear")}
+              </button>
+            )}
           </div>
         </div>
       )}

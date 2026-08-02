@@ -343,6 +343,7 @@ const dictionary: Record<DictionaryKey, string> = {
   "crm.contacts.filterOrigin": "Origem",
   "crm.contacts.filterPhoneType": "Tipo de telefone",
   "crm.contacts.filterAllPhoneTypes": "Todos os tipos",
+  "crm.contacts.filterClear": "Limpar filtro",
   "crm.contacts.filterAllOrigins": "Todas as origens",
   "crm.contacts.export": "Exportar",
   "crm.contacts.import": "Importar",

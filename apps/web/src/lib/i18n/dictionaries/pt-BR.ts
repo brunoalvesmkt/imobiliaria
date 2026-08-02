@@ -488,6 +488,7 @@ const dictionary = {
   "crm.funnel.stageNamePlaceholder": "Novo Lead",
   "crm.funnel.addStage": "Adicionar etapa",
   "crm.funnel.newOpportunity": "Nova oportunidade",
+  "crm.funnel.newContact": "Cadastrar contato",
   "crm.funnel.createOpportunity": "Criar oportunidade",
   "crm.funnel.value": "Valor (R$)",
   "crm.funnel.prevStage": "← Etapa",

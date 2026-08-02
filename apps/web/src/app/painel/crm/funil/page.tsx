@@ -25,6 +25,7 @@ import { Field } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
 import { HorizontalScroller } from "@/components/ui/horizontal-scroller";
 import { DropdownMenu, type DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { ContactForm } from "@/components/crm/contact-form";
 import { useI18n } from "@/lib/i18n";
 import { ApiError } from "@/lib/api-client";
 
@@ -178,7 +179,17 @@ function FunnelSettingsMenu({
   );
 }
 
-function SettingsPanel({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+function SettingsPanel({
+  title,
+  onClose,
+  children,
+  maxWidth = "max-w-sm",
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+  maxWidth?: string;
+}) {
   const { t } = useI18n();
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
@@ -186,7 +197,7 @@ function SettingsPanel({ title, onClose, children }: { title: string; onClose: (
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-sm rounded-lg border border-line bg-surface p-5 shadow-lg"
+        className={`w-full ${maxWidth} rounded-lg border border-line bg-surface p-5 shadow-lg`}
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-ink">{title}</h2>
@@ -544,6 +555,7 @@ function Board({ funnel, otherFunnels }: { funnel: Funnel; otherFunnels: Funnel[
   const closeOpportunity = useCloseOpportunity();
   const transferOpportunity = useTransferOpportunity();
   const [showNewOpportunity, setShowNewOpportunity] = useState(false);
+  const [showNewContact, setShowNewContact] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
 
@@ -587,11 +599,20 @@ function Board({ funnel, otherFunnels }: { funnel: Funnel; otherFunnels: Funnel[
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <Button variant="secondary" onClick={() => setShowNewContact(true)}>
+          {t("crm.funnel.newContact")}
+        </Button>
         <Button onClick={() => setShowNewOpportunity((v) => !v)}>
           {showNewOpportunity ? t("common.cancel") : t("crm.funnel.newOpportunity")}
         </Button>
       </div>
+
+      {showNewContact && (
+        <SettingsPanel title={t("crm.funnel.newContact")} onClose={() => setShowNewContact(false)} maxWidth="max-w-xl">
+          <ContactForm onDone={() => setShowNewContact(false)} />
+        </SettingsPanel>
+      )}
 
       {showNewOpportunity && <NewOpportunityForm funnel={funnel} onDone={() => setShowNewOpportunity(false)} />}
 

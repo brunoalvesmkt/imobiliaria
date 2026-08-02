@@ -490,6 +490,7 @@ const dictionary: Record<DictionaryKey, string> = {
   "crm.funnel.stageNamePlaceholder": "New Lead",
   "crm.funnel.addStage": "Add stage",
   "crm.funnel.newOpportunity": "New opportunity",
+  "crm.funnel.newContact": "New contact",
   "crm.funnel.createOpportunity": "Create opportunity",
   "crm.funnel.value": "Value ($)",
   "crm.funnel.prevStage": "← Stage",

@@ -735,17 +735,26 @@ function NewOpportunityForm({ funnel, onDone }: { funnel: Funnel; onDone: () => 
   const { t } = useI18n();
   const createOpportunity = useCreateOpportunity();
   const [search, setSearch] = useState("");
-  const [contactId, setContactId] = useState("");
+  const [selectedContact, setSelectedContact] = useState<{ id: string; nome: string } | null>(null);
   const [valor, setValor] = useState("");
   const contacts = useContacts(search);
 
+  function selectContact(c: { id: string; nome: string }) {
+    setSelectedContact(c);
+  }
+
+  function clearContact() {
+    setSelectedContact(null);
+    setSearch("");
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!contactId) return;
+    if (!selectedContact) return;
     const firstStage = funnel.stages[0];
     if (!firstStage) return;
     await createOpportunity.mutateAsync({
-      contactId,
+      contactId: selectedContact.id,
       funnelId: funnel.id,
       stageId: firstStage.id,
       ...(valor ? { valor: Number(valor) } : {}),
@@ -759,30 +768,43 @@ function NewOpportunityForm({ funnel, onDone }: { funnel: Funnel; onDone: () => 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-ink">{t("crm.tasks.contact")}</label>
-          <input
-            type="text"
-            placeholder={t("crm.tasks.searchContact")}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
-          />
-          <select
-            value={contactId}
-            onChange={(e) => setContactId(e.target.value)}
-            className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
-          >
-            <option value="">{t("crm.tasks.selectContact")}</option>
-            {contacts.data?.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nome}
-              </option>
-            ))}
-          </select>
+          {selectedContact ? (
+            <div className="flex items-center justify-between rounded-md border border-line bg-surface px-3 py-2 text-sm">
+              <span className="text-ink">{selectedContact.nome}</span>
+              <button type="button" onClick={clearContact} className="text-xs font-medium text-ink-faint hover:text-red-600">
+                {t("common.remove")}
+              </button>
+            </div>
+          ) : (
+            <div className="relative">
+              <input
+                type="text"
+                placeholder={t("crm.tasks.searchContact")}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-md border border-line bg-surface px-3 py-2 text-sm"
+              />
+              {search.length > 0 && (contacts.data?.length ?? 0) > 0 && (
+                <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-md border border-line bg-surface shadow-lg">
+                  {contacts.data!.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => selectContact({ id: c.id, nome: c.nome })}
+                      className="block w-full px-3 py-2 text-left text-sm text-ink hover:bg-surface-alt"
+                    >
+                      {c.nome}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <Field label={t("crm.funnel.value")} type="number" min="0" value={valor} onChange={(e) => setValor(e.target.value)} />
       </div>
       <div>
-        <Button type="submit" loading={createOpportunity.isPending} disabled={!contactId}>
+        <Button type="submit" loading={createOpportunity.isPending} disabled={!selectedContact}>
           {t("crm.funnel.createOpportunity")}
         </Button>
       </div>

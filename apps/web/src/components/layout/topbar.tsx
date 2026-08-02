@@ -75,6 +75,13 @@ export function Topbar({ onMenuClick, showMenuButton = true }: { onMenuClick: ()
                   {t("topbar.myData")}
                 </Link>
                 <Link
+                  href="/painel/financeiro"
+                  onClick={() => setMenuOpen(false)}
+                  className="block w-full px-3 py-2 text-left text-sm text-ink-dim hover:bg-surface-alt"
+                >
+                  {t("nav.financeiro")}
+                </Link>
+                <Link
                   href="/painel/seguranca"
                   onClick={() => setMenuOpen(false)}
                   className="block w-full px-3 py-2 text-left text-sm text-ink-dim hover:bg-surface-alt"

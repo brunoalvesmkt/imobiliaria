@@ -18,7 +18,6 @@ export const NAV_ITEMS: NavItem[] = [
   { labelKey: "nav.atendimento", href: "/painel/atendimento", key: "atendimento", module: "atendimento", builtInPhase: true },
   { labelKey: "nav.chatbot", href: "/painel/chatbot", key: "chatbot", module: "chatbot", builtInPhase: true },
   { labelKey: "nav.automacao", href: "/painel/automacao", key: "automacao", module: "automacao", builtInPhase: true },
-  { labelKey: "nav.financeiro", href: "/painel/financeiro", key: "financeiro", builtInPhase: true },
   { labelKey: "nav.relatorios", href: "/painel/relatorios", key: "relatorios", builtInPhase: true },
   { labelKey: "nav.configuracoes", href: "/painel/configuracoes", key: "configuracoes", builtInPhase: true },
 ];

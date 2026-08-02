@@ -587,7 +587,7 @@ function Board({ funnel, otherFunnels }: { funnel: Funnel; otherFunnels: Funnel[
 
   return (
     <div className="flex flex-col gap-3">
-      <div>
+      <div className="flex justify-end">
         <Button onClick={() => setShowNewOpportunity((v) => !v)}>
           {showNewOpportunity ? t("common.cancel") : t("crm.funnel.newOpportunity")}
         </Button>

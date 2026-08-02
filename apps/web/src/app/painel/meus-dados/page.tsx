@@ -9,6 +9,7 @@ import { Field } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { ApiError } from "@/lib/api-client";
+import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 
 /** Meus Dados — menu do avatar (documento de alterações, item 7). Mesmo registro principal da contratação, nunca um cadastro separado. */
 export default function MeusDadosPage() {
@@ -131,9 +132,13 @@ export default function MeusDadosPage() {
             <dt className="text-ink-dim">{t("meusDados.plan")}</dt>
             <dd className="text-ink">{subscription.plan?.nome ?? "—"}</dd>
             <dt className="text-ink-dim">{t("meusDados.periodicity")}</dt>
-            <dd className="text-ink">{subscription.recorrenciaContratada ?? "—"}</dd>
+            <dd className="text-ink">
+              {subscription.recorrenciaContratada
+                ? t(`meusDados.periodicity.${subscription.recorrenciaContratada}` as DictionaryKey)
+                : "—"}
+            </dd>
             <dt className="text-ink-dim">{t("meusDados.status")}</dt>
-            <dd className="text-ink">{subscription.status}</dd>
+            <dd className="text-ink">{t(`dashboard.financeiro.status.${subscription.status}` as DictionaryKey)}</dd>
           </dl>
         ) : (
           <p className="text-sm text-ink-faint">{t("meusDados.noSubscription")}</p>

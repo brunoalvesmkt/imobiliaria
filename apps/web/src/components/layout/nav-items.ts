@@ -25,3 +25,13 @@ export const NAV_ITEMS: NavItem[] = [
 
 /** Módulos reordenáveis pelo Master — todos exceto "Início", que fica sempre fixo no topo. */
 export const REORDERABLE_NAV_ITEMS = NAV_ITEMS.filter((item) => item.key !== "inicio");
+
+/** Aplica a ordem definida pelo Master (chaves de NavItem.key); itens não listados mantêm a ordem original, ao final. "Início" nunca é reordenado. Compartilhado entre Sidebar (vertical) e HorizontalNav (topo). */
+export function applyModuleOrder(items: NavItem[], moduleOrder: string[] | undefined): NavItem[] {
+  if (!moduleOrder || moduleOrder.length === 0) return items;
+  const [first, ...rest] = items;
+  const byKey = new Map(rest.map((item) => [item.key, item]));
+  const ordered = moduleOrder.map((key) => byKey.get(key)).filter((item): item is NavItem => !!item);
+  const remaining = rest.filter((item) => !moduleOrder.includes(item.key));
+  return first ? [first, ...ordered, ...remaining] : [...ordered, ...remaining];
+}

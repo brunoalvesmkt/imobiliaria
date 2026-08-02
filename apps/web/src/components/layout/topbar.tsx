@@ -8,8 +8,9 @@ import { useI18n } from "@/lib/i18n";
 import { ThemeToggle } from "./theme-toggle";
 import { LanguageSwitcher } from "./language-switcher";
 import { NotificationBell } from "./notification-bell";
+import { MenuLayoutToggle } from "./menu-layout-toggle";
 
-export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
+export function Topbar({ onMenuClick, showMenuButton = true }: { onMenuClick: () => void; showMenuButton?: boolean }) {
   const router = useRouter();
   const { t } = useI18n();
   const tenant = useTenantInfo(true);
@@ -25,20 +26,23 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
   return (
     <header className="flex h-14 flex-none items-center justify-between border-b border-line bg-surface px-4 sm:px-6">
       <div className="flex min-w-0 items-center gap-2">
-        <button
-          type="button"
-          onClick={onMenuClick}
-          aria-label={t("topbar.openMenu")}
-          className="flex h-8 w-8 flex-none items-center justify-center rounded-md text-ink-dim hover:bg-surface-alt md:hidden"
-        >
-          <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden="true">
-            <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-          </svg>
-        </button>
+        {showMenuButton && (
+          <button
+            type="button"
+            onClick={onMenuClick}
+            aria-label={t("topbar.openMenu")}
+            className="flex h-8 w-8 flex-none items-center justify-center rounded-md text-ink-dim hover:bg-surface-alt md:hidden"
+          >
+            <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden="true">
+              <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+          </button>
+        )}
         <span className="truncate text-sm font-medium text-ink">{tenant.data?.razaoSocial ?? " "}</span>
       </div>
 
       <div className="flex items-center gap-2">
+        <MenuLayoutToggle />
         <LanguageSwitcher />
         <ThemeToggle />
         <NotificationBell />

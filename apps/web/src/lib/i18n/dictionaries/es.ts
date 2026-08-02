@@ -113,6 +113,9 @@ const dictionary: Record<DictionaryKey, string> = {
   "common.none": "—",
   "common.remove": "Quitar",
   "topbar.openMenu": "Abrir menú",
+  "layout.menuLayout": "Diseño del menú",
+  "layout.sidebar": "Menú lateral",
+  "layout.topbar": "Menú en la parte superior",
   "topbar.closeMenu": "Cerrar menú",
 
   "auth.brandTitle": "C",

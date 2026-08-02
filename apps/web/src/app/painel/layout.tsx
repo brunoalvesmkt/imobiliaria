@@ -6,7 +6,9 @@ import { useActiveModules, useCurrentUser, useModuleOrder } from "@/lib/auth";
 import { keepSessionAlive } from "@/lib/api-client";
 import { useI18n } from "@/lib/i18n";
 import { RealtimeProvider } from "@/lib/realtime";
+import { useMenuLayout } from "@/lib/menu-layout";
 import { Sidebar } from "@/components/layout/sidebar";
+import { HorizontalNav } from "@/components/layout/horizontal-nav";
 import { Topbar } from "@/components/layout/topbar";
 import { ImpersonationBanner } from "@/components/layout/impersonation-banner";
 
@@ -24,6 +26,7 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
   const currentUser = useCurrentUser();
   const activeModules = useActiveModules(currentUser.isSuccess);
   const moduleOrder = useModuleOrder(currentUser.isSuccess);
+  const { layout } = useMenuLayout();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -54,18 +57,26 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
     <RealtimeProvider enabled={currentUser.isSuccess}>
       <div className="flex min-h-screen flex-col bg-surface-alt">
         {currentUser.data?.impersonation && <ImpersonationBanner impersonation={currentUser.data.impersonation} />}
-        <div className="flex min-h-0 flex-1">
-          <Sidebar
-            activeModules={activeModules.data ?? new Set()}
-            moduleOrder={moduleOrder.data}
-            open={sidebarOpen}
-            onClose={() => setSidebarOpen(false)}
-          />
-          <div className="flex min-w-0 flex-1 flex-col">
-            <Topbar onMenuClick={() => setSidebarOpen(true)} />
+        {layout === "horizontal" ? (
+          <div className="flex min-h-0 flex-1 flex-col">
+            <Topbar onMenuClick={() => setSidebarOpen(true)} showMenuButton={false} />
+            <HorizontalNav activeModules={activeModules.data ?? new Set()} moduleOrder={moduleOrder.data} />
             <main className="flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>
           </div>
-        </div>
+        ) : (
+          <div className="flex min-h-0 flex-1">
+            <Sidebar
+              activeModules={activeModules.data ?? new Set()}
+              moduleOrder={moduleOrder.data}
+              open={sidebarOpen}
+              onClose={() => setSidebarOpen(false)}
+            />
+            <div className="flex min-w-0 flex-1 flex-col">
+              <Topbar onMenuClick={() => setSidebarOpen(true)} />
+              <main className="flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>
+            </div>
+          </div>
+        )}
       </div>
     </RealtimeProvider>
   );

@@ -303,7 +303,7 @@ const dictionary = {
 
   "crm.contacts.searchPlaceholder": "Buscar por nome, telefone, e-mail…",
   "crm.contacts.newContact": "Novo contato",
-  "crm.contacts.name": "Nome",
+  "crm.contacts.name": "Nome completo",
   "crm.contacts.surname": "Sobrenome",
   "crm.contacts.whatsapp": "WhatsApp",
   "crm.contacts.openWhatsapp": "Abrir conversa no WhatsApp",

@@ -305,7 +305,7 @@ const dictionary: Record<DictionaryKey, string> = {
 
   "crm.contacts.searchPlaceholder": "Buscar por nombre, teléfono, correo…",
   "crm.contacts.newContact": "Nuevo contacto",
-  "crm.contacts.name": "Nombre",
+  "crm.contacts.name": "Nombre completo",
   "crm.contacts.surname": "Apellido",
   "crm.contacts.whatsapp": "WhatsApp",
   "crm.contacts.openWhatsapp": "Abrir conversación en WhatsApp",

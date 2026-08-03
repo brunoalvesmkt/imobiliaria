@@ -8,9 +8,7 @@ import type { CreateFunnelDto } from "./dto/create-funnel.dto";
 import type { UpdateFunnelDto } from "./dto/update-funnel.dto";
 import type { CreateStageDto } from "./dto/create-stage.dto";
 import type { UpdateStageDto } from "./dto/update-stage.dto";
-
-/** Etapas padrão criadas ao nascer um funil novo (documento de alterações, item 11.3). */
-const DEFAULT_STAGES = ["Novo Lead", "Contato Feito", "Proposta Enviada", "Ganho", "Perdido"];
+import { DEFAULT_FUNNEL_STAGES } from "./default-funnel.util";
 
 @Injectable()
 export class FunnelsService {
@@ -49,7 +47,7 @@ export class FunnelsService {
     });
 
     await this.prisma.funnelStage.createMany({
-      data: DEFAULT_STAGES.map((nome, ordem) => ({ funnelId: funnel.id, nome, ordem })),
+      data: DEFAULT_FUNNEL_STAGES.map((nome, ordem) => ({ funnelId: funnel.id, nome, ordem })),
     });
 
     await this.audit.record({

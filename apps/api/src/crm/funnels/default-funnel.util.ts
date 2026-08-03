@@ -6,7 +6,14 @@ import type { Prisma } from "@chatbot-saas/database";
  * mão antes de conseguir cadastrar a primeira oportunidade.
  */
 export const DEFAULT_FUNNEL_NAME = "Atendimento";
-export const DEFAULT_FUNNEL_STAGES = ["Novo Lead", "Contato Feito", "Proposta Enviada", "Ganho", "Perdido"];
+export const DEFAULT_FUNNEL_STAGES = [
+  "Novo Lead",
+  "Contato Feito",
+  "Apresentação",
+  "Proposta Enviada",
+  "Negociação",
+  "Atendimento Concluído",
+];
 
 export async function createDefaultFunnel(tx: Prisma.TransactionClient, tenantId: string): Promise<void> {
   const funnel = await tx.funnel.create({

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useContactOrigins, useCreateContact, type ContactPhoneType } from "@/lib/crm";
+import { useContactOrigins, useCreateContact, useUpdateContact, type Contact, type ContactPhoneType } from "@/lib/crm";
 import { Field } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
@@ -15,24 +15,50 @@ interface PhoneRow {
   tipo: ContactPhoneType;
 }
 
+/** Formata como o resto do módulo CRM exibe telefone — "(11) 99999-9999" / "(11) 9999-9999" — enquanto o usuário digita. */
+function maskPhone(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
 /**
- * Formulário de cadastro de contato compartilhado entre CRM > Contatos e
- * CRM > Funil (botão "Cadastrar contato") — mesmo formulário, um único
- * lugar pra manter. Contato criado aqui é o mesmo `Contact` do backend,
- * então já aparece na lista de Contatos automaticamente (não é uma cópia).
+ * Formulário de contato compartilhado entre CRM > Contatos (criação e
+ * edição — mesma UI nos dois casos) e CRM > Funil (botão "Cadastrar
+ * contato") — um único formulário, sem duplicidade. Sem `contact`, cria um
+ * contato novo; com `contact`, edita esse contato (mesmo `Contact` do
+ * backend, não uma cópia — por isso aparece automaticamente na busca de
+ * contatos de qualquer uma das duas telas).
  */
-export function ContactForm({ onDone }: { onDone: () => void }) {
+export function ContactForm({ contact, onDone }: { contact?: Contact; onDone: () => void }) {
   const { t } = useI18n();
+  const isEditing = !!contact;
   const phoneTypeLabels: Record<ContactPhoneType, string> = {
     whatsapp: t("crm.contacts.phoneType.whatsapp"),
     residencial: t("crm.contacts.phoneType.residencial"),
     comercial: t("crm.contacts.phoneType.comercial"),
   };
   const createContact = useCreateContact();
+  const updateContact = useUpdateContact(contact?.id ?? "");
   const origins = useContactOrigins();
-  const [form, setForm] = useState({ nome: "", email: "", origemId: "" });
-  const [phones, setPhones] = useState<PhoneRow[]>([{ numero: "", tipo: "whatsapp" }]);
+  const [form, setForm] = useState({
+    nome: contact?.nome ?? "",
+    sobrenome: contact?.sobrenome ?? "",
+    origemId: contact?.origemId ?? "",
+    observacoes: contact?.observacoes ?? "",
+  });
+  const [phones, setPhones] = useState<PhoneRow[]>(
+    contact && contact.phones.length > 0
+      ? contact.phones.map((p) => ({ numero: maskPhone(p.numero), tipo: p.tipo }))
+      : [{ numero: "", tipo: "whatsapp" }],
+  );
+  const [emails, setEmails] = useState<string[]>(
+    contact && contact.emails.length > 0 ? contact.emails.map((e) => e.email) : [""],
+  );
   const [clientError, setClientError] = useState<string | null>(null);
+  const saving = isEditing ? updateContact : createContact;
 
   function updatePhone(index: number, patch: Partial<PhoneRow>) {
     setPhones((prev) => prev.map((p, i) => (i === index ? { ...p, ...patch } : p)));
@@ -46,6 +72,18 @@ export function ContactForm({ onDone }: { onDone: () => void }) {
     setPhones((prev) => prev.filter((_, i) => i !== index));
   }
 
+  function updateEmail(index: number, value: string) {
+    setEmails((prev) => prev.map((e, i) => (i === index ? value : e)));
+  }
+
+  function addEmail() {
+    setEmails((prev) => [...prev, ""]);
+  }
+
+  function removeEmail(index: number) {
+    setEmails((prev) => prev.filter((_, i) => i !== index));
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setClientError(null);
@@ -55,16 +93,28 @@ export function ContactForm({ onDone }: { onDone: () => void }) {
       return;
     }
     const validPhones = phones.filter((p) => p.numero.trim());
+    const validEmails = emails.map((e) => e.trim()).filter(Boolean);
 
     try {
-      await createContact.mutateAsync({
+      const payload = {
         nome: form.nome,
-        ...(form.email ? { email: form.email } : {}),
+        ...(form.sobrenome ? { sobrenome: form.sobrenome } : {}),
         ...(form.origemId ? { origemId: form.origemId } : {}),
-        ...(validPhones.length > 0 ? { phones: validPhones.map((p, i) => ({ ...p, principal: i === 0 })) } : {}),
-      });
-      setForm({ nome: "", email: "", origemId: "" });
-      setPhones([{ numero: "", tipo: "whatsapp" }]);
+        ...(form.observacoes ? { observacoes: form.observacoes } : {}),
+        // Em edição, sempre manda a lista (mesmo vazia) — permite remover todos os telefones/e-mails. Na criação, só manda se houver algum preenchido.
+        ...(isEditing || validPhones.length > 0
+          ? { phones: validPhones.map((p, i) => ({ numero: p.numero.replace(/\D/g, ""), tipo: p.tipo, principal: i === 0 })) }
+          : {}),
+        ...(isEditing || validEmails.length > 0 ? { emails: validEmails.map((email, i) => ({ email, principal: i === 0 })) } : {}),
+      };
+      if (isEditing) {
+        await updateContact.mutateAsync(payload);
+      } else {
+        await createContact.mutateAsync(payload);
+        setForm({ nome: "", sobrenome: "", origemId: "", observacoes: "" });
+        setPhones([{ numero: "", tipo: "whatsapp" }]);
+        setEmails([""]);
+      }
       onDone();
     } catch {
       // erro exibido abaixo
@@ -74,12 +124,16 @@ export function ContactForm({ onDone }: { onDone: () => void }) {
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4">
       {clientError && <Alert tone="error">{clientError}</Alert>}
-      {!clientError && createContact.error && (
-        <Alert tone="error">{createContact.error instanceof ApiError ? createContact.error.message : t("crm.contacts.errorGeneric")}</Alert>
+      {!clientError && saving.error && (
+        <Alert tone="error">{saving.error instanceof ApiError ? saving.error.message : t("crm.contacts.errorGeneric")}</Alert>
       )}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label={t("crm.contacts.name")} required value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
-        <Field label={t("crm.contacts.email")} type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+        <Field
+          label={t("crm.contacts.surname")}
+          value={form.sobrenome}
+          onChange={(e) => setForm({ ...form, sobrenome: e.target.value })}
+        />
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-ink">{t("crm.contacts.origin")}</label>
           <select
@@ -98,6 +152,29 @@ export function ContactForm({ onDone }: { onDone: () => void }) {
       </div>
 
       <div className="flex flex-col gap-2">
+        <label className="text-sm font-medium text-ink">{t("crm.contacts.emails")}</label>
+        {emails.map((email, index) => (
+          <div key={index} className="flex items-center gap-2">
+            <input
+              type="email"
+              placeholder={t("crm.contacts.emailPlaceholder")}
+              value={email}
+              onChange={(e) => updateEmail(index, e.target.value)}
+              className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-sm"
+            />
+            {emails.length > 1 && (
+              <button type="button" onClick={() => removeEmail(index)} className="text-sm text-ink-faint hover:text-red-600">
+                {t("common.remove")}
+              </button>
+            )}
+          </div>
+        ))}
+        <Button type="button" variant="secondary" className="w-fit" onClick={addEmail}>
+          {t("crm.contacts.addEmail")}
+        </Button>
+      </div>
+
+      <div className="flex flex-col gap-2">
         <label className="text-sm font-medium text-ink">{t("crm.contacts.phones")}</label>
         {phones.map((phone, index) => (
           <div key={index} className="flex items-center gap-2">
@@ -105,7 +182,7 @@ export function ContactForm({ onDone }: { onDone: () => void }) {
               type="text"
               placeholder={t("crm.contacts.phoneNumber")}
               value={phone.numero}
-              onChange={(e) => updatePhone(index, { numero: e.target.value })}
+              onChange={(e) => updatePhone(index, { numero: maskPhone(e.target.value) })}
               className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-sm"
             />
             <select
@@ -131,9 +208,15 @@ export function ContactForm({ onDone }: { onDone: () => void }) {
         </Button>
       </div>
 
+      <Field
+        label={t("crm.contacts.notes")}
+        value={form.observacoes}
+        onChange={(e) => setForm({ ...form, observacoes: e.target.value })}
+      />
+
       <div>
-        <Button type="submit" loading={createContact.isPending}>
-          {t("crm.contacts.saveContact")}
+        <Button type="submit" loading={saving.isPending}>
+          {isEditing ? t("common.save") : t("crm.contacts.saveContact")}
         </Button>
       </div>
     </form>

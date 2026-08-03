@@ -7,6 +7,12 @@ export const contactPhoneSchema = z.object({
   principal: z.boolean().optional(),
 });
 
+/** Um e-mail do contato — mesmo padrão de contactPhoneSchema. */
+export const contactEmailSchema = z.object({
+  email: z.string().email("E-mail inválido."),
+  principal: z.boolean().optional(),
+});
+
 /** Espelha `apps/api/src/crm/contacts/dto/create-contact.dto.ts`. */
 export const createContactSchema = z.object({
   nome: z.string().trim().min(1, "Informe o nome."),
@@ -17,6 +23,7 @@ export const createContactSchema = z.object({
   telefone: z.string().trim().optional(),
   whatsapp: z.string().trim().optional(),
   email: z.string().email("E-mail inválido.").optional().or(z.literal("")),
+  emails: z.array(contactEmailSchema).optional(),
   origem: z.string().trim().optional(),
   origemId: z.string().uuid().optional(),
   phones: z.array(contactPhoneSchema).optional(),

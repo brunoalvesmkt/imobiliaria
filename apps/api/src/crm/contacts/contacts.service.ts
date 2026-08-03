@@ -1,9 +1,9 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import ExcelJS from "exceljs";
 import { Prisma } from "@chatbot-saas/database";
-import type { Contact, ContactOrigin, ContactPhone } from "@chatbot-saas/database";
+import type { Contact, ContactOrigin, ContactPhone, ContactEmail } from "@chatbot-saas/database";
 
-type ContactWithRelations = Contact & { phones: ContactPhone[]; origemRef: ContactOrigin | null };
+type ContactWithRelations = Contact & { phones: ContactPhone[]; emails: ContactEmail[]; origemRef: ContactOrigin | null };
 import { PrismaService } from "../../prisma/prisma.service";
 import { TenantScopedPrismaService } from "../../prisma/tenant-scoped-prisma.service";
 import { AuditService } from "../../common/audit/audit.service";
@@ -13,6 +13,7 @@ import type { CreateContactDto } from "./dto/create-contact.dto";
 import type { UpdateContactDto } from "./dto/update-contact.dto";
 import type { BlockContactDto } from "./dto/block-contact.dto";
 import type { ContactPhoneDto } from "./dto/contact-phone.dto";
+import type { ContactEmailDto } from "./dto/contact-email.dto";
 
 /** Parser simples de linha CSV (RFC4180: campos entre aspas podem conter vírgula/quebra de linha/aspas duplicadas escapadas). */
 function parseCsvLine(line: string): string[] {
@@ -94,12 +95,13 @@ export class ContactsService {
         { whatsapp: { contains: search } },
         { telefone: { contains: search } },
         { phones: { some: { numero: { contains: search } } } },
+        { emails: { some: { email: { contains: search, mode: "insensitive" } } } },
       ];
     }
     const contacts = await this.tenantPrisma.contact.findMany({
       where,
       orderBy: { createdAt: "desc" },
-      include: { phones: true, origemRef: true },
+      include: { phones: true, emails: true, origemRef: true },
     });
     if (await this.hasSensitiveAccess(roleId)) {
       return contacts;
@@ -115,7 +117,7 @@ export class ContactsService {
     const tenantId = requireCurrentTenantId();
     const contact = await this.prisma.contact.findFirst({
       where: { id, tenantId, deletedAt: null },
-      include: { phones: true, origemRef: true },
+      include: { phones: true, emails: true, origemRef: true },
     });
     if (!contact) {
       throw new NotFoundException("Contato não encontrado.");
@@ -169,6 +171,13 @@ export class ContactsService {
     };
   }
 
+  /** `email` continua sendo o e-mail "principal", derivado de `emails` — mesmo raciocínio de `legacyPhonesFromList`. */
+  private legacyEmailFromList(emails: ContactEmailDto[] | undefined): { email?: string | null } {
+    if (!emails) return {};
+    const principal = emails.find((e) => e.principal) ?? emails[0];
+    return { email: principal?.email ?? null };
+  }
+
   async create(dto: CreateContactDto, actorId: string) {
     const duplicate = await this.findDuplicate(dto);
     if (duplicate) {
@@ -179,6 +188,7 @@ export class ContactsService {
     }
 
     const legacyPhones = this.legacyPhonesFromList(dto.phones);
+    const legacyEmail = this.legacyEmailFromList(dto.emails);
     const contact = await this.tenantPrisma.contact.create({
       data: {
         nome: dto.nome,
@@ -188,7 +198,7 @@ export class ContactsService {
         razaoSocial: dto.razaoSocial ?? null,
         telefone: legacyPhones.telefone ?? dto.telefone ?? null,
         whatsapp: legacyPhones.whatsapp ?? dto.whatsapp ?? null,
-        email: dto.email ?? null,
+        email: legacyEmail.email ?? dto.email ?? null,
         origem: dto.origem ?? null,
         origemId: dto.origemId ?? null,
         campanha: dto.campanha ?? null,
@@ -199,6 +209,7 @@ export class ContactsService {
         tags: dto.tags ?? [],
         ...(dto.customFields !== undefined ? { customFields: dto.customFields as Prisma.InputJsonValue } : {}),
         ...(dto.phones ? { phones: { create: dto.phones.map((p) => ({ numero: p.numero, tipo: p.tipo, principal: p.principal ?? false })) } } : {}),
+        ...(dto.emails ? { emails: { create: dto.emails.map((e) => ({ email: e.email, principal: e.principal ?? false })) } } : {}),
       },
     });
 
@@ -222,7 +233,7 @@ export class ContactsService {
 
   async update(id: string, dto: UpdateContactDto, actorId: string) {
     const before = await this.get(id);
-    const { phones, ...rest } = dto;
+    const { phones, emails, ...rest } = dto;
 
     const data: Prisma.ContactUncheckedUpdateInput = {};
     for (const key of Object.keys(rest) as Array<keyof typeof rest>) {
@@ -244,6 +255,15 @@ export class ContactsService {
       }
     }
 
+    if (emails !== undefined) {
+      const legacyEmail = this.legacyEmailFromList(emails);
+      if (legacyEmail.email !== undefined) data.email = legacyEmail.email;
+      await this.prisma.contactEmail.deleteMany({ where: { contactId: id } });
+      if (emails.length > 0) {
+        data.emails = { create: emails.map((e) => ({ email: e.email, principal: e.principal ?? false })) };
+      }
+    }
+
     const updated = await this.tenantPrisma.contact.update({ where: { id }, data });
 
     await this.audit.record({
@@ -259,9 +279,47 @@ export class ContactsService {
     return updated;
   }
 
-  async remove(id: string, actorId: string) {
+  /** Inativar (reversível) — marca o cadastro como inativo, sem apagar nada nem exigir permissão de administrador. */
+  async deactivate(id: string, actorId: string) {
     await this.get(id);
-    await this.tenantPrisma.contact.update({ where: { id }, data: { deletedAt: new Date() } });
+    const updated = await this.tenantPrisma.contact.update({ where: { id }, data: { ativo: false } });
+
+    await this.audit.record({ actorId, actorType: "tenant_user", action: "contact.deactivate", entity: "Contact", entityId: id });
+
+    return updated;
+  }
+
+  async reactivate(id: string, actorId: string) {
+    await this.get(id);
+    const updated = await this.tenantPrisma.contact.update({ where: { id }, data: { ativo: true } });
+
+    await this.audit.record({ actorId, actorType: "tenant_user", action: "contact.reactivate", entity: "Contact", entityId: id });
+
+    return updated;
+  }
+
+  /**
+   * Exclusão de verdade (irreversível) — só permitida quando o cadastro não
+   * tem nenhuma movimentação (oportunidades, tarefas ou conversas); só o
+   * papel de administrador chega a este botão no frontend, mas o backend
+   * também garante a checagem, independente de quem chamar o endpoint.
+   */
+  async remove(id: string, actorId: string) {
+    const tenantId = requireCurrentTenantId();
+    await this.get(id);
+
+    const [opportunitiesCount, tasksCount, conversationsCount] = await Promise.all([
+      this.prisma.opportunity.count({ where: { tenantId, contactId: id } }),
+      this.prisma.crmTask.count({ where: { tenantId, contactId: id } }),
+      this.prisma.conversation.count({ where: { tenantId, contactId: id } }),
+    ]);
+    if (opportunitiesCount > 0 || tasksCount > 0 || conversationsCount > 0) {
+      throw new ConflictException(
+        "Este contato tem movimentação (oportunidades, tarefas ou conversas) e não pode ser excluído — apenas cadastros sem histórico podem ser removidos.",
+      );
+    }
+
+    await this.prisma.contact.delete({ where: { id, tenantId } });
 
     await this.audit.record({
       actorId,
@@ -291,6 +349,7 @@ export class ContactsService {
         tasks: true,
         conversations: { include: { messages: true } },
         phones: true,
+        emails: true,
       },
     });
     if (!contact) {
@@ -315,6 +374,7 @@ export class ContactsService {
     }
 
     await this.prisma.contactPhone.deleteMany({ where: { contactId: id } });
+    await this.prisma.contactEmail.deleteMany({ where: { contactId: id } });
 
     const anonymized = await this.tenantPrisma.contact.update({
       where: { id },
@@ -418,6 +478,8 @@ export class ContactsService {
     const mergedTags = Array.from(new Set([...primary.tags, ...duplicate.tags]));
     const existingPhoneNumbers = new Set(primary.phones.map((p) => p.numero));
     const phonesToAdopt = duplicate.phones.filter((p) => !existingPhoneNumbers.has(p.numero));
+    const existingEmails = new Set(primary.emails.map((e) => e.email));
+    const emailsToAdopt = duplicate.emails.filter((e) => !existingEmails.has(e.email));
     const duplicateFields = (duplicate.customFields ?? {}) as Record<string, unknown>;
     const primaryFields = (primary.customFields ?? {}) as Record<string, unknown>;
     const mergedCustomFields = { ...duplicateFields, ...primaryFields }; // principal tem prioridade em conflito
@@ -430,6 +492,14 @@ export class ContactsService {
         ? [
             this.prisma.contactPhone.updateMany({
               where: { id: { in: phonesToAdopt.map((p) => p.id) } },
+              data: { contactId: primaryId, principal: false },
+            }),
+          ]
+        : []),
+      ...(emailsToAdopt.length > 0
+        ? [
+            this.prisma.contactEmail.updateMany({
+              where: { id: { in: emailsToAdopt.map((e) => e.id) } },
               data: { contactId: primaryId, principal: false },
             }),
           ]

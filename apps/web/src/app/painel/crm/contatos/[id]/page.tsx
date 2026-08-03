@@ -1,18 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   useContact,
-  useUpdateContact,
+  useContacts,
   useAnonymizeContact,
   useBlockContact,
   useUnblockContact,
+  useDeactivateContact,
+  useReactivateContact,
+  useDeleteContact,
   useMergeContacts,
   useCustomFieldDefinitions,
 } from "@/lib/crm";
 import { LeadScoreBadge } from "@/components/crm/lead-score-badge";
-import { apiUrl } from "@/lib/api-client";
+import { ContactForm } from "@/components/crm/contact-form";
+import { apiUrl, ApiError } from "@/lib/api-client";
+import { useIsAdmin } from "@/lib/auth";
 import { Field } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
@@ -21,12 +26,16 @@ import { useI18n } from "@/lib/i18n";
 
 export default function ContactDetailPage() {
   const { t } = useI18n();
+  const router = useRouter();
   const params = useParams<{ id: string }>();
+  const isAdmin = useIsAdmin();
   const contact = useContact(params.id);
-  const updateContact = useUpdateContact(params.id);
   const anonymizeContact = useAnonymizeContact(params.id);
   const blockContact = useBlockContact(params.id);
   const unblockContact = useUnblockContact(params.id);
+  const deactivateContact = useDeactivateContact(params.id);
+  const reactivateContact = useReactivateContact(params.id);
+  const deleteContact = useDeleteContact();
   const mergeContacts = useMergeContacts(params.id);
   const customFieldDefinitions = useCustomFieldDefinitions();
   const [editing, setEditing] = useState(false);
@@ -34,31 +43,17 @@ export default function ContactDetailPage() {
   const [blockReason, setBlockReason] = useState("");
   const [showBlockForm, setShowBlockForm] = useState(false);
   const [mergeDuplicateId, setMergeDuplicateId] = useState("");
+  const [mergeSearch, setMergeSearch] = useState("");
+  const [mergeSelected, setMergeSelected] = useState<{ id: string; nome: string } | null>(null);
+  const mergeSearchResults = useContacts(mergeSearch);
   const [showMergeForm, setShowMergeForm] = useState(false);
-  const [form, setForm] = useState({ nome: "", sobrenome: "", telefone: "", whatsapp: "", email: "", observacoes: "" });
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   if (contact.isLoading) return <p className="text-sm text-ink-faint">{t("common.loading")}</p>;
   if (contact.isError || !contact.data) return <Alert tone="error">{t("crm.contacts.notFound")}</Alert>;
 
   const data = contact.data;
-
-  function startEditing() {
-    setForm({
-      nome: data.nome,
-      sobrenome: data.sobrenome ?? "",
-      telefone: data.telefone ?? "",
-      whatsapp: data.whatsapp ?? "",
-      email: data.email ?? "",
-      observacoes: data.observacoes ?? "",
-    });
-    setEditing(true);
-  }
-
-  async function onSave(e: React.FormEvent) {
-    e.preventDefault();
-    await updateContact.mutateAsync(form);
-    setEditing(false);
-  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -89,43 +84,53 @@ export default function ContactDetailPage() {
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-ink">{t("crm.contacts.dataSection")}</h2>
           {!editing && (
-            <Button variant="secondary" onClick={startEditing}>
+            <Button variant="secondary" onClick={() => setEditing(true)}>
               {t("common.edit")}
             </Button>
           )}
         </div>
 
         {editing ? (
-          <form onSubmit={onSave} className="flex flex-col gap-3">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label={t("crm.contacts.name")} required value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
-              <Field label={t("crm.contacts.surname")} value={form.sobrenome} onChange={(e) => setForm({ ...form, sobrenome: e.target.value })} />
-              <Field label={t("crm.contacts.whatsapp")} value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} />
-              <Field label={t("crm.contacts.phone")} value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} />
-              <Field label={t("crm.contacts.email")} type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-            </div>
-            <Field label={t("crm.contacts.notes")} value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
-            <div className="flex gap-2">
-              <Button type="submit" loading={updateContact.isPending}>
-                {t("common.save")}
-              </Button>
-              <Button type="button" variant="ghost" onClick={() => setEditing(false)}>
-                {t("common.cancel")}
-              </Button>
-            </div>
-          </form>
+          <ContactForm contact={data} onDone={() => setEditing(false)} />
         ) : (
           <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
-            <PhoneInfo label={t("crm.contacts.whatsapp")} value={data.whatsapp} />
-            <PhoneInfo label={t("crm.contacts.phone")} value={data.telefone} />
-            <Info label={t("crm.contacts.email")} value={data.email} />
-            <Info label={t("crm.contacts.origin")} value={data.origem} />
+            <Info label={t("crm.contacts.origin")} value={data.origemRef?.nome ?? data.origem} />
             {(data.cpf || data.cnpj) && <Info label={data.cpf ? t("crm.contacts.cpf") : t("crm.contacts.cnpj")} value={data.cpf ?? data.cnpj} />}
             {customFieldDefinitions.data
               ?.filter((def) => def.ativo)
               .map((def) => (
                 <Info key={def.id} label={def.nome} value={formatCustomFieldValue(data.customFields?.[def.chave])} />
               ))}
+            <div className="col-span-2">
+              <dt className="text-xs font-medium uppercase tracking-wide text-ink-faint">{t("crm.contacts.emails")}</dt>
+              {data.emails.length > 0 ? (
+                <ul className="mt-1 flex flex-col gap-1.5">
+                  {data.emails.map((email) => (
+                    <li key={email.id} className="text-sm text-ink">
+                      {email.email}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <dd className="mt-0.5 text-ink">—</dd>
+              )}
+            </div>
+            <div className="col-span-2">
+              <dt className="text-xs font-medium uppercase tracking-wide text-ink-faint">{t("crm.contacts.phones")}</dt>
+              {data.phones.length > 0 ? (
+                <ul className="mt-1 flex flex-col gap-1.5">
+                  {data.phones.map((phone) => (
+                    <li key={phone.id} className="flex items-center gap-1.5 text-sm text-ink">
+                      <span className="text-xs uppercase tracking-wide text-ink-faint">{phoneTypeLabel(t, phone.tipo)}:</span>
+                      {formatPhone(phone.numero)}
+                      <WhatsAppLink number={phone.numero} label={t("crm.contacts.openWhatsapp")} />
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <dd className="mt-0.5 text-ink">—</dd>
+              )}
+            </div>
             {data.observacoes && (
               <div className="col-span-2">
                 <dt className="text-xs font-medium uppercase tracking-wide text-ink-faint">{t("crm.contacts.notes")}</dt>
@@ -220,17 +225,114 @@ export default function ContactDetailPage() {
       </section>
 
       <section className="rounded-lg border border-line bg-surface p-5">
+        <h2 className="mb-1 text-sm font-semibold text-ink">{t("crm.contacts.status.title")}</h2>
+        <p className="mb-4 text-sm text-ink-dim">{t("crm.contacts.status.subtitle")}</p>
+
+        <div className="flex flex-wrap items-center gap-3">
+          {data.ativo ? (
+            <Button variant="secondary" loading={deactivateContact.isPending} onClick={() => deactivateContact.mutate()}>
+              {t("crm.contacts.status.deactivate")}
+            </Button>
+          ) : (
+            <>
+              <span className="rounded-full bg-surface-muted px-2 py-0.5 text-xs font-medium text-ink-faint">
+                {t("crm.contacts.status.inactiveBadge")}
+              </span>
+              <Button variant="secondary" loading={reactivateContact.isPending} onClick={() => reactivateContact.mutate()}>
+                {t("crm.contacts.status.reactivate")}
+              </Button>
+            </>
+          )}
+        </div>
+
+        {isAdmin && (
+          <div className="mt-4 border-t border-line pt-4">
+            <p className="mb-2 text-sm text-ink-dim">{t("crm.contacts.status.deleteHint")}</p>
+            {deleteError && <Alert tone="error">{deleteError}</Alert>}
+            {confirmingDelete ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-ink-dim">{t("crm.contacts.status.deleteConfirmText")}</span>
+                <Button
+                  variant="danger"
+                  loading={deleteContact.isPending}
+                  onClick={async () => {
+                    setDeleteError(null);
+                    try {
+                      await deleteContact.mutateAsync(params.id);
+                      router.push("/painel/crm/contatos");
+                    } catch (err) {
+                      setDeleteError(err instanceof ApiError ? err.message : t("crm.contacts.status.deleteErrorGeneric"));
+                      setConfirmingDelete(false);
+                    }
+                  }}
+                >
+                  {t("crm.contacts.status.deleteConfirmYes")}
+                </Button>
+                <Button variant="ghost" onClick={() => setConfirmingDelete(false)}>
+                  {t("common.cancel")}
+                </Button>
+              </div>
+            ) : (
+              <Button variant="danger" onClick={() => setConfirmingDelete(true)}>
+                {t("crm.contacts.status.delete")}
+              </Button>
+            )}
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-line bg-surface p-5">
         <h2 className="mb-1 text-sm font-semibold text-ink">{t("crm.contacts.merge.title")}</h2>
         <p className="mb-4 text-sm text-ink-dim">{t("crm.contacts.merge.subtitle")}</p>
 
         {showMergeForm ? (
           <div className="flex flex-col gap-2">
-            <Field
-              label={t("crm.contacts.merge.duplicateIdLabel")}
-              value={mergeDuplicateId}
-              onChange={(e) => setMergeDuplicateId(e.target.value)}
-              placeholder={t("crm.contacts.merge.duplicateIdPlaceholder")}
-            />
+            <label className="text-sm font-medium text-ink">{t("crm.contacts.merge.duplicateIdLabel")}</label>
+            {mergeSelected ? (
+              <div className="flex items-center justify-between rounded-md border border-line bg-surface px-3 py-2 text-sm">
+                <span className="text-ink">{mergeSelected.nome}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMergeSelected(null);
+                    setMergeDuplicateId("");
+                    setMergeSearch("");
+                  }}
+                  className="text-xs font-medium text-ink-faint hover:text-red-600"
+                >
+                  {t("common.remove")}
+                </button>
+              </div>
+            ) : (
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder={t("crm.contacts.merge.duplicatePlaceholder")}
+                  value={mergeSearch}
+                  onChange={(e) => setMergeSearch(e.target.value)}
+                  className="w-full rounded-md border border-line bg-surface px-3 py-2 text-sm"
+                />
+                {mergeSearch.length > 0 && (mergeSearchResults.data?.length ?? 0) > 0 && (
+                  <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-md border border-line bg-surface shadow-lg">
+                    {mergeSearchResults
+                      .data!.filter((c) => c.id !== params.id)
+                      .map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => {
+                            setMergeSelected({ id: c.id, nome: c.nome });
+                            setMergeDuplicateId(c.id);
+                          }}
+                          className="block w-full px-3 py-2 text-left text-sm text-ink hover:bg-surface-alt"
+                        >
+                          {c.nome} {c.whatsapp ? `· ${c.whatsapp}` : c.telefone ? `· ${c.telefone}` : c.email ? `· ${c.email}` : ""}
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </div>
+            )}
             {mergeContacts.error && <Alert tone="error">{t("crm.contacts.merge.error")}</Alert>}
             <div className="flex gap-2">
               <Button
@@ -241,11 +343,21 @@ export default function ContactDetailPage() {
                   await mergeContacts.mutateAsync(mergeDuplicateId);
                   setShowMergeForm(false);
                   setMergeDuplicateId("");
+                  setMergeSelected(null);
+                  setMergeSearch("");
                 }}
               >
                 {t("crm.contacts.merge.confirm")}
               </Button>
-              <Button variant="ghost" onClick={() => setShowMergeForm(false)}>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowMergeForm(false);
+                  setMergeSelected(null);
+                  setMergeDuplicateId("");
+                  setMergeSearch("");
+                }}
+              >
                 {t("common.cancel")}
               </Button>
             </div>
@@ -294,27 +406,19 @@ function whatsAppUrl(rawPhone: string): string {
   return `https://wa.me/${withCountryCode}`;
 }
 
-function PhoneInfo({ label, value }: { label: string; value: string | null }) {
-  const { t } = useI18n();
+function WhatsAppLink({ number, label }: { number: string; label: string }) {
   return (
-    <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-ink-faint">{label}</dt>
-      <dd className="mt-0.5 flex items-center gap-1.5 text-ink">
-        {formatPhone(value) ?? "—"}
-        {value && (
-          <a
-            href={whatsAppUrl(value)}
-            target="_blank"
-            rel="noreferrer"
-            title={t("crm.contacts.openWhatsapp")}
-            className="text-brand-600 hover:text-brand-700"
-          >
-            <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden="true">
-              <path d="M12.04 2c-5.52 0-10 4.48-10 10 0 1.77.46 3.45 1.28 4.9L2 22l5.25-1.28A9.96 9.96 0 0012.04 22c5.52 0 10-4.48 10-10s-4.48-10-10-10zm5.86 14.3c-.25.7-1.25 1.29-2.03 1.45-.55.11-1.27.2-3.68-.79-2.94-1.22-4.84-4.13-4.99-4.32-.14-.19-1.2-1.6-1.2-3.06s.75-2.16 1.02-2.46c.25-.28.55-.35.73-.35.18 0 .37 0 .53.01.17.01.4-.06.62.48.25.6.85 2.06.92 2.21.07.15.12.32.02.51-.09.19-.14.31-.28.48-.14.16-.29.36-.42.48-.14.13-.28.28-.12.55.16.28.72 1.19 1.55 1.93 1.06.95 1.96 1.24 2.24 1.38.28.14.44.12.6-.07.16-.19.68-.79.86-1.06.18-.28.36-.23.6-.14.25.09 1.6.75 1.87.89.28.14.46.21.53.32.07.12.07.68-.18 1.37z" />
-            </svg>
-          </a>
-        )}
-      </dd>
-    </div>
+    <a href={whatsAppUrl(number)} target="_blank" rel="noreferrer" title={label} className="text-brand-600 hover:text-brand-700">
+      <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+        <path d="M12.04 2c-5.52 0-10 4.48-10 10 0 1.77.46 3.45 1.28 4.9L2 22l5.25-1.28A9.96 9.96 0 0012.04 22c5.52 0 10-4.48 10-10s-4.48-10-10-10zm5.86 14.3c-.25.7-1.25 1.29-2.03 1.45-.55.11-1.27.2-3.68-.79-2.94-1.22-4.84-4.13-4.99-4.32-.14-.19-1.2-1.6-1.2-3.06s.75-2.16 1.02-2.46c.25-.28.55-.35.73-.35.18 0 .37 0 .53.01.17.01.4-.06.62.48.25.6.85 2.06.92 2.21.07.15.12.32.02.51-.09.19-.14.31-.28.48-.14.16-.29.36-.42.48-.14.13-.28.28-.12.55.16.28.72 1.19 1.55 1.93 1.06.95 1.96 1.24 2.24 1.38.28.14.44.12.6-.07.16-.19.68-.79.86-1.06.18-.28.36-.23.6-.14.25.09 1.6.75 1.87.89.28.14.46.21.53.32.07.12.07.68-.18 1.37z" />
+      </svg>
+    </a>
   );
+}
+
+function phoneTypeLabel(t: ReturnType<typeof useI18n>["t"], tipo: string): string {
+  if (tipo === "whatsapp") return t("crm.contacts.phoneType.whatsapp");
+  if (tipo === "residencial") return t("crm.contacts.phoneType.residencial");
+  if (tipo === "comercial") return t("crm.contacts.phoneType.comercial");
+  return tipo;
 }

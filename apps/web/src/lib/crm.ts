@@ -10,6 +10,12 @@ export interface ContactPhone {
   principal: boolean;
 }
 
+export interface ContactEmail {
+  id: string;
+  email: string;
+  principal: boolean;
+}
+
 export interface Contact {
   id: string;
   nome: string;
@@ -24,6 +30,7 @@ export interface Contact {
   origemId: string | null;
   origemRef: { id: string; nome: string } | null;
   phones: ContactPhone[];
+  emails: ContactEmail[];
   observacoes: string | null;
   tags: string[];
   customFields: Record<string, unknown> | null;
@@ -33,6 +40,7 @@ export interface Contact {
   bloqueado: boolean;
   bloqueadoEm: string | null;
   bloqueadoMotivo: string | null;
+  ativo: boolean;
 }
 
 export interface ContactOrigin {
@@ -155,6 +163,7 @@ export interface CreateContactInput {
   origem?: string;
   origemId?: string;
   phones?: { numero: string; tipo: ContactPhoneType; principal?: boolean }[];
+  emails?: { email: string; principal?: boolean }[];
   observacoes?: string;
 }
 
@@ -226,6 +235,36 @@ export function useUnblockContact(id: string) {
       queryClient.invalidateQueries({ queryKey: ["crm", "contacts"] });
       queryClient.setQueryData(["crm", "contacts", id], updated);
     },
+  });
+}
+
+export function useDeactivateContact(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiPost<Contact>(`/crm/contacts/${id}/deactivate`),
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: ["crm", "contacts"] });
+      queryClient.setQueryData(["crm", "contacts", id], updated);
+    },
+  });
+}
+
+export function useReactivateContact(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiPost<Contact>(`/crm/contacts/${id}/reactivate`),
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: ["crm", "contacts"] });
+      queryClient.setQueryData(["crm", "contacts", id], updated);
+    },
+  });
+}
+
+export function useDeleteContact() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiDelete<{ status: "ok" }>(`/crm/contacts/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["crm", "contacts"] }),
   });
 }
 

@@ -57,6 +57,18 @@ export class ContactsController {
     return this.service.remove(id, user.id);
   }
 
+  @Post(":id/deactivate")
+  @RequirePermission("crm", "edit")
+  deactivate(@Param("id") id: string, @CurrentUser() user: AuthenticatedRequestUser) {
+    return this.service.deactivate(id, user.id);
+  }
+
+  @Post(":id/reactivate")
+  @RequirePermission("crm", "edit")
+  reactivate(@Param("id") id: string, @CurrentUser() user: AuthenticatedRequestUser) {
+    return this.service.reactivate(id, user.id);
+  }
+
   @Get(":id/lgpd/export")
   @RequirePermission("crm", "administer")
   exportPersonalData(@Param("id") id: string) {

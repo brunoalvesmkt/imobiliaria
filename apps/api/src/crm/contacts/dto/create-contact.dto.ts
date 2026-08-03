@@ -1,6 +1,7 @@
 import { Type } from "class-transformer";
 import { IsArray, IsEmail, IsObject, IsOptional, IsString, IsUUID, MinLength, ValidateNested } from "class-validator";
 import { ContactPhoneDto } from "./contact-phone.dto";
+import { ContactEmailDto } from "./contact-email.dto";
 
 export class CreateContactDto {
   @IsString()
@@ -34,6 +35,13 @@ export class CreateContactDto {
   @IsOptional()
   @IsEmail()
   email?: string;
+
+  /** Múltiplos e-mails — quando informado, substitui `email` como fonte de verdade. */
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ContactEmailDto)
+  emails?: ContactEmailDto[];
 
   @IsOptional()
   @IsString()

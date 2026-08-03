@@ -457,6 +457,10 @@ model Contact {
   bloqueadoEm     DateTime?
   bloqueadoMotivo String?
 
+  // Inativar (distinto de excluir) — some das listagens/atribuições ativas
+  // sem apagar nada; reversível a qualquer momento.
+  ativo Boolean @default(true)
+
   // Origem como referência (documento de alterações, item 10.2) — `origem`
   // (string livre) fica preservado para não quebrar registros/relatórios
   // antigos; `origemId` é o campo novo, alimentado pela lista configurável
@@ -475,6 +479,9 @@ model Contact {
   // (`Conversation`/webhooks) nem o resto da suíte já testada. `phones` é a
   // fonte de verdade para a UI (que pode ter vários números por tipo).
   phones       ContactPhone[]
+  // Múltiplos e-mails — `email` (acima) continua sincronizado com o e-mail
+  // principal, pelo mesmo motivo de `phones`/`telefone`/`whatsapp`.
+  emails       ContactEmail[]
 
   @@index([tenantId, deletedAt])
   @@index([tenantId, whatsapp])
@@ -497,6 +504,20 @@ model ContactPhone {
   @@unique([contactId, numero])
   @@index([contactId])
   @@map("contact_phones")
+}
+
+/// Múltiplos e-mails por contato — mesmo padrão de ContactPhone acima.
+model ContactEmail {
+  id        String  @id @default(uuid())
+  contactId String
+  email     String
+  principal Boolean @default(false)
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([contactId, email])
+  @@index([contactId])
+  @@map("contact_emails")
 }
 
 /// Lista de origens de contato configurável pelo tenant (documento de

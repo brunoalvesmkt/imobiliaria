@@ -14,6 +14,7 @@ export type {
   Subscription,
   Contact,
   ContactPhone,
+  ContactEmail,
   ContactOrigin,
   DeduplicationRule,
   Funnel,

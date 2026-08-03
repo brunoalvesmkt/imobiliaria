@@ -707,6 +707,9 @@ function Board({
                     >
                       <p className="font-medium text-ink">{opportunity.contact.nome}</p>
                       {opportunity.valor && <p className="text-ink-dim">{Number(opportunity.valor).toLocaleString(locale)}</p>}
+                      <p className="mt-1 text-xs text-ink-faint">
+                        {t("crm.funnel.enteredAt")} {new Date(opportunity.createdAt).toLocaleString(locale)}
+                      </p>
                       <div className="mt-2 flex items-center justify-between">
                         <div className="flex gap-1">
                           <button

@@ -13,6 +13,14 @@ interface TabularData {
 }
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
+
+/** Prisma não tem `_avg` sobre diferença entre duas colunas de data — os relatórios de tempo de ciclo do funil buscam os pares e calculam a média em memória. */
+function averageHours(durationsMs: number[]): number {
+  if (durationsMs.length === 0) return 0;
+  const totalMs = durationsMs.reduce((sum, ms) => sum + ms, 0);
+  return Math.round((totalMs / durationsMs.length / HOUR_MS) * 10) / 10;
+}
 
 @Injectable()
 export class ReportsService {
@@ -123,6 +131,13 @@ export class ReportsService {
     });
     const stageNameById = new Map(stages.map((s) => [s.id, s.nome]));
 
+    const [avgTimeInStageHours, avgTimeToLastStageHours, avgTimeToWonHours, avgTimeToLostHours] = await Promise.all([
+      this.avgTimeInStageHours(tenantId, from, to),
+      this.avgTimeToLastStageHours(tenantId, from, to),
+      this.avgTimeToWonHours(tenantId, from, to),
+      this.avgTimeToLostHours(tenantId, from, to),
+    ]);
+
     return {
       periodo: { from, to },
       contactsCreated,
@@ -138,7 +153,69 @@ export class ReportsService {
       conversionRate: opportunitiesWon + opportunitiesLost > 0 ? opportunitiesWon / (opportunitiesWon + opportunitiesLost) : 0,
       tasksPending,
       tasksOverdue,
+      avgTimeInStageHours,
+      avgTimeToLastStageHours,
+      avgTimeToWonHours,
+      avgTimeToLostHours,
     };
+  }
+
+  /** Tempo médio (em horas) que oportunidades ficam paradas numa etapa, considerando só permanências já encerradas (mudou de etapa ou fechou) dentro do período. */
+  private async avgTimeInStageHours(tenantId: string, from: Date, to: Date): Promise<number> {
+    const rows = await this.prisma.opportunityStageHistory.findMany({
+      where: { tenantId, exitedAt: { not: null, gte: from, lte: to } },
+      select: { enteredAt: true, exitedAt: true },
+    });
+    return averageHours(rows.map((r) => r.exitedAt!.getTime() - r.enteredAt.getTime()));
+  }
+
+  /** Tempo médio (em horas) da criação da oportunidade até ela chegar na última etapa do próprio funil — só considera oportunidades atualmente paradas nessa etapa. */
+  private async avgTimeToLastStageHours(tenantId: string, from: Date, to: Date): Promise<number> {
+    const funnels = await this.prisma.funnel.findMany({
+      where: { tenantId },
+      select: { id: true, stages: { orderBy: { ordem: "desc" }, take: 1, select: { id: true } } },
+    });
+    const lastStageIds = funnels.map((f) => f.stages[0]?.id).filter((id): id is string => !!id);
+    if (lastStageIds.length === 0) return 0;
+    const lastStageIdByFunnel = new Map(funnels.map((f) => [f.id, f.stages[0]?.id]));
+
+    const opportunitiesAtLastStage = await this.prisma.opportunity.findMany({
+      where: { tenantId, deletedAt: null, stageId: { in: lastStageIds } },
+      select: { id: true, funnelId: true, stageId: true, createdAt: true },
+    });
+    const qualifying = opportunitiesAtLastStage.filter((o) => lastStageIdByFunnel.get(o.funnelId) === o.stageId);
+    if (qualifying.length === 0) return 0;
+
+    const openHistory = await this.prisma.opportunityStageHistory.findMany({
+      where: { tenantId, opportunityId: { in: qualifying.map((o) => o.id) }, exitedAt: null },
+      select: { opportunityId: true, enteredAt: true },
+    });
+    const enteredAtByOpportunity = new Map(openHistory.map((h) => [h.opportunityId, h.enteredAt]));
+
+    const durations = qualifying
+      .map((o) => {
+        const enteredAt = enteredAtByOpportunity.get(o.id);
+        if (!enteredAt || enteredAt < from || enteredAt > to) return null;
+        return enteredAt.getTime() - o.createdAt.getTime();
+      })
+      .filter((ms): ms is number => ms !== null);
+    return averageHours(durations);
+  }
+
+  private async avgTimeToWonHours(tenantId: string, from: Date, to: Date): Promise<number> {
+    const rows = await this.prisma.opportunity.findMany({
+      where: { tenantId, status: "won", wonAt: { not: null, gte: from, lte: to } },
+      select: { createdAt: true, wonAt: true },
+    });
+    return averageHours(rows.map((r) => r.wonAt!.getTime() - r.createdAt.getTime()));
+  }
+
+  private async avgTimeToLostHours(tenantId: string, from: Date, to: Date): Promise<number> {
+    const rows = await this.prisma.opportunity.findMany({
+      where: { tenantId, status: "lost", lostAt: { not: null, gte: from, lte: to } },
+      select: { createdAt: true, lostAt: true },
+    });
+    return averageHours(rows.map((r) => r.lostAt!.getTime() - r.createdAt.getTime()));
   }
 
   async whatsapp(dto: DateRangeDto) {

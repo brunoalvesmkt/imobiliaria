@@ -40,6 +40,10 @@ export interface CrmReport {
   conversionRate: number;
   tasksPending: number;
   tasksOverdue: number;
+  avgTimeInStageHours: number;
+  avgTimeToLastStageHours: number;
+  avgTimeToWonHours: number;
+  avgTimeToLostHours: number;
 }
 
 export interface WhatsappReport {

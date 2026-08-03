@@ -127,6 +127,17 @@ export function ReportError() {
   return <Alert tone="error">{t("relatorios.errorGeneric")}</Alert>;
 }
 
+/** "2d 4h" / "5h" / "—" — usado nos cards de tempo médio (ex.: Relatórios > CRM). */
+export function formatHoursDuration(hours: number): string {
+  if (!hours || hours <= 0) return "—";
+  const totalHours = Math.round(hours);
+  const days = Math.floor(totalHours / 24);
+  const remainingHours = totalHours % 24;
+  if (days === 0) return `${remainingHours}h`;
+  if (remainingHours === 0) return `${days}d`;
+  return `${days}d ${remainingHours}h`;
+}
+
 export function reportStatusLabel(t: (key: DictionaryKey) => string, namespace: string, status: string): string {
   const key = `${namespace}.status.${status}` as DictionaryKey;
   const label = t(key);

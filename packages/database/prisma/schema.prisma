@@ -573,6 +573,7 @@ model FunnelStage {
 
   funnel        Funnel        @relation(fields: [funnelId], references: [id], onDelete: Cascade)
   opportunities Opportunity[]
+  stageHistory  OpportunityStageHistory[]
 
   @@index([funnelId])
   @@map("funnel_stages")
@@ -606,6 +607,10 @@ model Opportunity {
   // menor primeiro; não é alterado por mover de etapa, só por arrastar
   // dentro da mesma coluna.
   ordem              Int               @default(0)
+  // Momento em que foi marcada como ganha/perdida — usados nos relatórios de
+  // tempo médio até o fechamento (métricas novas, ver OpportunityStageHistory).
+  wonAt              DateTime?
+  lostAt             DateTime?
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
   deletedAt          DateTime?
@@ -616,11 +621,33 @@ model Opportunity {
   stage       FunnelStage @relation(fields: [stageId], references: [id], onDelete: Restrict)
   responsavel TenantUser? @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
   tasks       CrmTask[]
+  stageHistory OpportunityStageHistory[]
 
   @@index([tenantId, status])
   @@index([funnelId, stageId])
   @@index([contactId])
   @@map("opportunities")
+}
+
+// Histórico de permanência em cada etapa — uma linha por período contínuo
+// numa etapa (`exitedAt` nulo enquanto a oportunidade ainda está lá).
+// Alimentado por `create`/`moveStage`/`close` em OpportunitiesService.
+// Usado nos relatórios de tempo médio por etapa e até a última etapa.
+model OpportunityStageHistory {
+  id            String    @id @default(uuid())
+  tenantId      String
+  opportunityId String
+  stageId       String
+  enteredAt     DateTime  @default(now())
+  exitedAt      DateTime?
+
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  stage       FunnelStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([opportunityId])
+  @@index([stageId, exitedAt])
+  @@map("opportunity_stage_history")
 }
 
 model CrmTask {

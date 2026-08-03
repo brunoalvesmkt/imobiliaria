@@ -3,7 +3,7 @@
 import { useCrmReport } from "@/lib/reports";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { PeriodFilter, usePeriodFilter, StatGrid, StatCard, BreakdownTable, ReportError } from "../report-shell";
+import { PeriodFilter, usePeriodFilter, StatGrid, StatCard, BreakdownTable, ReportError, formatHoursDuration } from "../report-shell";
 
 export default function CrmReportPage() {
   const { t } = useI18n();
@@ -33,6 +33,10 @@ export default function CrmReportPage() {
             <StatCard label={t("relatorios.crm.conversionRate")} value={`${(report.data.conversionRate * 100).toFixed(0)}%`} />
             <StatCard label={t("relatorios.crm.tasksPending")} value={report.data.tasksPending} />
             <StatCard label={t("relatorios.crm.tasksOverdue")} value={report.data.tasksOverdue} />
+            <StatCard label={t("relatorios.crm.avgTimeInStage")} value={formatHoursDuration(report.data.avgTimeInStageHours)} />
+            <StatCard label={t("relatorios.crm.avgTimeToLastStage")} value={formatHoursDuration(report.data.avgTimeToLastStageHours)} />
+            <StatCard label={t("relatorios.crm.avgTimeToWon")} value={formatHoursDuration(report.data.avgTimeToWonHours)} />
+            <StatCard label={t("relatorios.crm.avgTimeToLost")} value={formatHoursDuration(report.data.avgTimeToLostHours)} />
           </StatGrid>
 
           <BreakdownTable

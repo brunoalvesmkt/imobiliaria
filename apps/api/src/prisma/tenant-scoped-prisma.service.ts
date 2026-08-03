@@ -187,6 +187,28 @@ export class TenantScopedPrismaService {
     };
   }
 
+  get opportunityStageHistory() {
+    const tenantId = requireCurrentTenantId();
+    return {
+      findMany: (
+        args: Omit<Prisma.OpportunityStageHistoryFindManyArgs, "where"> & { where?: Prisma.OpportunityStageHistoryWhereInput } = {},
+      ) => this.prisma.opportunityStageHistory.findMany({ ...args, where: { ...args.where, tenantId } }),
+
+      findFirst: (
+        args: Omit<Prisma.OpportunityStageHistoryFindFirstArgs, "where"> & { where?: Prisma.OpportunityStageHistoryWhereInput } = {},
+      ) => this.prisma.opportunityStageHistory.findFirst({ ...args, where: { ...args.where, tenantId } }),
+
+      create: (
+        args: Omit<Prisma.OpportunityStageHistoryCreateArgs, "data"> & {
+          data: Omit<Prisma.OpportunityStageHistoryUncheckedCreateInput, "tenantId">;
+        },
+      ) => this.prisma.opportunityStageHistory.create({ ...args, data: { ...args.data, tenantId } }),
+
+      update: (args: { where: { id: string }; data: Prisma.OpportunityStageHistoryUncheckedUpdateInput }) =>
+        this.prisma.opportunityStageHistory.update({ where: { id: args.where.id, tenantId }, data: args.data }),
+    };
+  }
+
   get deduplicationRule() {
     const tenantId = requireCurrentTenantId();
     return {

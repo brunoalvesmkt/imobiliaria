@@ -76,6 +76,10 @@ export class OpportunitiesService {
       },
     });
 
+    await this.tenantPrisma.opportunityStageHistory.create({
+      data: { opportunityId: opportunity.id, stageId: opportunity.stageId },
+    });
+
     await this.audit.record({
       actorId,
       actorType: "tenant_user",
@@ -131,6 +135,9 @@ export class OpportunitiesService {
       where: { id },
       data: { stageId: dto.stageId, probabilidade: stage.probabilidade },
     });
+
+    await this.closeOpenStageHistory(id);
+    await this.tenantPrisma.opportunityStageHistory.create({ data: { opportunityId: id, stageId: dto.stageId } });
 
     await this.audit.record({
       actorId,
@@ -195,12 +202,14 @@ export class OpportunitiesService {
       throw new BadRequestException("Oportunidade já está encerrada.");
     }
 
+    const now = new Date();
     const data: Prisma.OpportunityUncheckedUpdateInput =
       dto.resultado === "won"
-        ? { status: "won", motivoGanho: dto.motivo ?? null }
-        : { status: "lost", motivoPerda: dto.motivo ?? null };
+        ? { status: "won", motivoGanho: dto.motivo ?? null, wonAt: now }
+        : { status: "lost", motivoPerda: dto.motivo ?? null, lostAt: now };
 
     const updated = await this.tenantPrisma.opportunity.update({ where: { id }, data });
+    await this.closeOpenStageHistory(id, now);
 
     await this.audit.record({
       actorId,
@@ -222,5 +231,16 @@ export class OpportunitiesService {
     await this.followUps.cancelByContact(opportunity.contactId, dto.resultado === "won" ? "opportunity_won" : "opportunity_lost");
 
     return updated;
+  }
+
+  /** Fecha a linha de histórico "aberta" (sem exitedAt) da etapa atual — chamado ao mudar de etapa ou encerrar. */
+  private async closeOpenStageHistory(opportunityId: string, at: Date = new Date()): Promise<void> {
+    const open = await this.tenantPrisma.opportunityStageHistory.findFirst({
+      where: { opportunityId, exitedAt: null },
+      orderBy: { enteredAt: "desc" },
+    });
+    if (open) {
+      await this.tenantPrisma.opportunityStageHistory.update({ where: { id: open.id }, data: { exitedAt: at } });
+    }
   }
 }

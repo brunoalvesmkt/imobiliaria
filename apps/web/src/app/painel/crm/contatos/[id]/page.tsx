@@ -116,8 +116,8 @@ export default function ContactDetailPage() {
           </form>
         ) : (
           <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
-            <Info label={t("crm.contacts.whatsapp")} value={formatPhone(data.whatsapp)} />
-            <Info label={t("crm.contacts.phone")} value={formatPhone(data.telefone)} />
+            <PhoneInfo label={t("crm.contacts.whatsapp")} value={data.whatsapp} />
+            <PhoneInfo label={t("crm.contacts.phone")} value={data.telefone} />
             <Info label={t("crm.contacts.email")} value={data.email} />
             <Info label={t("crm.contacts.origin")} value={data.origem} />
             {(data.cpf || data.cnpj) && <Info label={data.cpf ? t("crm.contacts.cpf") : t("crm.contacts.cnpj")} value={data.cpf ?? data.cnpj} />}
@@ -283,6 +283,38 @@ function Info({ label, value }: { label: string; value: string | null }) {
     <div>
       <dt className="text-xs font-medium uppercase tracking-wide text-ink-faint">{label}</dt>
       <dd className="mt-0.5 text-ink">{value ?? "—"}</dd>
+    </div>
+  );
+}
+
+/** `wa.me` exige o número com código do país — números só com DDD (10/11 dígitos) recebem o prefixo 55 (Brasil); números que já vieram com código do país ficam como estão. */
+function whatsAppUrl(rawPhone: string): string {
+  const digits = rawPhone.replace(/\D/g, "");
+  const withCountryCode = digits.length <= 11 ? `55${digits}` : digits;
+  return `https://wa.me/${withCountryCode}`;
+}
+
+function PhoneInfo({ label, value }: { label: string; value: string | null }) {
+  const { t } = useI18n();
+  return (
+    <div>
+      <dt className="text-xs font-medium uppercase tracking-wide text-ink-faint">{label}</dt>
+      <dd className="mt-0.5 flex items-center gap-1.5 text-ink">
+        {formatPhone(value) ?? "—"}
+        {value && (
+          <a
+            href={whatsAppUrl(value)}
+            target="_blank"
+            rel="noreferrer"
+            title={t("crm.contacts.openWhatsapp")}
+            className="text-brand-600 hover:text-brand-700"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+              <path d="M12.04 2c-5.52 0-10 4.48-10 10 0 1.77.46 3.45 1.28 4.9L2 22l5.25-1.28A9.96 9.96 0 0012.04 22c5.52 0 10-4.48 10-10s-4.48-10-10-10zm5.86 14.3c-.25.7-1.25 1.29-2.03 1.45-.55.11-1.27.2-3.68-.79-2.94-1.22-4.84-4.13-4.99-4.32-.14-.19-1.2-1.6-1.2-3.06s.75-2.16 1.02-2.46c.25-.28.55-.35.73-.35.18 0 .37 0 .53.01.17.01.4-.06.62.48.25.6.85 2.06.92 2.21.07.15.12.32.02.51-.09.19-.14.31-.28.48-.14.16-.29.36-.42.48-.14.13-.28.28-.12.55.16.28.72 1.19 1.55 1.93 1.06.95 1.96 1.24 2.24 1.38.28.14.44.12.6-.07.16-.19.68-.79.86-1.06.18-.28.36-.23.6-.14.25.09 1.6.75 1.87.89.28.14.46.21.53.32.07.12.07.68-.18 1.37z" />
+            </svg>
+          </a>
+        )}
+      </dd>
     </div>
   );
 }

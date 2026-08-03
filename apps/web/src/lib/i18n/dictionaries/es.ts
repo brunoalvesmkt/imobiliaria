@@ -308,6 +308,7 @@ const dictionary: Record<DictionaryKey, string> = {
   "crm.contacts.name": "Nombre",
   "crm.contacts.surname": "Apellido",
   "crm.contacts.whatsapp": "WhatsApp",
+  "crm.contacts.openWhatsapp": "Abrir conversación en WhatsApp",
   "crm.contacts.phone": "Teléfono",
   "crm.contacts.email": "Correo electrónico",
   "crm.contacts.origin": "Origen",

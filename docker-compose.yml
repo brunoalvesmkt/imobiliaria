@@ -135,3 +135,6 @@ services:
   # (quando já existe um Traefik de outro projeto na mesma VPS, ocupando as
   # portas 80/443 — só pode haver um dono dessas portas por servidor). Ver
   # seção 3 do DEPLOY.md para os dois cenários.
+
+volumes:
+  baileys-sessions:

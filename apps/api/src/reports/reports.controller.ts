@@ -7,6 +7,7 @@ import { ModuleActiveGuard } from "../common/modules/module-active.guard";
 import { RequireModule } from "../common/modules/require-module.decorator";
 import { ReportsService } from "./reports.service";
 import { DateRangeDto } from "./dto/date-range.dto";
+import { ContactsExportDto } from "./dto/contacts-export.dto";
 
 /**
  * "Início" e "Relatórios" são sempre disponíveis (não comercializados
@@ -133,8 +134,8 @@ export class ReportsController {
   @Get("export/contacts")
   @RequireModule("crm")
   @RequirePermission("relatorios", "export")
-  async exportContacts(@Res() res: Response) {
-    const csv = await this.service.exportContactsCsv();
+  async exportContacts(@Query() dto: ContactsExportDto, @Res() res: Response) {
+    const csv = await this.service.exportContactsCsv({ allPhones: dto.allPhones === "true", allEmails: dto.allEmails === "true" });
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
     res.setHeader("Content-Disposition", 'attachment; filename="contatos.csv"');
     res.send(csv);
@@ -143,8 +144,8 @@ export class ReportsController {
   @Get("export/contacts.xlsx")
   @RequireModule("crm")
   @RequirePermission("relatorios", "export")
-  async exportContactsXlsx(@Res() res: Response) {
-    const buffer = await this.service.exportContactsXlsx();
+  async exportContactsXlsx(@Query() dto: ContactsExportDto, @Res() res: Response) {
+    const buffer = await this.service.exportContactsXlsx({ allPhones: dto.allPhones === "true", allEmails: dto.allEmails === "true" });
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", 'attachment; filename="contatos.xlsx"');
     res.send(buffer);
@@ -153,8 +154,8 @@ export class ReportsController {
   @Get("export/contacts.pdf")
   @RequireModule("crm")
   @RequirePermission("relatorios", "export")
-  async exportContactsPdf(@Res() res: Response) {
-    const buffer = await this.service.exportContactsPdf();
+  async exportContactsPdf(@Query() dto: ContactsExportDto, @Res() res: Response) {
+    const buffer = await this.service.exportContactsPdf({ allPhones: dto.allPhones === "true", allEmails: dto.allEmails === "true" });
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", 'attachment; filename="contatos.pdf"');
     res.send(buffer);

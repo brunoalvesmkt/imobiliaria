@@ -486,25 +486,31 @@ export class ReportsService {
     return toPdf("Oportunidades", headers, rows);
   }
 
-  private async contactsData(): Promise<TabularData> {
+  private async contactsData(options: { allPhones: boolean; allEmails: boolean }): Promise<TabularData> {
     const tenantId = requireCurrentTenantId();
     const contacts = await this.prisma.contact.findMany({
       where: { tenantId, deletedAt: null },
       orderBy: { createdAt: "desc" },
-      include: { responsavel: { select: { nome: true } }, origemRef: { select: { nome: true } }, phones: true },
+      include: {
+        responsavel: { select: { nome: true } },
+        origemRef: { select: { nome: true } },
+        phones: true,
+        emails: true,
+      },
     });
 
+    const phoneHeader = options.allPhones ? "telefones" : "telefone";
+    const emailHeader = options.allEmails ? "emails" : "email";
+
     return {
-      headers: ["id", "nome", "sobrenome", "documento", "telefone", "whatsapp", "outrosTelefones", "email", "origem", "campanha", "responsavel", "criadoEm"],
+      headers: ["id", "nome", "sobrenome", "documento", phoneHeader, emailHeader, "origem", "campanha", "responsavel", "criadoEm"],
       rows: contacts.map((c) => [
         c.id,
         csvEscape(c.nome),
         csvEscape(c.sobrenome ?? ""),
         c.cpf ?? c.cnpj ?? "",
-        c.telefone ?? "",
-        c.whatsapp ?? "",
-        csvEscape(c.phones.map((p) => `${p.tipo}: ${p.numero}`).join("; ")),
-        c.email ?? "",
+        options.allPhones ? csvEscape(c.phones.map((p) => `${p.tipo}: ${p.numero}`).join("; ")) : c.telefone ?? c.whatsapp ?? "",
+        options.allEmails ? csvEscape(c.emails.map((e) => e.email).join("; ")) : c.email ?? "",
         csvEscape(c.origemRef?.nome ?? c.origem ?? ""),
         csvEscape(c.campanha ?? ""),
         csvEscape(c.responsavel?.nome ?? ""),
@@ -513,18 +519,18 @@ export class ReportsService {
     };
   }
 
-  async exportContactsCsv(): Promise<string> {
-    const { headers, rows } = await this.contactsData();
+  async exportContactsCsv(options: { allPhones: boolean; allEmails: boolean }): Promise<string> {
+    const { headers, rows } = await this.contactsData(options);
     return toCsv(headers, rows);
   }
 
-  async exportContactsXlsx(): Promise<Buffer> {
-    const { headers, rows } = await this.contactsData();
+  async exportContactsXlsx(options: { allPhones: boolean; allEmails: boolean }): Promise<Buffer> {
+    const { headers, rows } = await this.contactsData(options);
     return toXlsx("Contatos", headers, rows);
   }
 
-  async exportContactsPdf(): Promise<Buffer> {
-    const { headers, rows } = await this.contactsData();
+  async exportContactsPdf(options: { allPhones: boolean; allEmails: boolean }): Promise<Buffer> {
+    const { headers, rows } = await this.contactsData(options);
     return toPdf("Contatos", headers, rows);
   }
 

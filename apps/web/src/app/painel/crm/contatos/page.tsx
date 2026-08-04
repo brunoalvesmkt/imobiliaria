@@ -37,6 +37,9 @@ export default function ContatosPage() {
   const [origemId, setOrigemId] = useState("");
   const [phoneType, setPhoneType] = useState<ContactPhoneType | "">("");
   const [showForm, setShowForm] = useState(false);
+  const [exportFormat, setExportFormat] = useState<"csv" | "xlsx" | "pdf" | null>(null);
+  const [exportAllPhones, setExportAllPhones] = useState(false);
+  const [exportAllEmails, setExportAllEmails] = useState(false);
   const origins = useContactOrigins();
   const contacts = useContacts(search, origemId || undefined, phoneType || undefined);
   const importContacts = useImportContacts();
@@ -70,10 +73,27 @@ export default function ContatosPage() {
     }
   }
 
+  function openExportModal(format: "csv" | "xlsx" | "pdf") {
+    setExportAllPhones(false);
+    setExportAllEmails(false);
+    setExportFormat(format);
+  }
+
+  function runExport() {
+    if (!exportFormat) return;
+    const path = exportFormat === "csv" ? "/reports/export/contacts" : `/reports/export/contacts.${exportFormat}`;
+    const params = new URLSearchParams();
+    if (exportAllPhones) params.set("allPhones", "true");
+    if (exportAllEmails) params.set("allEmails", "true");
+    const query = params.toString();
+    window.open(apiUrl(query ? `${path}?${query}` : path), "_blank");
+    setExportFormat(null);
+  }
+
   const exportItems: DropdownMenuItem[] = [
-    { label: t("relatorios.exportPdf"), onClick: () => window.open(apiUrl("/reports/export/contacts.pdf"), "_blank") },
-    { label: t("relatorios.exportXlsx"), onClick: () => window.open(apiUrl("/reports/export/contacts.xlsx"), "_blank") },
-    { label: t("relatorios.exportCsv"), onClick: () => window.open(apiUrl("/reports/export/contacts"), "_blank") },
+    { label: t("relatorios.exportPdf"), onClick: () => openExportModal("pdf") },
+    { label: t("relatorios.exportXlsx"), onClick: () => openExportModal("xlsx") },
+    { label: t("relatorios.exportCsv"), onClick: () => openExportModal("csv") },
   ];
   const importItems: DropdownMenuItem[] = [
     { label: t("relatorios.exportXlsx"), onClick: () => xlsxInputRef.current?.click() },
@@ -124,6 +144,41 @@ export default function ContatosPage() {
       )}
 
       {showForm && <ContactForm onDone={() => setShowForm(false)} />}
+
+      {exportFormat && (
+        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 p-4" onClick={() => setExportFormat(null)}>
+          <div
+            className="flex w-full max-w-sm flex-col gap-4 rounded-lg border border-line bg-surface p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-sm font-semibold text-ink">{t("crm.contacts.export.modalTitle")}</h2>
+            <label className="flex items-start gap-2 text-sm text-ink">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={exportAllPhones}
+                onChange={(e) => setExportAllPhones(e.target.checked)}
+              />
+              {t("crm.contacts.export.allPhones")}
+            </label>
+            <label className="flex items-start gap-2 text-sm text-ink">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={exportAllEmails}
+                onChange={(e) => setExportAllEmails(e.target.checked)}
+              />
+              {t("crm.contacts.export.allEmails")}
+            </label>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setExportFormat(null)}>
+                {t("common.cancel")}
+              </Button>
+              <Button onClick={runExport}>{t("crm.contacts.export.confirm")}</Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="overflow-x-auto rounded-lg border border-line bg-surface">
         <table className="w-full text-sm">

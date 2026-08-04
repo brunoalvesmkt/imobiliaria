@@ -39,9 +39,10 @@ import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 import { FlowCardNode, type FlowCardData } from "./flow-card-node";
 import { NodeInspector } from "./node-inspector";
-import { ADDABLE_TYPES, NODE_COLORS, defaultDataFor } from "./node-types";
+import { ADD_MENU_OPTIONS, NODE_COLORS, defaultDataFor, type MessageMediaType } from "./node-types";
 
 const DRAG_MIME_TYPE = "application/x-flow-node-type";
+const DRAG_MIME_PRESET = "application/x-flow-node-preset";
 
 const NODE_TYPES: NodeTypes = { flowCard: FlowCardNode };
 
@@ -164,25 +165,25 @@ export default function FlowBuilderPage() {
     [readOnly, setEdges, nodes, edges],
   );
 
-  function addNode(type: FlowNodeType) {
-    addNodeAt(type, { x: 120 + nodes.length * 24, y: 120 + nodes.length * 24 });
+  function addNode(type: FlowNodeType, presetTipo?: MessageMediaType) {
+    addNodeAt(type, { x: 120 + nodes.length * 24, y: 120 + nodes.length * 24 }, presetTipo);
   }
 
-  function addNodeAt(type: FlowNodeType, position: { x: number; y: number }) {
+  function addNodeAt(type: FlowNodeType, position: { x: number; y: number }, presetTipo?: MessageMediaType) {
     pushHistory();
     const nodeId = `${type}-${Math.random().toString(36).slice(2, 8)}`;
     const newNode: Node<FlowCardData> = {
       id: nodeId,
       type: "flowCard",
       position,
-      data: { flowNodeType: type, payload: defaultDataFor(type) },
+      data: { flowNodeType: type, payload: defaultDataFor(type, presetTipo) },
     };
     setNodes((nds) => [...nds, newNode]);
     setSelectedNodeId(nodeId);
     setDirty(true);
   }
 
-  function addConnectedNode(sourceId: string, type: FlowNodeType) {
+  function addConnectedNode(sourceId: string, type: FlowNodeType, presetTipo?: MessageMediaType) {
     pushHistory();
     const source = nodes.find((n) => n.id === sourceId);
     const position = source ? { x: source.position.x, y: source.position.y + 160 } : { x: 120, y: 120 };
@@ -191,7 +192,7 @@ export default function FlowBuilderPage() {
       id: nodeId,
       type: "flowCard",
       position,
-      data: { flowNodeType: type, payload: defaultDataFor(type) },
+      data: { flowNodeType: type, payload: defaultDataFor(type, presetTipo) },
     };
     setNodes((nds) => [...nds, newNode]);
     setEdges((eds) => addEdge({ source: sourceId, target: nodeId, id: `e-${sourceId}-out-${nodeId}` }, eds));
@@ -422,7 +423,7 @@ export default function FlowBuilderPage() {
               readOnly={readOnly}
               onNodeClick={(nodeId) => setSelectedNodeId(nodeId)}
               onPaneClick={() => setSelectedNodeId(null)}
-              onDropNodeType={(type, position) => addNodeAt(type, position)}
+              onDropNodeType={(type, presetTipo, position) => addNodeAt(type, position, presetTipo)}
             />
           </ReactFlowProvider>
         </div>
@@ -434,6 +435,7 @@ export default function FlowBuilderPage() {
             payload={selectedNode.data.payload}
             currentFlowId={id}
             readOnly={readOnly}
+            allNodes={nodes.filter((n) => n.id !== selectedNode.id).map((n) => ({ id: n.id, flowNodeType: n.data.flowNodeType }))}
             onChange={updateSelectedNodeData}
             onDelete={deleteSelectedNode}
             onClose={() => setSelectedNodeId(null)}
@@ -463,7 +465,7 @@ function FlowCanvas({
   readOnly: boolean;
   onNodeClick: (nodeId: string) => void;
   onPaneClick: () => void;
-  onDropNodeType: (type: FlowNodeType, position: { x: number; y: number }) => void;
+  onDropNodeType: (type: FlowNodeType, presetTipo: MessageMediaType | undefined, position: { x: number; y: number }) => void;
 }) {
   const { screenToFlowPosition } = useReactFlow();
 
@@ -479,9 +481,10 @@ function FlowCanvas({
         if (readOnly) return;
         const type = e.dataTransfer.getData(DRAG_MIME_TYPE) as FlowNodeType;
         if (!type) return;
+        const presetTipo = (e.dataTransfer.getData(DRAG_MIME_PRESET) || undefined) as MessageMediaType | undefined;
         e.preventDefault();
         const position = screenToFlowPosition({ x: e.clientX, y: e.clientY });
-        onDropNodeType(type, position);
+        onDropNodeType(type, presetTipo, position);
       }}
     >
       <ReactFlow
@@ -541,7 +544,7 @@ function MobilePanHint() {
   );
 }
 
-function AddNodeMenu({ onAdd }: { onAdd: (type: FlowNodeType) => void }) {
+function AddNodeMenu({ onAdd }: { onAdd: (type: FlowNodeType, presetTipo?: MessageMediaType) => void }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
 
@@ -560,24 +563,25 @@ function AddNodeMenu({ onAdd }: { onAdd: (type: FlowNodeType) => void }) {
         + {t("chatbot.builder.addNode")}
       </Button>
       {open && (
-        <div className="absolute right-0 top-full z-10 mt-1 w-44 rounded-md border border-line bg-surface py-1 shadow-lg">
-          {ADDABLE_TYPES.map((type) => (
+        <div className="absolute right-0 top-full z-10 mt-1 w-52 rounded-md border border-line bg-surface py-1 shadow-lg">
+          {ADD_MENU_OPTIONS.map((opt) => (
             <button
-              key={type}
+              key={opt.key}
               type="button"
               draggable
               onDragStart={(e) => {
-                e.dataTransfer.setData(DRAG_MIME_TYPE, type);
+                e.dataTransfer.setData(DRAG_MIME_TYPE, opt.type);
+                if (opt.presetTipo) e.dataTransfer.setData(DRAG_MIME_PRESET, opt.presetTipo);
                 e.dataTransfer.effectAllowed = "move";
               }}
               onClick={() => {
-                onAdd(type);
+                onAdd(opt.type, opt.presetTipo);
                 setOpen(false);
               }}
               className="flex w-full cursor-grab items-center gap-2 px-3 py-1.5 text-left text-sm text-ink hover:bg-surface-alt active:cursor-grabbing"
             >
-              <span className="h-2 w-2 rounded-full" style={{ background: NODE_COLORS[type] }} />
-              {t(`chatbot.builder.nodeType.${type}` as DictionaryKey)}
+              <span className="h-2 w-2 rounded-full" style={{ background: NODE_COLORS[opt.type] }} />
+              {t(opt.labelKey)}
             </button>
           ))}
         </div>

@@ -14,9 +14,11 @@ import type { AiProviderName } from "../../ai/providers/ai-provider-registry.ser
 import { validateAnswer } from "./answer-validation.util";
 import { classifyLeadScore } from "../../crm/lead-score.util";
 import { LeadScoreConfigService } from "../../crm/lead-score-config.service";
+import { ChatbotTimeoutProducer } from "./chatbot-timeout.producer";
 import type {
   AiNodeData,
   ConditionNodeData,
+  CrmStageNodeData,
   FlowDefinition,
   FlowNode,
   KnowledgeQueryNodeData,
@@ -26,6 +28,7 @@ import type {
   TransferNodeData,
   MessageNodeData,
 } from "../flow-definition.types";
+import { TIMEOUT_NODE_TYPES } from "../flow-definition.types";
 
 const MAX_STEPS_PER_ADVANCE = 25;
 const DEFAULT_MAX_TENTATIVAS = 3;
@@ -62,6 +65,7 @@ export class ChatbotEngineService {
     private readonly aiAccess: AiAccessService,
     private readonly aiProviders: AiProviderRegistryService,
     private readonly leadScoreConfig: LeadScoreConfigService,
+    private readonly timeoutProducer: ChatbotTimeoutProducer,
   ) {}
 
   async startFlow(flowId: string, conversationId: string): Promise<ChatbotExecution> {
@@ -102,6 +106,9 @@ export class ChatbotEngineService {
     if (!node) {
       return execution;
     }
+
+    // Qualquer resposta do cliente cancela o timeout de reengajamento pendente deste card, se houver.
+    await this.timeoutProducer.cancel(execution.id);
 
     if (node.type === "question") {
       return this.handleQuestionReply(execution, node, incomingText);
@@ -145,14 +152,18 @@ export class ChatbotEngineService {
 
         case "question": {
           await this.sendText(current, (node.data as unknown as QuestionNodeData).texto);
-          return this.persist(current, node.id, "running", context);
+          const persisted = await this.persist(current, node.id, "running", context);
+          await this.scheduleTimeoutIfConfigured(persisted, node);
+          return persisted;
         }
 
         case "menu": {
           const data = node.data as unknown as MenuNodeData;
           const opcoesTexto = data.opcoes.map((o) => `${o.chave}) ${o.texto}`).join("\n");
           await this.sendText(current, `${data.texto}\n${opcoesTexto}`);
-          return this.persist(current, node.id, "running", context);
+          const persisted = await this.persist(current, node.id, "running", context);
+          await this.scheduleTimeoutIfConfigured(persisted, node);
+          return persisted;
         }
 
         case "condition": {
@@ -196,6 +207,14 @@ export class ChatbotEngineService {
           if (data.variavel) {
             context = { ...context, answers: { ...(context.answers ?? {}), [data.variavel]: transferred.text } };
           }
+          const next = this.singleOutgoing(definition, node.id);
+          current = { ...current, currentNodeId: next };
+          continue;
+        }
+
+        case "crm_stage": {
+          const data = node.data as unknown as CrmStageNodeData;
+          await this.addToCrmStage(current, data);
           const next = this.singleOutgoing(definition, node.id);
           current = { ...current, currentNodeId: next };
           continue;
@@ -316,7 +335,28 @@ export class ChatbotEngineService {
     }
 
     await this.sendText(execution, mensagemErro ?? "Não entendi, pode responder novamente?");
-    return this.persist(execution, node.id, "running", { ...context, retryCounts });
+    const persisted = await this.persist(execution, node.id, "running", { ...context, retryCounts });
+    await this.scheduleTimeoutIfConfigured(persisted, node);
+    return persisted;
+  }
+
+  /** Timeout de reengajamento (question/menu) — jamais lança: card sem configuração simplesmente não agenda nada. */
+  private async scheduleTimeoutIfConfigured(execution: ChatbotExecution, node: FlowNode): Promise<void> {
+    if (!TIMEOUT_NODE_TYPES.includes(node.type)) {
+      return;
+    }
+    const data = node.data as unknown as { timeoutSeconds?: number; timeoutTargetNodeId?: string };
+    if (!data.timeoutSeconds || data.timeoutSeconds <= 0 || !data.timeoutTargetNodeId) {
+      return;
+    }
+    await this.timeoutProducer.schedule(execution.id, node.id, data.timeoutTargetNodeId, data.timeoutSeconds * 1000);
+  }
+
+  /** Chamado pelo ChatbotTimeoutProcessor quando o cliente não responde a tempo — pula direto para o card configurado. */
+  async triggerTimeout(execution: ChatbotExecution, targetNodeId: string): Promise<ChatbotExecution> {
+    const context = (execution.contextData as ExecutionContext | null) ?? {};
+    const advanced = await this.persist(execution, targetNodeId, "running", context);
+    return this.advance(advanced);
   }
 
   // ---------------------------------------------------------------------
@@ -703,6 +743,68 @@ export class ChatbotEngineService {
         contactId,
         data: { contactId, nome: contact.nome, leadScore: novoScore },
       });
+    }
+  }
+
+  /**
+   * Card "Etapa do funil" — cria (ou reaproveita se já existir uma aberta
+   * no mesmo funil) uma Oportunidade do CRM para o contato desta conversa
+   * na etapa configurada. Mesma regra de módulo ativo de saveAnswerToCrm —
+   * silenciosamente ignorado se CRM não estiver habilitado para o tenant,
+   * já que "adicionar ao funil" não faz sentido sem o módulo.
+   */
+  private async addToCrmStage(execution: ChatbotExecution, data: CrmStageNodeData): Promise<void> {
+    if (!data.funnelId || !data.stageId) {
+      return;
+    }
+    const tenantId = requireCurrentTenantId();
+    const crmFlag = await this.prisma.featureFlag.findUnique({ where: { tenantId_module: { tenantId, module: "crm" } } });
+    if (!crmFlag?.enabled) {
+      return;
+    }
+
+    const stage = await this.prisma.funnelStage.findFirst({
+      where: { id: data.stageId, funnelId: data.funnelId, funnel: { tenantId } },
+    });
+    if (!stage) {
+      this.logger.warn(
+        `Execução ${execution.id}: etapa "${data.stageId}" não encontrada no funil "${data.funnelId}" — card "Etapa do funil" ignorado.`,
+      );
+      return;
+    }
+
+    const contactId = await this.resolveContactId(tenantId, execution);
+    const existing = await this.prisma.opportunity.findFirst({
+      where: { tenantId, contactId, funnelId: data.funnelId, status: "open", deletedAt: null },
+    });
+
+    if (existing) {
+      if (existing.stageId === data.stageId) {
+        return;
+      }
+      await this.prisma.opportunity.update({
+        where: { id: existing.id },
+        data: { stageId: data.stageId, probabilidade: stage.probabilidade },
+      });
+      await this.closeOpenCrmStageHistory(existing.id);
+      await this.prisma.opportunityStageHistory.create({ data: { tenantId, opportunityId: existing.id, stageId: data.stageId } });
+      return;
+    }
+
+    const opportunity = await this.prisma.opportunity.create({
+      data: { tenantId, contactId, funnelId: data.funnelId, stageId: data.stageId, probabilidade: stage.probabilidade, origem: "chatbot" },
+    });
+    await this.prisma.opportunityStageHistory.create({ data: { tenantId, opportunityId: opportunity.id, stageId: data.stageId } });
+  }
+
+  /** Fecha a linha de histórico "aberta" (sem exitedAt) da etapa atual — mesma lógica de OpportunitiesService, duplicada aqui para não criar dependência circular entre ChatbotModule e CrmModule. */
+  private async closeOpenCrmStageHistory(opportunityId: string): Promise<void> {
+    const open = await this.prisma.opportunityStageHistory.findFirst({
+      where: { opportunityId, exitedAt: null },
+      orderBy: { enteredAt: "desc" },
+    });
+    if (open) {
+      await this.prisma.opportunityStageHistory.update({ where: { id: open.id }, data: { exitedAt: new Date() } });
     }
   }
 }

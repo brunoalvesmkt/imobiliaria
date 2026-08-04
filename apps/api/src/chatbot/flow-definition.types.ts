@@ -24,7 +24,11 @@ export type FlowNodeType =
   | "transfer"
   | "ai"
   | "knowledge_query"
+  | "crm_stage"
   | "end";
+
+/** Tipos de card cujo card só faz sentido "esperando" resposta do cliente — únicos elegíveis ao timeout de reengajamento. */
+export const TIMEOUT_NODE_TYPES: FlowNodeType[] = ["question", "menu"];
 
 /** Tipos de card que exigem `flow.aiEnabled === true` para serem publicados. */
 export const AI_NODE_TYPES: FlowNodeType[] = ["ai", "knowledge_query"];
@@ -65,6 +69,9 @@ export interface MenuNodeData {
   variavel?: string;
   mensagemErro?: string;
   maxTentativas?: number;
+  /** Reengajamento por timeout (ver TIMEOUT_NODE_TYPES) — segundos sem resposta até pular para `timeoutTargetNodeId`. */
+  timeoutSeconds?: number;
+  timeoutTargetNodeId?: string;
 }
 
 export interface ConditionNodeData {
@@ -95,6 +102,17 @@ export interface KnowledgeQueryNodeData {
   /** Filtra a busca na Base de Conhecimento por tipo (ex.: "faq", "produto") — vazio busca em todos. */
   tipo?: string;
   variavel?: string;
+}
+
+/**
+ * Cria (ou reaproveita, se já existir uma aberta) uma Oportunidade do CRM
+ * para o contato desta conversa no funil/etapa indicados — "adicionar o
+ * lead ao funil" direto do fluxo do chatbot, sem precisar de Automação.
+ * Requer o módulo CRM ativo no tenant (mesma regra de saveAnswerToCrm).
+ */
+export interface CrmStageNodeData {
+  funnelId: string;
+  stageId: string;
 }
 
 export interface FlowNode {
@@ -139,6 +157,18 @@ export function validateFlowDefinition(definition: FlowDefinition): FlowValidati
     }
     if (!nodesById.has(edge.target)) {
       errors.push({ message: `Conexão referencia um card de destino inexistente: "${edge.target}".` });
+    }
+  }
+
+  // Timeout de reengajamento (question/menu): o card de destino precisa existir no fluxo.
+  for (const node of definition.nodes) {
+    if (!TIMEOUT_NODE_TYPES.includes(node.type)) continue;
+    const timeoutTargetNodeId = (node.data as { timeoutTargetNodeId?: string } | undefined)?.timeoutTargetNodeId;
+    if (timeoutTargetNodeId && !nodesById.has(timeoutTargetNodeId)) {
+      errors.push({
+        message: `Card "${node.id}": o destino do timeout de reengajamento ("${timeoutTargetNodeId}") não existe no fluxo.`,
+        nodeId: node.id,
+      });
     }
   }
 

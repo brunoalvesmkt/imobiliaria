@@ -24,6 +24,7 @@ export type FlowNodeType =
   | "transfer"
   | "ai"
   | "knowledge_query"
+  | "crm_stage"
   | "end";
 export type ValidationType = "texto" | "numero" | "email" | "cpf" | "cnpj" | "telefone" | "data";
 

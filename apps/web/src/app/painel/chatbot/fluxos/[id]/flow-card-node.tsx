@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { FlowNodeType } from "@/lib/chatbot";
-import { ADDABLE_TYPES, NODE_COLORS } from "./node-types";
+import { ADD_MENU_OPTIONS, MESSAGE_TYPE_LABEL_KEY, NODE_COLORS, type MessageMediaType, type MessageNodeData } from "./node-types";
 import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 import type { MenuNodeData } from "./node-types";
@@ -15,16 +15,24 @@ export interface FlowCardData extends Record<string, unknown> {
   selected?: boolean;
   readOnly?: boolean;
   onDeleteNode?: (id: string) => void;
-  onAddConnectedNode?: (id: string, type: FlowNodeType) => void;
+  onAddConnectedNode?: (id: string, type: FlowNodeType, presetTipo?: MessageMediaType) => void;
 }
 
 const TERMINAL_TYPES: FlowNodeType[] = ["end", "transfer"];
 const SOURCELESS_TARGET_TYPES: FlowNodeType[] = ["start"];
 
+function headerLabelKey(type: FlowNodeType, payload: Record<string, unknown>): DictionaryKey {
+  if (type === "message") {
+    const tipo = ((payload as unknown as MessageNodeData).tipo ?? "text") as MessageMediaType;
+    return MESSAGE_TYPE_LABEL_KEY[tipo] ?? "chatbot.builder.nodeType.message";
+  }
+  return `chatbot.builder.nodeType.${type}` as DictionaryKey;
+}
+
 function summaryFor(type: FlowNodeType, payload: Record<string, unknown>): string {
   switch (type) {
     case "message":
-      return (payload.texto as string) || "—";
+      return (payload.texto as string) || (payload.midiaUrl as string) || "—";
     case "question":
       return (payload.texto as string) || "—";
     case "menu":
@@ -39,6 +47,8 @@ function summaryFor(type: FlowNodeType, payload: Record<string, unknown>): strin
       return (payload.prompt as string) || "—";
     case "knowledge_query":
       return (payload.tipo as string) || "—";
+    case "crm_stage":
+      return "";
     default:
       return "";
   }
@@ -80,7 +90,7 @@ export function FlowCardNode({ data, id }: NodeProps) {
       )}
       {hasTarget && <Handle type="target" position={Position.Top} style={{ background: color }} />}
       <div className="rounded-t-md px-2.5 py-1.5 text-xs font-semibold text-white" style={{ background: color }}>
-        {t(`chatbot.builder.nodeType.${flowNodeType}` as DictionaryKey)}
+        {t(headerLabelKey(flowNodeType, payload))}
       </div>
       <div className="px-2.5 py-2 text-xs text-ink-dim break-words">{summaryFor(flowNodeType, payload) || <span className="italic text-ink-faint">{id}</span>}</div>
 
@@ -90,12 +100,14 @@ export function FlowCardNode({ data, id }: NodeProps) {
         <Handle type="source" position={Position.Bottom} style={{ background: color }} />
       )}
 
-      {canAddConnected && <AddConnectedButton onAdd={(type) => cardData.onAddConnectedNode?.(id, type)} />}
+      {canAddConnected && (
+        <AddConnectedButton onAdd={(type, presetTipo) => cardData.onAddConnectedNode?.(id, type, presetTipo)} />
+      )}
     </div>
   );
 }
 
-function AddConnectedButton({ onAdd }: { onAdd: (type: FlowNodeType) => void }) {
+function AddConnectedButton({ onAdd }: { onAdd: (type: FlowNodeType, presetTipo?: MessageMediaType) => void }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
@@ -139,20 +151,20 @@ function AddConnectedButton({ onAdd }: { onAdd: (type: FlowNodeType) => void }) 
           <div
             onMouseDown={(e) => e.stopPropagation()}
             style={{ position: "fixed", top: menuPos.top, left: menuPos.left }}
-            className="z-[9999] w-44 rounded-md border border-line bg-surface py-1 shadow-lg"
+            className="z-[9999] w-52 rounded-md border border-line bg-surface py-1 shadow-lg"
           >
-            {ADDABLE_TYPES.map((type) => (
+            {ADD_MENU_OPTIONS.map((opt) => (
               <button
-                key={type}
+                key={opt.key}
                 type="button"
                 onClick={() => {
-                  onAdd(type);
+                  onAdd(opt.type, opt.presetTipo);
                   setOpen(false);
                 }}
                 className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-ink hover:bg-surface-alt"
               >
-                <span className="h-2 w-2 rounded-full" style={{ background: NODE_COLORS[type] }} />
-                {t(`chatbot.builder.nodeType.${type}` as DictionaryKey)}
+                <span className="h-2 w-2 rounded-full" style={{ background: NODE_COLORS[opt.type] }} />
+                {t(opt.labelKey)}
               </button>
             ))}
           </div>,

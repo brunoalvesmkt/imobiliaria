@@ -718,7 +718,7 @@ function Board({
                       }`}
                     >
                       <p className="font-medium text-ink">{opportunity.contact.nome}</p>
-                      {opportunity.valor && <p className="text-ink-dim">{Number(opportunity.valor).toLocaleString(locale)}</p>}
+                      {opportunity.valor && <p className="text-ink-dim">R$ {Number(opportunity.valor).toLocaleString(locale)}</p>}
                       <p className="mt-1 text-xs text-ink-faint">
                         {t("crm.funnel.createdAgo")} {formatElapsed(opportunity.createdAt)}
                       </p>

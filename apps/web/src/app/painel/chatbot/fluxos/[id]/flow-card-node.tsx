@@ -4,10 +4,18 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { FlowNodeType } from "@/lib/chatbot";
-import { ADD_MENU_OPTIONS, MESSAGE_TYPE_LABEL_KEY, NODE_COLORS, type MessageMediaType, type MessageNodeData } from "./node-types";
+import {
+  ADD_MENU_OPTIONS,
+  MESSAGE_TYPE_LABEL_KEY,
+  NODE_COLORS,
+  TIMEOUT_HANDLE,
+  TIMEOUT_LIMIT_HANDLE,
+  type MessageMediaType,
+  type MessageNodeData,
+} from "./node-types";
 import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
-import type { MenuNodeData } from "./node-types";
+import type { MenuNodeData, QuestionNodeData } from "./node-types";
 
 export interface FlowCardData extends Record<string, unknown> {
   flowNodeType: FlowNodeType;
@@ -63,9 +71,14 @@ export function FlowCardNode({ data, id }: NodeProps) {
   const hasTarget = !SOURCELESS_TARGET_TYPES.includes(flowNodeType);
   // O card "Início" é o ponto de entrada obrigatório do fluxo — não pode ser removido individualmente.
   const isDeletable = !SOURCELESS_TARGET_TYPES.includes(flowNodeType) && !cardData.readOnly;
+  const timeoutEnabled =
+    (flowNodeType === "question" || flowNodeType === "menu") &&
+    Boolean((payload as unknown as QuestionNodeData | MenuNodeData).timeoutEnabled);
   // Só cards com uma única saída simples (handle inferior) ganham o atalho "+" —
-  // "menu"/"condition" têm múltiplas saídas nomeadas e exigem escolher o ramo manualmente.
-  const canAddConnected = !isTerminal && flowNodeType !== "menu" && flowNodeType !== "condition" && !cardData.readOnly;
+  // "menu"/"condition" têm múltiplas saídas nomeadas (e "question"/"menu" com reativação ativada
+  // ganham as saídas extras "Não respondeu"/"Limite atingido") e exigem escolher o ramo manualmente.
+  const canAddConnected =
+    !isTerminal && flowNodeType !== "menu" && flowNodeType !== "condition" && !timeoutEnabled && !cardData.readOnly;
 
   return (
     <div
@@ -98,6 +111,14 @@ export function FlowCardNode({ data, id }: NodeProps) {
       {flowNodeType === "condition" && <ConditionHandles color={color} />}
       {!isTerminal && flowNodeType !== "menu" && flowNodeType !== "condition" && (
         <Handle type="source" position={Position.Bottom} style={{ background: color }} />
+      )}
+      {timeoutEnabled && (
+        <TimeoutHandles
+          color={color}
+          quantidade={(payload as unknown as QuestionNodeData | MenuNodeData).timeoutQuantidade}
+          unidade={(payload as unknown as QuestionNodeData | MenuNodeData).timeoutUnidade}
+          maxTentativas={(payload as unknown as QuestionNodeData | MenuNodeData).timeoutMaxTentativas}
+        />
       )}
 
       {canAddConnected && (
@@ -197,6 +218,49 @@ function MenuHandles({ color, opcoes }: { color: string; opcoes: MenuNodeData["o
           />
         </div>
       ))}
+    </div>
+  );
+}
+
+/** Saídas visuais da reativação por falta de resposta — mesmo padrão de MenuHandles, conexão real no canvas (nunca um seletor). */
+function TimeoutHandles({
+  color,
+  quantidade,
+  unidade,
+  maxTentativas,
+}: {
+  color: string;
+  quantidade?: number | undefined;
+  unidade?: string | undefined;
+  maxTentativas?: number | undefined;
+}) {
+  const { t } = useI18n();
+  const unitLabel = unidade ? t(`chatbot.builder.field.timeoutUnit.${unidade}` as DictionaryKey) : "";
+  return (
+    <div className="flex flex-col gap-1 border-t border-dashed px-2.5 py-1.5" style={{ borderColor: color }}>
+      {Boolean(quantidade) && (
+        <p className="text-[10px] text-ink-faint">
+          ⏱ {quantidade} {unitLabel} · {t("chatbot.builder.field.timeoutMaxTentativas")}: {maxTentativas ?? 1}
+        </p>
+      )}
+      <div className="relative flex items-center justify-between text-[11px] text-ink-faint">
+        <span>{t("chatbot.builder.field.timeoutNoResponse")}</span>
+        <Handle
+          type="source"
+          position={Position.Right}
+          id={TIMEOUT_HANDLE}
+          style={{ background: color, position: "relative", right: -8, top: 0, transform: "none" }}
+        />
+      </div>
+      <div className="relative flex items-center justify-between text-[11px] text-ink-faint">
+        <span>{t("chatbot.builder.field.timeoutLimitReached")}</span>
+        <Handle
+          type="source"
+          position={Position.Right}
+          id={TIMEOUT_LIMIT_HANDLE}
+          style={{ background: color, position: "relative", right: -8, top: 0, transform: "none" }}
+        />
+      </div>
     </div>
   );
 }

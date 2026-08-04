@@ -30,6 +30,23 @@ export type FlowNodeType =
 /** Tipos de card cujo card só faz sentido "esperando" resposta do cliente — únicos elegíveis ao timeout de reengajamento. */
 export const TIMEOUT_NODE_TYPES: FlowNodeType[] = ["question", "menu"];
 
+export type TimeoutUnit = "minutes" | "hours" | "days";
+
+/**
+ * Saídas reservadas (`FlowEdge.sourceHandle`) da reativação por falta de resposta — configuradas
+ * por conexão visual no canvas, igual às demais saídas nomeadas (`menu`/`condition`), nunca por
+ * um seletor de destino. `TIMEOUT_HANDLE` ("Não respondeu") é obrigatória quando `timeoutEnabled`;
+ * `TIMEOUT_LIMIT_HANDLE` ("Limite de tentativas atingido") é opcional — sem conexão, o motor encerra
+ * a execução ao esgotar as tentativas.
+ */
+export const TIMEOUT_HANDLE = "timeout";
+export const TIMEOUT_LIMIT_HANDLE = "timeout_limit";
+
+export function timeoutUnitToMs(quantidade: number, unidade: TimeoutUnit): number {
+  const perUnit: Record<TimeoutUnit, number> = { minutes: 60_000, hours: 3_600_000, days: 86_400_000 };
+  return quantidade * perUnit[unidade];
+}
+
 /** Tipos de card que exigem `flow.aiEnabled === true` para serem publicados. */
 export const AI_NODE_TYPES: FlowNodeType[] = ["ai", "knowledge_query"];
 
@@ -54,9 +71,16 @@ export interface QuestionNodeData {
   maxTentativas?: number; // default 3
   /** Pontos somados ao Lead Score do contato quando esta pergunta é respondida validamente (prompt mestre §4). Pode ser negativo. */
   pontuacao?: number;
-  /** Reengajamento por timeout (ver TIMEOUT_NODE_TYPES) — segundos sem resposta até pular para `timeoutTargetNodeId`. */
-  timeoutSeconds?: number;
-  timeoutTargetNodeId?: string;
+  /**
+   * Reativação por falta de resposta (ver TIMEOUT_NODE_TYPES/TIMEOUT_HANDLE) — quando ativada,
+   * o card exige uma conexão de saída "Não respondeu" (`sourceHandle: TIMEOUT_HANDLE`) no canvas;
+   * a saída "Limite atingido" (`TIMEOUT_LIMIT_HANDLE`) é opcional.
+   */
+  timeoutEnabled?: boolean;
+  timeoutQuantidade?: number;
+  timeoutUnidade?: TimeoutUnit;
+  /** Nº máximo de reativações (reenvios) antes de seguir pela saída "Limite atingido" (ou encerrar, se não conectada). Default: 1. */
+  timeoutMaxTentativas?: number;
 }
 
 export interface MenuOption {
@@ -72,9 +96,11 @@ export interface MenuNodeData {
   variavel?: string;
   mensagemErro?: string;
   maxTentativas?: number;
-  /** Reengajamento por timeout (ver TIMEOUT_NODE_TYPES) — segundos sem resposta até pular para `timeoutTargetNodeId`. */
-  timeoutSeconds?: number;
-  timeoutTargetNodeId?: string;
+  /** Reativação por falta de resposta — ver QuestionNodeData. */
+  timeoutEnabled?: boolean;
+  timeoutQuantidade?: number;
+  timeoutUnidade?: TimeoutUnit;
+  timeoutMaxTentativas?: number;
 }
 
 export interface ConditionNodeData {
@@ -163,13 +189,23 @@ export function validateFlowDefinition(definition: FlowDefinition): FlowValidati
     }
   }
 
-  // Timeout de reengajamento (question/menu): o card de destino precisa existir no fluxo.
+  // Reativação por falta de resposta (question/menu): quando ativada, exige tempo configurado e
+  // a saída "Não respondeu" conectada — a saída "Limite atingido" é opcional.
   for (const node of definition.nodes) {
     if (!TIMEOUT_NODE_TYPES.includes(node.type)) continue;
-    const timeoutTargetNodeId = (node.data as { timeoutTargetNodeId?: string } | undefined)?.timeoutTargetNodeId;
-    if (timeoutTargetNodeId && !nodesById.has(timeoutTargetNodeId)) {
+    const data = node.data as { timeoutEnabled?: boolean; timeoutQuantidade?: number } | undefined;
+    if (!data?.timeoutEnabled) continue;
+
+    if (!data.timeoutQuantidade || data.timeoutQuantidade <= 0) {
       errors.push({
-        message: `Card "${node.id}": o destino do timeout de reengajamento ("${timeoutTargetNodeId}") não existe no fluxo.`,
+        message: `Card "${node.id}": configure o tempo de espera da reativação por falta de resposta.`,
+        nodeId: node.id,
+      });
+    }
+    const hasTimeoutEdge = definition.edges.some((e) => e.source === node.id && e.sourceHandle === TIMEOUT_HANDLE);
+    if (!hasTimeoutEdge) {
+      errors.push({
+        message: `Card "${node.id}": a saída "Não respondeu" precisa estar conectada a um card.`,
         nodeId: node.id,
       });
     }
@@ -201,9 +237,15 @@ export function validateFlowDefinition(definition: FlowDefinition): FlowValidati
       }
     }
 
-    // Todo nó não-terminal precisa de ao menos uma saída (evita becos sem saída).
+    // Todo nó não-terminal precisa de ao menos uma saída "principal" (evita becos sem saída) —
+    // as saídas reservadas de timeout não contam, senão um question/menu só com "Não respondeu"
+    // conectado passaria na validação e quebraria em tempo de execução (ver singleOutgoing).
     for (const node of definition.nodes) {
-      if (!TERMINAL_TYPES.includes(node.type) && !outgoing.has(node.id)) {
+      if (TERMINAL_TYPES.includes(node.type)) continue;
+      const mainOutgoing = (outgoing.get(node.id) ?? []).filter(
+        (e) => e.sourceHandle !== TIMEOUT_HANDLE && e.sourceHandle !== TIMEOUT_LIMIT_HANDLE,
+      );
+      if (mainOutgoing.length === 0) {
         errors.push({ message: `Card "${node.id}" (${node.type}) não tem nenhuma conexão de saída.`, nodeId: node.id });
       }
     }

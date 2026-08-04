@@ -35,7 +35,7 @@ export class ChatbotTimeoutProcessor extends WorkerHost {
       { tenantId: execution.tenantId, actor: { actorId: "system:chatbot-timeout", actorType: "tenant_user" } },
       async () => {
         try {
-          await this.chatbotEngine.triggerTimeout(execution, job.data.targetNodeId);
+          await this.chatbotEngine.triggerTimeout(execution);
         } catch (err) {
           this.logger.error(`Falha ao processar timeout da execução ${execution.id}: ${err instanceof Error ? err.message : String(err)}`);
           throw err;

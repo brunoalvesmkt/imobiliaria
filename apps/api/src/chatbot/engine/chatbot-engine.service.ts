@@ -29,10 +29,11 @@ import type {
   TransferNodeData,
   MessageNodeData,
 } from "../flow-definition.types";
-import { TIMEOUT_NODE_TYPES } from "../flow-definition.types";
+import { TIMEOUT_NODE_TYPES, TIMEOUT_HANDLE, TIMEOUT_LIMIT_HANDLE, timeoutUnitToMs, type TimeoutUnit } from "../flow-definition.types";
 
 const MAX_STEPS_PER_ADVANCE = 25;
 const DEFAULT_MAX_TENTATIVAS = 3;
+const DEFAULT_TIMEOUT_MAX_TENTATIVAS = 1;
 
 interface CallStackFrame {
   flowId: string;
@@ -45,6 +46,8 @@ interface ExecutionContext {
   activeVersao?: number;
   callStack?: CallStackFrame[];
   retryCounts?: Record<string, number>;
+  /** Nº de reativações por falta de resposta já disparadas para cada card, nesta execução — ver triggerTimeout. Resetado quando o card é respondido. */
+  timeoutAttempts?: Record<string, number>;
   answers?: Record<string, string>;
   /** Histórico de conversa com a IA, compartilhado por todos os cards "ai"/"knowledge_query" desta execução — ver runAiNodeOrTransfer. */
   aiHistory?: { role: "user" | "assistant"; content: string }[];
@@ -273,7 +276,9 @@ export class ChatbotEngineService {
     }
 
     const answers = { ...(context.answers ?? {}), [data.variavel]: incomingText };
-    const nextContext: ExecutionContext = { ...context, answers, retryCounts: { ...context.retryCounts, [node.id]: 0 } };
+    const timeoutAttempts = { ...context.timeoutAttempts };
+    delete timeoutAttempts[node.id];
+    const nextContext: ExecutionContext = { ...context, answers, retryCounts: { ...context.retryCounts, [node.id]: 0 }, timeoutAttempts };
 
     if (data.salvarNoCrm) {
       await this.saveAnswerToCrm(execution, data.salvarNoCrm, incomingText);
@@ -308,6 +313,9 @@ export class ChatbotEngineService {
       context.answers = { ...(context.answers ?? {}), [data.variavel]: chosen.chave };
     }
     context.retryCounts = { ...context.retryCounts, [node.id]: 0 };
+    const timeoutAttempts = { ...context.timeoutAttempts };
+    delete timeoutAttempts[node.id];
+    context.timeoutAttempts = timeoutAttempts;
     if (chosen.pontuacao) {
       await this.addLeadScore(execution, chosen.pontuacao);
     }
@@ -342,22 +350,57 @@ export class ChatbotEngineService {
     return persisted;
   }
 
-  /** Timeout de reengajamento (question/menu) — jamais lança: card sem configuração simplesmente não agenda nada. */
+  /** Reativação por falta de resposta (question/menu) — jamais lança: card sem a funcionalidade ativada simplesmente não agenda nada. */
   private async scheduleTimeoutIfConfigured(execution: ChatbotExecution, node: FlowNode): Promise<void> {
     if (!TIMEOUT_NODE_TYPES.includes(node.type)) {
       return;
     }
-    const data = node.data as unknown as { timeoutSeconds?: number; timeoutTargetNodeId?: string };
-    if (!data.timeoutSeconds || data.timeoutSeconds <= 0 || !data.timeoutTargetNodeId) {
+    const data = node.data as unknown as { timeoutEnabled?: boolean; timeoutQuantidade?: number; timeoutUnidade?: TimeoutUnit };
+    if (!data.timeoutEnabled || !data.timeoutQuantidade || data.timeoutQuantidade <= 0) {
       return;
     }
-    await this.timeoutProducer.schedule(execution.id, node.id, data.timeoutTargetNodeId, data.timeoutSeconds * 1000);
+    const delayMs = timeoutUnitToMs(data.timeoutQuantidade, data.timeoutUnidade ?? "minutes");
+    await this.timeoutProducer.schedule(execution.id, node.id, delayMs);
   }
 
-  /** Chamado pelo ChatbotTimeoutProcessor quando o cliente não responde a tempo — pula direto para o card configurado. */
-  async triggerTimeout(execution: ChatbotExecution, targetNodeId: string): Promise<ChatbotExecution> {
+  /**
+   * Chamado pelo ChatbotTimeoutProcessor quando o cliente não responde a tempo. Conta mais uma
+   * tentativa para o card atual (`context.timeoutAttempts`); dentro do limite configurado, segue
+   * pela saída "Não respondeu" (TIMEOUT_HANDLE) — se essa saída apontar para o próprio card, o
+   * `advance()` naturalmente reenvia a pergunta e reagenda um novo timeout, sem lógica especial de
+   * "repetição". Ao esgotar o limite, segue pela saída opcional "Limite atingido"
+   * (TIMEOUT_LIMIT_HANDLE) — se não estiver conectada, a execução é encerrada.
+   */
+  async triggerTimeout(execution: ChatbotExecution): Promise<ChatbotExecution> {
     const context = (execution.contextData as ExecutionContext | null) ?? {};
-    const advanced = await this.persist(execution, targetNodeId, "running", context);
+    const { definition } = await this.resolveActiveDefinition(execution, context);
+    const node = definition.nodes.find((n) => n.id === execution.currentNodeId);
+    if (!node) {
+      return this.finish(execution, "abandoned", context);
+    }
+    const data = node.data as unknown as { timeoutMaxTentativas?: number };
+
+    const timeoutAttempts = { ...context.timeoutAttempts };
+    const attempts = (timeoutAttempts[node.id] ?? 0) + 1;
+    timeoutAttempts[node.id] = attempts;
+    const nextContext: ExecutionContext = { ...context, timeoutAttempts };
+    const limit = data.timeoutMaxTentativas ?? DEFAULT_TIMEOUT_MAX_TENTATIVAS;
+
+    if (attempts > limit) {
+      const limitEdge = definition.edges.find((e) => e.source === node.id && e.sourceHandle === TIMEOUT_LIMIT_HANDLE);
+      if (!limitEdge) {
+        return this.finish(execution, "abandoned", nextContext);
+      }
+      const advanced = await this.persist(execution, limitEdge.target, "running", nextContext);
+      return this.advance(advanced);
+    }
+
+    const timeoutEdge = definition.edges.find((e) => e.source === node.id && e.sourceHandle === TIMEOUT_HANDLE);
+    if (!timeoutEdge) {
+      this.logger.warn(`Execução ${execution.id}: card "${node.id}" sem saída "Não respondeu" conectada — fluxo publicado inválido.`);
+      return this.finish(execution, "abandoned", nextContext);
+    }
+    const advanced = await this.persist(execution, timeoutEdge.target, "running", nextContext);
     return this.advance(advanced);
   }
 
@@ -381,8 +424,16 @@ export class ChatbotEngineService {
     return { definition: version.definicao as unknown as FlowDefinition, flowId, versao };
   }
 
+  /**
+   * Saída "principal" de um card — ignora deliberadamente as saídas reservadas de reativação
+   * por timeout (TIMEOUT_HANDLE/TIMEOUT_LIMIT_HANDLE), que podem coexistir com ela no mesmo nó
+   * (question/menu com reativação ativada), senão a primeira edge encontrada poderia ser a de
+   * timeout em vez do fluxo normal de resposta.
+   */
   private singleOutgoing(definition: FlowDefinition, nodeId: string): string {
-    const edge = definition.edges.find((e) => e.source === nodeId);
+    const edge = definition.edges.find(
+      (e) => e.source === nodeId && e.sourceHandle !== TIMEOUT_HANDLE && e.sourceHandle !== TIMEOUT_LIMIT_HANDLE,
+    );
     if (!edge) {
       throw new Error(`Card "${nodeId}" não tem conexão de saída — fluxo publicado inválido.`);
     }

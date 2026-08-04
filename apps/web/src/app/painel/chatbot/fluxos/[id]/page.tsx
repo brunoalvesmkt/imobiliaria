@@ -39,7 +39,7 @@ import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 import { FlowCardNode, type FlowCardData } from "./flow-card-node";
 import { NodeInspector } from "./node-inspector";
-import { ADD_MENU_OPTIONS, NODE_COLORS, defaultDataFor, type MessageMediaType } from "./node-types";
+import { ADD_MENU_OPTIONS, NODE_COLORS, TIMEOUT_HANDLE, TIMEOUT_LIMIT_HANDLE, defaultDataFor, type MessageMediaType } from "./node-types";
 
 const DRAG_MIME_TYPE = "application/x-flow-node-type";
 const DRAG_MIME_PRESET = "application/x-flow-node-preset";
@@ -56,7 +56,14 @@ function toReactFlowNode(node: FlowNode, index: number): Node<FlowCardData> {
 }
 
 function toReactFlowEdge(edge: FlowEdge): Edge {
-  return { id: edge.id, source: edge.source, target: edge.target, ...(edge.sourceHandle ? { sourceHandle: edge.sourceHandle } : {}) };
+  const isTimeoutEdge = edge.sourceHandle === TIMEOUT_HANDLE || edge.sourceHandle === TIMEOUT_LIMIT_HANDLE;
+  return {
+    id: edge.id,
+    source: edge.source,
+    target: edge.target,
+    ...(edge.sourceHandle ? { sourceHandle: edge.sourceHandle } : {}),
+    ...(isTimeoutEdge ? { style: { strokeDasharray: "6 4", stroke: "#c07a2d" } } : {}),
+  };
 }
 
 export default function FlowBuilderPage() {

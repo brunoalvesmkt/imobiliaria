@@ -14,6 +14,8 @@ export interface MessageNodeData {
   arquivoNome?: string;
 }
 
+export type TimeoutUnit = "minutes" | "hours" | "days";
+
 export interface QuestionNodeData {
   texto: string;
   variavel: string;
@@ -22,8 +24,10 @@ export interface QuestionNodeData {
   mensagemErro?: string;
   maxTentativas?: number;
   pontuacao?: number;
-  timeoutSeconds?: number;
-  timeoutTargetNodeId?: string;
+  timeoutEnabled?: boolean;
+  timeoutQuantidade?: number;
+  timeoutUnidade?: TimeoutUnit;
+  timeoutMaxTentativas?: number;
 }
 
 export interface MenuOption {
@@ -38,9 +42,15 @@ export interface MenuNodeData {
   variavel?: string;
   mensagemErro?: string;
   maxTentativas?: number;
-  timeoutSeconds?: number;
-  timeoutTargetNodeId?: string;
+  timeoutEnabled?: boolean;
+  timeoutQuantidade?: number;
+  timeoutUnidade?: TimeoutUnit;
+  timeoutMaxTentativas?: number;
 }
+
+/** Saídas reservadas (`FlowEdge.sourceHandle`) da reativação por falta de resposta — ver flow-definition.types.ts no backend. */
+export const TIMEOUT_HANDLE = "timeout";
+export const TIMEOUT_LIMIT_HANDLE = "timeout_limit";
 
 export type ConditionOperator = "equals" | "contains" | "exists" | "not_exists";
 

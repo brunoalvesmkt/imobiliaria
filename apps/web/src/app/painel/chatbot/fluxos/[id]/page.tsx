@@ -1,7 +1,7 @@
 "use client";
 
 import "@xyflow/react/dist/style.css";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -547,20 +547,23 @@ function MobilePanHint() {
 function AddNodeMenu({ onAdd }: { onAdd: (type: FlowNodeType, presetTipo?: MessageMediaType) => void }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
-    function onDocClick() {
+    function onDocClick(e: MouseEvent) {
+      if (containerRef.current?.contains(e.target as globalThis.Node)) return;
       setOpen(false);
     }
     // Fase de captura: o canvas do React Flow intercepta/pára a propagação de mousedown na fase
-    // de bolha para lidar com pan/drag, o que impedia este listener de disparar ao clicar nele.
+    // de bolha para lidar com pan/drag, o que impedia este listener de disparar ao clicar fora —
+    // por isso checamos o clique manualmente (containerRef) em vez de usar stopPropagation.
     document.addEventListener("mousedown", onDocClick, true);
     return () => document.removeEventListener("mousedown", onDocClick, true);
   }, [open]);
 
   return (
-    <div className="relative" onMouseDown={(e) => e.stopPropagation()}>
+    <div ref={containerRef} className="relative">
       <Button variant="secondary" onClick={() => setOpen((v) => !v)}>
         + {t("chatbot.builder.addNode")}
       </Button>

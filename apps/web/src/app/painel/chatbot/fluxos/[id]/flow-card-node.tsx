@@ -112,14 +112,22 @@ function AddConnectedButton({ onAdd }: { onAdd: (type: FlowNodeType, presetTipo?
   const [open, setOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
-    function onDocClick() {
+    function onDocClick(e: MouseEvent) {
+      const target = e.target as Node;
+      // Fase de captura: o canvas do React Flow intercepta/pára a propagação de mousedown na
+      // fase de bolha para lidar com pan/drag, o que impedia este listener de disparar ao clicar
+      // nele — mas a fase de captura também ignora e.stopPropagation() de dentro do menu (React
+      // synthetic events só afetam a bolha), então checamos manualmente se o clique foi dentro
+      // do botão ou do menu (portalizado em document.body) antes de fechar.
+      if (buttonRef.current?.contains(target) || menuRef.current?.contains(target)) return;
       setOpen(false);
     }
-    document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
+    document.addEventListener("mousedown", onDocClick, true);
+    return () => document.removeEventListener("mousedown", onDocClick, true);
   }, [open]);
 
   function toggleOpen(e: React.MouseEvent) {
@@ -149,7 +157,7 @@ function AddConnectedButton({ onAdd }: { onAdd: (type: FlowNodeType, presetTipo?
         menuPos &&
         createPortal(
           <div
-            onMouseDown={(e) => e.stopPropagation()}
+            ref={menuRef}
             style={{ position: "fixed", top: menuPos.top, left: menuPos.left }}
             className="z-[9999] w-52 rounded-md border border-line bg-surface py-1 shadow-lg"
           >

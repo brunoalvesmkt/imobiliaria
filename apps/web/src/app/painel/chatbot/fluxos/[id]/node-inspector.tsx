@@ -129,7 +129,7 @@ function Select({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+        className="w-full min-w-0 rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>
@@ -298,19 +298,24 @@ function TimeoutFields({
         <>
           <p className="text-xs text-ink-faint">{t("chatbot.builder.field.timeoutHint")}</p>
           <div className="flex gap-2">
-            <Field
-              label={t("chatbot.builder.field.timeoutQuantidade")}
-              type="number"
-              min={1}
-              value={timeoutQuantidade ?? ""}
-              onChange={(e) => onChange({ timeoutQuantidade: e.target.value ? Number(e.target.value) : undefined })}
-            />
-            <Select
-              label={t("chatbot.builder.field.timeoutUnidade")}
-              value={timeoutUnidade ?? "minutes"}
-              onChange={(v) => onChange({ timeoutUnidade: v as TimeoutUnit })}
-              options={TIMEOUT_UNITS.map((u) => ({ value: u, label: t(`chatbot.builder.field.timeoutUnit.${u}` as DictionaryKey) }))}
-            />
+            <div className="min-w-0 flex-1">
+              <Field
+                label={t("chatbot.builder.field.timeoutQuantidade")}
+                type="number"
+                min={1}
+                value={timeoutQuantidade ?? ""}
+                onChange={(e) => onChange({ timeoutQuantidade: e.target.value ? Number(e.target.value) : undefined })}
+                className="w-full"
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <Select
+                label={t("chatbot.builder.field.timeoutUnidade")}
+                value={timeoutUnidade ?? "minutes"}
+                onChange={(v) => onChange({ timeoutUnidade: v as TimeoutUnit })}
+                options={TIMEOUT_UNITS.map((u) => ({ value: u, label: t(`chatbot.builder.field.timeoutUnit.${u}` as DictionaryKey) }))}
+              />
+            </div>
           </div>
           <Field
             label={t("chatbot.builder.field.timeoutMaxTentativas")}

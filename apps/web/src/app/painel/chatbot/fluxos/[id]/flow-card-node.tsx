@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { FlowNodeType } from "@/lib/chatbot";
 import { ADDABLE_TYPES, NODE_COLORS } from "./node-types";
@@ -69,9 +70,12 @@ export function FlowCardNode({ data, id }: NodeProps) {
             e.stopPropagation();
             cardData.onDeleteNode?.(id);
           }}
-          className="absolute -right-2 -top-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[11px] font-bold leading-none text-white shadow hover:bg-red-700"
+          className="absolute -right-2 -top-2 z-10 grid h-5 w-5 place-items-center rounded-full bg-red-600 text-white shadow hover:bg-red-700"
         >
-          ×
+          <span className="relative block h-2.5 w-2.5">
+            <span className="absolute left-1/2 top-1/2 h-[2px] w-full -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-full bg-white" />
+            <span className="absolute left-1/2 top-1/2 h-[2px] w-full -translate-x-1/2 -translate-y-1/2 -rotate-45 rounded-full bg-white" />
+          </span>
         </button>
       )}
       {hasTarget && <Handle type="target" position={Position.Top} style={{ background: color }} />}
@@ -94,41 +98,66 @@ export function FlowCardNode({ data, id }: NodeProps) {
 function AddConnectedButton({ onAdd }: { onAdd: (type: FlowNodeType) => void }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDocClick() {
+      setOpen(false);
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [open]);
+
+  function toggleOpen(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!open && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setMenuPos({ top: rect.bottom + 4, left: rect.right - 176 });
+    }
+    setOpen((v) => !v);
+  }
 
   return (
     <div className="absolute -bottom-2 -right-2 z-10">
       <button
+        ref={buttonRef}
         type="button"
         title={t("chatbot.builder.addNode")}
-        onClick={(e) => {
-          e.stopPropagation();
-          setOpen((v) => !v);
-        }}
-        className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 text-[13px] font-bold leading-none text-white shadow hover:bg-brand-700"
+        onClick={toggleOpen}
+        className="grid h-5 w-5 place-items-center rounded-full bg-brand-600 text-white shadow hover:bg-brand-700"
       >
-        +
+        <span className="relative block h-2.5 w-2.5">
+          <span className="absolute left-1/2 top-0 h-full w-[2px] -translate-x-1/2 rounded-full bg-white" />
+          <span className="absolute left-0 top-1/2 h-[2px] w-full -translate-y-1/2 rounded-full bg-white" />
+        </span>
       </button>
-      {open && (
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className="absolute right-0 top-full z-20 mt-1 w-44 rounded-md border border-line bg-surface py-1 shadow-lg"
-        >
-          {ADDABLE_TYPES.map((type) => (
-            <button
-              key={type}
-              type="button"
-              onClick={() => {
-                onAdd(type);
-                setOpen(false);
-              }}
-              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-ink hover:bg-surface-alt"
-            >
-              <span className="h-2 w-2 rounded-full" style={{ background: NODE_COLORS[type] }} />
-              {t(`chatbot.builder.nodeType.${type}` as DictionaryKey)}
-            </button>
-          ))}
-        </div>
-      )}
+      {open &&
+        menuPos &&
+        createPortal(
+          <div
+            onMouseDown={(e) => e.stopPropagation()}
+            style={{ position: "fixed", top: menuPos.top, left: menuPos.left }}
+            className="z-[9999] w-44 rounded-md border border-line bg-surface py-1 shadow-lg"
+          >
+            {ADDABLE_TYPES.map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => {
+                  onAdd(type);
+                  setOpen(false);
+                }}
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-ink hover:bg-surface-alt"
+              >
+                <span className="h-2 w-2 rounded-full" style={{ background: NODE_COLORS[type] }} />
+                {t(`chatbot.builder.nodeType.${type}` as DictionaryKey)}
+              </button>
+            ))}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

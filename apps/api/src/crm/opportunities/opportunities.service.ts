@@ -135,7 +135,7 @@ export class OpportunitiesService {
     if (dto.previsaoFechamento !== undefined) data.previsaoFechamento = new Date(dto.previsaoFechamento);
     if (dto.observacoes !== undefined) data.observacoes = dto.observacoes;
 
-    const updated = await this.tenantPrisma.opportunity.update({ where: { id }, data });
+    await this.tenantPrisma.opportunity.update({ where: { id }, data });
 
     await this.audit.record({
       actorId,
@@ -145,7 +145,11 @@ export class OpportunitiesService {
       entityId: id,
     });
 
-    return updated;
+    // Devolve com os mesmos includes de get() (contato, etapa, funil, responsável, histórico) —
+    // o frontend da tela de detalhes grava a resposta direto no cache da query de detalhe
+    // (queryClient.setQueryData), então um retorno "raso" (só as colunas da tabela) quebraria a
+    // renderização ao sobrescrever os dados aninhados já carregados.
+    return this.get(id);
   }
 
   /**
@@ -170,7 +174,7 @@ export class OpportunitiesService {
       novoResponsavel = { id: user.id, nome: user.nome };
     }
 
-    const updated = await this.tenantPrisma.opportunity.update({
+    await this.tenantPrisma.opportunity.update({
       where: { id },
       data: { responsavelId: novoResponsavel?.id ?? null },
     });
@@ -185,7 +189,9 @@ export class OpportunitiesService {
       newData: { responsavelId: novoResponsavel?.id ?? null, responsavelNome: novoResponsavel?.nome ?? null },
     });
 
-    return updated;
+    // Ver comentário em update() — o frontend grava o retorno direto no cache da query de
+    // detalhe, então precisa vir com os mesmos includes de get().
+    return this.get(id);
   }
 
   async moveStage(id: string, dto: MoveStageDto, actorId: string) {

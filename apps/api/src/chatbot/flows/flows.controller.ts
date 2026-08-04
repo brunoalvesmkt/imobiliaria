@@ -8,6 +8,7 @@ import { CurrentUser } from "../../auth/current-user.decorator";
 import type { AuthenticatedRequestUser } from "../../auth/jwt-payload.interface";
 import { FlowsService } from "./flows.service";
 import { CreateFlowDto } from "./dto/create-flow.dto";
+import { UpdateFlowDto } from "./dto/update-flow.dto";
 import { UpdateDefinitionDto } from "./dto/update-definition.dto";
 
 @Controller("chatbot/flows")
@@ -38,6 +39,18 @@ export class FlowsController {
   @RequirePermission("chatbot", "create")
   create(@Body() dto: CreateFlowDto, @CurrentUser() user: AuthenticatedRequestUser) {
     return this.service.create(dto, user.id);
+  }
+
+  @Patch(":id")
+  @RequirePermission("chatbot", "edit")
+  update(@Param("id") id: string, @Body() dto: UpdateFlowDto, @CurrentUser() user: AuthenticatedRequestUser) {
+    return this.service.update(id, dto, user.id);
+  }
+
+  @Post(":id/duplicate")
+  @RequirePermission("chatbot", "create")
+  duplicate(@Param("id") id: string, @CurrentUser() user: AuthenticatedRequestUser) {
+    return this.service.duplicate(id, user.id);
   }
 
   @Patch(":id/definition")

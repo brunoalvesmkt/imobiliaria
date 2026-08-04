@@ -71,6 +71,9 @@ export default function FlowBuilderPage() {
   const [loadedVersion, setLoadedVersion] = useState<number | null>(null);
   const [saveMessage, setSaveMessage] = useState<"saved" | "error" | null>(null);
   const [publishErrors, setPublishErrors] = useState<string[] | null>(null);
+  // "Publicar" só libera depois de "Salvar" — evita publicar em cima de uma definição diferente
+  // do que está desenhado na tela (ver saveCurrentDefinition/onPublish mais abaixo).
+  const [dirty, setDirty] = useState(false);
 
   const readOnly = flow.data ? flow.data.status !== "draft" : true;
 
@@ -80,7 +83,24 @@ export default function FlowBuilderPage() {
     setNodes(definition.data.definicao.nodes.map(toReactFlowNode));
     setEdges(definition.data.definicao.edges.map(toReactFlowEdge));
     setLoadedVersion(definition.data.versao);
+    setDirty(false);
   }, [definition.data, loadedVersion, setNodes, setEdges]);
+
+  const handleNodesChange = useCallback<OnNodesChange<Node<FlowCardData>>>(
+    (changes) => {
+      onNodesChange(changes);
+      setDirty(true);
+    },
+    [onNodesChange],
+  );
+
+  const handleEdgesChange = useCallback<OnEdgesChange<Edge>>(
+    (changes) => {
+      onEdgesChange(changes);
+      setDirty(true);
+    },
+    [onEdgesChange],
+  );
 
   const selectedNode = useMemo(() => nodes.find((n) => n.id === selectedNodeId) ?? null, [nodes, selectedNodeId]);
 
@@ -88,6 +108,7 @@ export default function FlowBuilderPage() {
     (connection: Connection) => {
       if (readOnly) return;
       setEdges((eds) => addEdge({ ...connection, id: `e-${connection.source}-${connection.sourceHandle ?? "out"}-${connection.target}` }, eds));
+      setDirty(true);
     },
     [readOnly, setEdges],
   );
@@ -106,17 +127,20 @@ export default function FlowBuilderPage() {
     };
     setNodes((nds) => [...nds, newNode]);
     setSelectedNodeId(nodeId);
+    setDirty(true);
   }
 
   function updateSelectedNodeData(payload: Record<string, unknown>) {
     if (!selectedNodeId) return;
     setNodes((nds) => nds.map((n) => (n.id === selectedNodeId ? { ...n, data: { ...n.data, payload } } : n)));
+    setDirty(true);
   }
 
   function deleteNodeById(id: string) {
     setNodes((nds) => nds.filter((n) => n.id !== id));
     setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id));
     setSelectedNodeId((prev) => (prev === id ? null : prev));
+    setDirty(true);
   }
 
   function deleteSelectedNode() {
@@ -145,22 +169,24 @@ export default function FlowBuilderPage() {
     try {
       await saveCurrentDefinition();
       setSaveMessage("saved");
+      setDirty(false);
     } catch {
       setSaveMessage("error");
     }
   }
 
   /**
+   * "Publicar" só fica habilitado depois de "Salvar" (ver `dirty` acima) —
+   * mas ainda assim salva de novo aqui como rede de segurança, já que
    * "Publicar" valida a última definição salva no servidor, não o que está
-   * desenhado na tela — sem salvar antes, conexões feitas no canvas mas
-   * ainda não persistidas fariam a validação rodar em cima do estado
-   * antigo, acusando erros que já foram corrigidos visualmente.
+   * desenhado na tela.
    */
   async function onPublish() {
     setPublishErrors(null);
     setSaveMessage(null);
     try {
       await saveCurrentDefinition();
+      setDirty(false);
     } catch {
       setPublishErrors([t("chatbot.builder.saveError")]);
       return;
@@ -201,7 +227,7 @@ export default function FlowBuilderPage() {
             </Button>
           )}
           {flow.data?.status === "draft" && (
-            <Button onClick={onPublish} loading={publish.isPending}>
+            <Button onClick={onPublish} loading={publish.isPending} disabled={dirty} title={dirty ? t("chatbot.builder.publishNeedsSave") : undefined}>
               {t("chatbot.builder.publish")}
             </Button>
           )}
@@ -235,8 +261,8 @@ export default function FlowBuilderPage() {
                 data: { ...n.data, selected: n.id === selectedNodeId, readOnly, onDeleteNode: deleteNodeById },
               }))}
               edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
+              onNodesChange={handleNodesChange}
+              onEdgesChange={handleEdgesChange}
               onConnect={onConnect}
               readOnly={readOnly}
               onNodeClick={(nodeId) => setSelectedNodeId(nodeId)}

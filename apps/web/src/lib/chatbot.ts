@@ -118,6 +118,26 @@ export function useCreateFlow() {
   });
 }
 
+export function useUpdateFlow() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...input }: { id: string; nome?: string; descricao?: string; aiEnabled?: boolean }) =>
+      apiPatch<ChatbotFlow>(`/chatbot/flows/${id}`, input),
+    onSuccess: (_data, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ["chatbot", "flows"] });
+      queryClient.invalidateQueries({ queryKey: ["chatbot", "flows", id] });
+    },
+  });
+}
+
+export function useDuplicateFlow() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiPost<ChatbotFlow>(`/chatbot/flows/${id}/duplicate`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["chatbot", "flows"] }),
+  });
+}
+
 export function useSaveFlowDefinition(id: string) {
   const queryClient = useQueryClient();
   return useMutation({

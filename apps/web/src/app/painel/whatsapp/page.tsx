@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
 import { useI18n } from "@/lib/i18n";
+import { ApiError } from "@/lib/api-client";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 
 export default function WhatsAppPage() {
@@ -122,10 +123,11 @@ function NumberRow({ number }: { number: WhatsAppNumber }) {
             {number.status === "disconnected" && (
               <button
                 type="button"
+                disabled={connect.isPending}
                 onClick={() => connect.mutate(number.id)}
-                className="text-xs font-medium text-brand-700 hover:underline"
+                className="text-xs font-medium text-brand-700 hover:underline disabled:opacity-50"
               >
-                {t("whatsapp.connect")}
+                {connect.isPending ? t("whatsapp.connecting") : t("whatsapp.connect")}
               </button>
             )}
             {number.status === "authenticating" && !liveQr && (
@@ -169,6 +171,17 @@ function NumberRow({ number }: { number: WhatsAppNumber }) {
         <tr className="border-b border-line last:border-0">
           <td colSpan={6} className="bg-surface-alt px-4 py-4">
             <QrPanel connectQrCode={connect.data?.qrCode} liveQrCode={qr.data?.qrCode} />
+          </td>
+        </tr>
+      )}
+      {(connect.error || qr.error) && (
+        <tr className="border-b border-line last:border-0">
+          <td colSpan={6} className="px-4 py-2">
+            <Alert tone="error">
+              {(connect.error ?? qr.error) instanceof ApiError
+                ? ((connect.error ?? qr.error) as ApiError).message
+                : t("whatsapp.errorGeneric")}
+            </Alert>
           </td>
         </tr>
       )}

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import type { Prisma } from "@chatbot-saas/database";
 import { PrismaService } from "../../prisma/prisma.service";
 import { TenantScopedPrismaService } from "../../prisma/tenant-scoped-prisma.service";
@@ -6,6 +6,7 @@ import { AuditService } from "../../common/audit/audit.service";
 import { requireCurrentTenantId } from "../../common/tenant/tenant-context";
 import { AI_NODE_TYPES, validateFlowDefinition, type FlowDefinition } from "../flow-definition.types";
 import type { CreateFlowDto } from "./dto/create-flow.dto";
+import type { UpdateFlowDto } from "./dto/update-flow.dto";
 import type { UpdateDefinitionDto } from "./dto/update-definition.dto";
 
 const EMPTY_DEFINITION: FlowDefinition = {
@@ -63,6 +64,78 @@ export class FlowsService {
     });
 
     return flow;
+  }
+
+  /** Edita nome/descrição/IA habilitada — metadados do fluxo, não o desenho (isso é `updateDefinition`, via Flow Builder). */
+  async update(id: string, dto: UpdateFlowDto, actorId: string) {
+    const tenantId = requireCurrentTenantId();
+    await this.get(id);
+
+    if (dto.nome !== undefined) {
+      const conflict = await this.prisma.chatbotFlow.findFirst({
+        where: { tenantId, nome: dto.nome, id: { not: id }, deletedAt: null },
+      });
+      if (conflict) {
+        throw new ConflictException(`Já existe um fluxo chamado "${dto.nome}".`);
+      }
+    }
+
+    const data: Prisma.ChatbotFlowUncheckedUpdateInput = {};
+    if (dto.nome !== undefined) data.nome = dto.nome;
+    if (dto.descricao !== undefined) data.descricao = dto.descricao;
+    if (dto.aiEnabled !== undefined) data.aiEnabled = dto.aiEnabled;
+
+    const updated = await this.tenantPrisma.chatbotFlow.update({ where: { id }, data });
+
+    await this.audit.record({
+      actorId,
+      actorType: "tenant_user",
+      action: "chatbot_flow.update",
+      entity: "ChatbotFlow",
+      entityId: id,
+      newData: { ...dto },
+    });
+
+    return updated;
+  }
+
+  /** Nome único (mesma regra de `create`, `@@unique([tenantId, nome])`) — tenta "X (cópia)", depois "X (cópia 2)", "X (cópia 3)"... */
+  private async uniqueDuplicateName(tenantId: string, baseName: string): Promise<string> {
+    let candidate = `${baseName} (cópia)`;
+    let counter = 2;
+    while (await this.prisma.chatbotFlow.findFirst({ where: { tenantId, nome: candidate, deletedAt: null } })) {
+      candidate = `${baseName} (cópia ${counter})`;
+      counter++;
+    }
+    return candidate;
+  }
+
+  /** Duplica um fluxo (metadados + desenho da versão atual) como um novo fluxo em rascunho v1 — nunca duplica o histórico de execuções. */
+  async duplicate(id: string, actorId: string) {
+    const tenantId = requireCurrentTenantId();
+    const flow = await this.get(id);
+    const currentVersion = await this.getCurrentVersion(id);
+    const nome = await this.uniqueDuplicateName(tenantId, flow.nome);
+
+    const newFlow = await this.tenantPrisma.chatbotFlow.create({
+      data: { nome, descricao: flow.descricao, aiEnabled: flow.aiEnabled, status: "draft", versaoAtual: 1 },
+    });
+
+    await this.prisma.chatbotFlowVersion.create({
+      data: { chatbotFlowId: newFlow.id, versao: 1, definicao: currentVersion.definicao as Prisma.InputJsonValue },
+    });
+
+    await this.audit.record({
+      actorId,
+      actorType: "tenant_user",
+      action: "chatbot_flow.duplicate",
+      entity: "ChatbotFlow",
+      entityId: newFlow.id,
+      previousData: { sourceFlowId: id },
+      newData: { nome },
+    });
+
+    return newFlow;
   }
 
   async updateDefinition(id: string, dto: UpdateDefinitionDto, actorId: string) {

@@ -6,10 +6,12 @@ import {
   useArchiveFlow,
   useCreateFlow,
   useDeleteFlow,
+  useDuplicateFlow,
   useFlows,
   useNewFlowVersion,
   usePauseFlow,
   usePublishFlow,
+  useUpdateFlow,
   type ChatbotFlow,
 } from "@/lib/chatbot";
 import { Button } from "@/components/ui/button";
@@ -68,9 +70,21 @@ function FlowRow({ flow }: { flow: ChatbotFlow }) {
   const archive = useArchiveFlow();
   const newVersion = useNewFlowVersion();
   const deleteFlow = useDeleteFlow();
+  const duplicateFlow = useDuplicateFlow();
   const [publishErrors, setPublishErrors] = useState<string[] | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [duplicateError, setDuplicateError] = useState<string | null>(null);
+
+  async function onDuplicate() {
+    setDuplicateError(null);
+    try {
+      await duplicateFlow.mutateAsync(flow.id);
+    } catch (err) {
+      setDuplicateError(err instanceof ApiError ? err.message : t("chatbot.errorGeneric"));
+    }
+  }
 
   async function onDelete() {
     setDeleteError(null);
@@ -96,6 +110,16 @@ function FlowRow({ flow }: { flow: ChatbotFlow }) {
     }
   }
 
+  if (editing) {
+    return (
+      <tr className="border-b border-line last:border-0 align-top">
+        <td colSpan={4} className="px-4 py-3">
+          <EditFlowForm flow={flow} onDone={() => setEditing(false)} onCancel={() => setEditing(false)} />
+        </td>
+      </tr>
+    );
+  }
+
   return (
     <tr className="border-b border-line last:border-0 align-top">
       <td className="px-4 py-2 font-medium text-ink">
@@ -114,6 +138,11 @@ function FlowRow({ flow }: { flow: ChatbotFlow }) {
             </Alert>
           </div>
         )}
+        {duplicateError && (
+          <div className="mt-2 max-w-md">
+            <Alert tone="error">{duplicateError}</Alert>
+          </div>
+        )}
       </td>
       <td className="px-4 py-2">
         <StatusBadge status={flow.status} />
@@ -121,6 +150,17 @@ function FlowRow({ flow }: { flow: ChatbotFlow }) {
       <td className="px-4 py-2 text-ink-dim">{flow.versaoAtual}</td>
       <td className="px-4 py-2 text-right">
         <div className="flex justify-end gap-2">
+          <button type="button" onClick={() => setEditing(true)} className="text-xs font-medium text-ink-dim hover:underline">
+            {t("chatbot.action.edit")}
+          </button>
+          <button
+            type="button"
+            disabled={duplicateFlow.isPending}
+            onClick={onDuplicate}
+            className="text-xs font-medium text-ink-dim hover:underline disabled:opacity-50"
+          >
+            {t("chatbot.action.duplicate")}
+          </button>
           {flow.status === "draft" && (
             <button type="button" onClick={onPublish} className="text-xs font-medium text-brand-700 hover:underline">
               {t("chatbot.action.publish")}
@@ -183,6 +223,48 @@ function StatusBadge({ status }: { status: ChatbotFlow["status"] }) {
     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${classes[status]}`}>
       {t(`chatbot.status.${status}` as DictionaryKey)}
     </span>
+  );
+}
+
+function EditFlowForm({ flow, onDone, onCancel }: { flow: ChatbotFlow; onDone: () => void; onCancel: () => void }) {
+  const { t } = useI18n();
+  const updateFlow = useUpdateFlow();
+  const [nome, setNome] = useState(flow.nome);
+  const [descricao, setDescricao] = useState(flow.descricao ?? "");
+  const [aiEnabled, setAiEnabled] = useState(flow.aiEnabled);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      await updateFlow.mutateAsync({ id: flow.id, nome, descricao, aiEnabled });
+      onDone();
+    } catch {
+      // erro exibido abaixo
+    }
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col gap-3 rounded-lg border border-line bg-surface-alt p-4">
+      {updateFlow.error && (
+        <Alert tone="error">{updateFlow.error instanceof ApiError ? updateFlow.error.message : t("chatbot.errorGeneric")}</Alert>
+      )}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label={t("chatbot.flowName")} required value={nome} onChange={(e) => setNome(e.target.value)} />
+        <Field label={t("chatbot.flowDescription")} value={descricao} onChange={(e) => setDescricao(e.target.value)} />
+      </div>
+      <label className="flex items-center gap-2 text-sm text-ink-dim">
+        <input type="checkbox" checked={aiEnabled} onChange={(e) => setAiEnabled(e.target.checked)} />
+        {t("chatbot.aiEnabledLabel")}
+      </label>
+      <div className="flex gap-2">
+        <Button type="submit" loading={updateFlow.isPending}>
+          {t("common.save")}
+        </Button>
+        <Button type="button" variant="ghost" onClick={onCancel}>
+          {t("common.cancel")}
+        </Button>
+      </div>
+    </form>
   );
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Handle, Position, useReactFlow, type NodeProps } from "@xyflow/react";
+import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { FlowNodeType } from "@/lib/chatbot";
 import { NODE_COLORS } from "./node-types";
 import { useI18n } from "@/lib/i18n";
@@ -12,6 +12,7 @@ export interface FlowCardData extends Record<string, unknown> {
   payload: Record<string, unknown>;
   selected?: boolean;
   readOnly?: boolean;
+  onDeleteNode?: (id: string) => void;
 }
 
 const TERMINAL_TYPES: FlowNodeType[] = ["end", "transfer"];
@@ -42,7 +43,6 @@ function summaryFor(type: FlowNodeType, payload: Record<string, unknown>): strin
 
 export function FlowCardNode({ data, id }: NodeProps) {
   const { t } = useI18n();
-  const { deleteElements } = useReactFlow();
   const cardData = data as FlowCardData;
   const { flowNodeType, payload } = cardData;
   const color = NODE_COLORS[flowNodeType];
@@ -62,7 +62,7 @@ export function FlowCardNode({ data, id }: NodeProps) {
           title={t("chatbot.builder.deleteNode")}
           onClick={(e) => {
             e.stopPropagation();
-            deleteElements({ nodes: [{ id }] });
+            cardData.onDeleteNode?.(id);
           }}
           className="absolute -right-2 -top-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[11px] font-bold leading-none text-white shadow hover:bg-red-700"
         >

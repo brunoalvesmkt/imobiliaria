@@ -113,11 +113,15 @@ export default function FlowBuilderPage() {
     setNodes((nds) => nds.map((n) => (n.id === selectedNodeId ? { ...n, data: { ...n.data, payload } } : n)));
   }
 
+  function deleteNodeById(id: string) {
+    setNodes((nds) => nds.filter((n) => n.id !== id));
+    setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id));
+    setSelectedNodeId((prev) => (prev === id ? null : prev));
+  }
+
   function deleteSelectedNode() {
     if (!selectedNodeId) return;
-    setNodes((nds) => nds.filter((n) => n.id !== selectedNodeId));
-    setEdges((eds) => eds.filter((e) => e.source !== selectedNodeId && e.target !== selectedNodeId));
-    setSelectedNodeId(null);
+    deleteNodeById(selectedNodeId);
   }
 
   async function onSave() {
@@ -209,7 +213,10 @@ export default function FlowBuilderPage() {
         <div className="min-w-0 flex-1">
           <ReactFlowProvider>
             <FlowCanvas
-              nodes={nodes.map((n) => ({ ...n, data: { ...n.data, selected: n.id === selectedNodeId, readOnly } }))}
+              nodes={nodes.map((n) => ({
+                ...n,
+                data: { ...n.data, selected: n.id === selectedNodeId, readOnly, onDeleteNode: deleteNodeById },
+              }))}
               edges={edges}
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}

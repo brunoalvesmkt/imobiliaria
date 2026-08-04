@@ -22,6 +22,22 @@ export class OpportunitiesService {
     private readonly followUps: FollowUpsService,
   ) {}
 
+  /**
+   * Opções para o seletor de responsável na tela de detalhes — usuários ativos cujo papel tem
+   * ao menos uma permissão no módulo "crm" (não existe controle de acesso por funil específico
+   * neste RBAC, só por módulo inteiro — ver PERMISSIONS_MATRIX.md). Endpoint próprio, gated por
+   * "crm":"view", em vez de reaproveitar `GET /tenant-users` (gated por "configuracoes":"view",
+   * permissão que um usuário comum do CRM não necessariamente tem).
+   */
+  async listResponsavelOptions() {
+    const tenantId = requireCurrentTenantId();
+    return this.prisma.tenantUser.findMany({
+      where: { tenantId, deletedAt: null, status: "active", role: { permissions: { some: { module: "crm" } } } },
+      select: { id: true, nome: true, email: true },
+      orderBy: { nome: "asc" },
+    });
+  }
+
   async list(funnelId?: string, stageId?: string) {
     const tenantId = requireCurrentTenantId();
     const where: Prisma.OpportunityWhereInput = { deletedAt: null, tenantId };

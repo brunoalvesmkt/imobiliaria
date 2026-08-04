@@ -40,10 +40,14 @@ export class NumberFlowsService {
     }
 
     const existing = await this.tenantPrisma.whatsAppNumberFlow.findMany({ where: { whatsAppNumberId: numberId, ativo: true } });
-    this.assertNoAnyConflict(existing, dto.regraAtivacao, null);
     if (dto.regraAtivacao === "keyword") {
       await this.assertNoTermConflict(existing, termos, null);
     }
+    // "Qualquer mensagem" já tem outro ativo nesta conexão: em vez de bloquear a vinculação, o
+    // fluxo entra desativado — o usuário decide depois, pelo botão "Ativar" (que já confirma e
+    // troca o outro automaticamente), quando quer que este passe a valer.
+    const hasActiveAny = existing.some((e) => e.regraAtivacao === "any");
+    const ativoInicial = dto.regraAtivacao === "any" && hasActiveAny ? false : true;
 
     const created = await this.tenantPrisma.whatsAppNumberFlow.create({
       data: {
@@ -53,6 +57,7 @@ export class NumberFlowsService {
         termos,
         prioridade: dto.prioridade ?? 0,
         prioritized: dto.regraAtivacao === "any" ? (dto.prioritized ?? false) : false,
+        ativo: ativoInicial,
       },
     });
 

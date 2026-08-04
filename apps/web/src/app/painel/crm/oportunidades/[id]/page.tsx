@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useOpportunity, useUpdateOpportunity, useTransferOpportunityResponsavel } from "@/lib/crm";
-import { useTenantUsers } from "@/lib/tenant-users";
+import { useOpportunity, useUpdateOpportunity, useTransferOpportunityResponsavel, useResponsavelOptions } from "@/lib/crm";
 import { ContactTasks } from "@/components/crm/contact-tasks";
 import { Field } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -18,7 +17,7 @@ export default function OpportunityDetailPage() {
   const opportunity = useOpportunity(params.id);
   const updateOpportunity = useUpdateOpportunity(params.id);
   const transferResponsavel = useTransferOpportunityResponsavel(params.id);
-  const tenantUsers = useTenantUsers();
+  const responsavelOptions = useResponsavelOptions();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ valor: "", produto: "", servico: "", previsaoFechamento: "", observacoes: "" });
   const [transferring, setTransferring] = useState(false);
@@ -28,7 +27,7 @@ export default function OpportunityDetailPage() {
   if (opportunity.isError || !opportunity.data) return <Alert tone="error">{t("crm.opportunityDetail.notFound")}</Alert>;
 
   const data = opportunity.data;
-  const activeUsers = (tenantUsers.data ?? []).filter((u) => u.status === "active");
+  const responsavelUsers = responsavelOptions.data ?? [];
 
   function startEditing() {
     setForm({
@@ -53,7 +52,8 @@ export default function OpportunityDetailPage() {
   }
 
   async function onConfirmTransfer() {
-    await transferResponsavel.mutateAsync(transferTarget || null);
+    if (!transferTarget) return;
+    await transferResponsavel.mutateAsync(transferTarget);
     setTransferring(false);
     setTransferTarget("");
   }
@@ -171,8 +171,8 @@ export default function OpportunityDetailPage() {
                 onChange={(e) => setTransferTarget(e.target.value)}
                 className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
               >
-                <option value="">{t("crm.opportunityDetail.noResponsavel")}</option>
-                {activeUsers.map((u) => (
+                {responsavelUsers.length === 0 && <option value="">{t("crm.opportunityDetail.noResponsavelOptions")}</option>}
+                {responsavelUsers.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.nome}
                   </option>
@@ -181,7 +181,7 @@ export default function OpportunityDetailPage() {
             </div>
             <p className="text-xs text-ink-faint">{t("crm.opportunityDetail.transferConfirmHint")}</p>
             <div className="flex gap-2">
-              <Button loading={transferResponsavel.isPending} onClick={onConfirmTransfer}>
+              <Button loading={transferResponsavel.isPending} disabled={!transferTarget} onClick={onConfirmTransfer}>
                 {t("crm.opportunityDetail.transferConfirm")}
               </Button>
               <Button variant="ghost" onClick={() => setTransferring(false)}>
@@ -195,7 +195,7 @@ export default function OpportunityDetailPage() {
             <Button
               variant="secondary"
               onClick={() => {
-                setTransferTarget(data.responsavelId ?? "");
+                setTransferTarget(data.responsavelId ?? responsavelUsers[0]?.id ?? "");
                 setTransferring(true);
               }}
             >

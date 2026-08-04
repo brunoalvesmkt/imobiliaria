@@ -574,6 +574,7 @@ const dictionary: Record<DictionaryKey, string> = {
   "crm.opportunityDetail.responsavelSection": "Owner",
   "crm.opportunityDetail.responsavelLabel": "New owner",
   "crm.opportunityDetail.noResponsavel": "No owner",
+  "crm.opportunityDetail.noResponsavelOptions": "No user with CRM access available",
   "crm.opportunityDetail.transfer": "Transfer",
   "crm.opportunityDetail.transferConfirm": "Confirm transfer",
   "crm.opportunityDetail.transferConfirmHint": "The new owner will be able to see and manage this opportunity.",

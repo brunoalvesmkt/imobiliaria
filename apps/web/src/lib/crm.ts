@@ -522,6 +522,14 @@ export function useOpportunity(id: string) {
   });
 }
 
+/** Usuários ativos com acesso ao módulo CRM — opções do seletor de responsável da oportunidade. */
+export function useResponsavelOptions() {
+  return useQuery({
+    queryKey: ["crm", "opportunities", "responsavel-options"],
+    queryFn: () => apiGet<{ id: string; nome: string; email: string }[]>("/crm/opportunities/responsavel-options"),
+  });
+}
+
 export function useUpdateOpportunity(id: string) {
   const queryClient = useQueryClient();
   return useMutation({

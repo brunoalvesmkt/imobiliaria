@@ -572,6 +572,7 @@ const dictionary = {
   "crm.opportunityDetail.responsavelSection": "Responsável",
   "crm.opportunityDetail.responsavelLabel": "Novo responsável",
   "crm.opportunityDetail.noResponsavel": "Sem responsável",
+  "crm.opportunityDetail.noResponsavelOptions": "Nenhum usuário com acesso ao CRM disponível",
   "crm.opportunityDetail.transfer": "Transferir",
   "crm.opportunityDetail.transferConfirm": "Confirmar transferência",
   "crm.opportunityDetail.transferConfirmHint": "O novo responsável passará a ver e gerenciar esta oportunidade.",

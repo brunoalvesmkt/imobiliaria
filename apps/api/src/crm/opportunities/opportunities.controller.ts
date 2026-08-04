@@ -28,6 +28,13 @@ export class OpportunitiesController {
     return this.service.list(funnelId, stageId);
   }
 
+  // Precisa vir antes de "@Get(':id')" — senão o Nest tentaria casar "responsavel-options" como um :id.
+  @Get("responsavel-options")
+  @RequirePermission("crm", "view")
+  listResponsavelOptions() {
+    return this.service.listResponsavelOptions();
+  }
+
   @Get(":id")
   @RequirePermission("crm", "view")
   get(@Param("id") id: string) {

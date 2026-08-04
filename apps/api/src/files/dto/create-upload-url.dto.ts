@@ -11,6 +11,6 @@ export class CreateUploadUrlDto {
 
   @IsInt()
   @Min(1)
-  @Max(50 * 1024 * 1024) // 50 MB — limite conservador para a Fase 1; por módulo/plano entra em fases futuras.
+  @Max(100 * 1024 * 1024) // 100 MB — maior limite entre os tipos de mídia do WhatsApp (documento); a validação fina por tipo fica no frontend do card de mídia do chatbot.
   tamanho!: number;
 }

@@ -38,7 +38,10 @@ export type ValidationType = "texto" | "numero" | "email" | "cpf" | "cnpj" | "te
 export interface MessageNodeData {
   tipo?: "text" | "image" | "audio" | "video" | "document" | "location";
   texto: string;
+  /** URL pública informada manualmente — ignorada quando `arquivoId` está presente (arquivo enviado tem prioridade). */
   midiaUrl?: string;
+  /** Arquivo enviado via upload (apps/api/src/files) — a URL de download é sempre resolvida na hora do envio (assinada, expira em minutos), nunca gravada no fluxo. */
+  arquivoId?: string;
   delayMs?: number;
 }
 

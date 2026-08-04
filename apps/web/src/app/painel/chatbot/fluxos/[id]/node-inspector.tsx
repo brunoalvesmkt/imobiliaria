@@ -1,15 +1,23 @@
 "use client";
 
+import { useRef, useState } from "react";
 import type { FlowNodeType, ValidationType } from "@/lib/chatbot";
 import { useFlows } from "@/lib/chatbot";
 import { useQueues } from "@/lib/atendimento";
 import { useFunnels } from "@/lib/crm";
 import { useAiAccess, type AiProviderName } from "@/lib/ai-settings";
+import { useUploadFile, type UploadedFile } from "@/lib/files";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
-import { MESSAGE_TYPE_FORMATS, MESSAGE_TYPE_LABEL_KEY, type MessageMediaType } from "./node-types";
+import {
+  MESSAGE_TYPE_ACCEPT,
+  MESSAGE_TYPE_FORMATS,
+  MESSAGE_TYPE_LABEL_KEY,
+  MESSAGE_TYPE_MAX_SIZE_MB,
+  type MessageMediaType,
+} from "./node-types";
 import type {
   AiNodeData,
   ConditionNodeData,
@@ -141,7 +149,7 @@ function MessageFields({ payload, onChange }: { payload: MessageNodeData; onChan
       <Select
         label={t("chatbot.builder.field.messageType")}
         value={tipo}
-        onChange={(v) => onChange({ ...payload, tipo: v as MessageMediaType })}
+        onChange={(v) => onChange({ ...payload, tipo: v as MessageMediaType, midiaUrl: undefined, arquivoId: undefined, arquivoNome: undefined })}
         options={MESSAGE_TYPES.map((mt) => ({ value: mt, label: t(MESSAGE_TYPE_LABEL_KEY[mt]) }))}
       />
       <Textarea
@@ -150,21 +158,101 @@ function MessageFields({ payload, onChange }: { payload: MessageNodeData; onChan
         onChange={(v) => onChange({ ...payload, texto: v })}
       />
       {tipo !== "text" && (
-        <>
-          <Field
-            label={t("chatbot.builder.field.mediaUrl")}
-            value={payload.midiaUrl ?? ""}
-            onChange={(e) => onChange({ ...payload, midiaUrl: e.target.value })}
-            placeholder="https://..."
-          />
-          {formats && (
-            <p className="text-xs text-ink-faint">
-              {t("chatbot.builder.field.mediaUrlHint")}: {formats}
-            </p>
-          )}
-        </>
+        <MediaUploadField
+          tipo={tipo}
+          arquivoId={payload.arquivoId}
+          arquivoNome={payload.arquivoNome}
+          midiaUrl={payload.midiaUrl}
+          formats={formats}
+          onUploaded={(file) => onChange({ ...payload, arquivoId: file.id, arquivoNome: file.nomeOriginal, midiaUrl: undefined })}
+          onClearUpload={() => onChange({ ...payload, arquivoId: undefined, arquivoNome: undefined })}
+          onUrlChange={(url) => onChange({ ...payload, midiaUrl: url, arquivoId: undefined, arquivoNome: undefined })}
+        />
       )}
     </>
+  );
+}
+
+function MediaUploadField({
+  tipo,
+  arquivoId,
+  arquivoNome,
+  midiaUrl,
+  formats,
+  onUploaded,
+  onClearUpload,
+  onUrlChange,
+}: {
+  tipo: MessageMediaType;
+  arquivoId: string | undefined;
+  arquivoNome: string | undefined;
+  midiaUrl: string | undefined;
+  formats: string;
+  onUploaded: (file: UploadedFile) => void;
+  onClearUpload: () => void;
+  onUrlChange: (url: string) => void;
+}) {
+  const { t } = useI18n();
+  const upload = useUploadFile();
+  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const maxSizeMb = MESSAGE_TYPE_MAX_SIZE_MB[tipo];
+
+  async function onFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setError(null);
+    if (file.size > maxSizeMb * 1024 * 1024) {
+      setError(t("chatbot.builder.field.mediaTooLarge").replace("{max}", String(maxSizeMb)));
+      return;
+    }
+    setProgress(0);
+    try {
+      const result = await upload.mutateAsync({ file, onProgress: setProgress });
+      onUploaded(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("chatbot.errorGeneric"));
+    }
+  }
+
+  if (arquivoId) {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <label className="text-sm font-medium text-ink">{t("chatbot.builder.field.mediaFile")}</label>
+        <div className="flex items-center justify-between gap-2 rounded-md border border-line bg-surface px-3 py-2 text-sm">
+          <span className="truncate text-ink">{arquivoNome ?? arquivoId}</span>
+          <button type="button" onClick={onClearUpload} className="flex-none text-xs font-medium text-red-600 hover:underline">
+            {t("common.remove")}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-sm font-medium text-ink">{t("chatbot.builder.field.mediaFile")}</label>
+      <input ref={inputRef} type="file" accept={MESSAGE_TYPE_ACCEPT[tipo]} onChange={onFileSelected} className="text-xs text-ink" />
+      {upload.isPending && (
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-muted">
+          <div className="h-full bg-brand-600 transition-all" style={{ width: `${progress}%` }} />
+        </div>
+      )}
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      {formats && (
+        <p className="text-xs text-ink-faint">
+          {t("chatbot.builder.field.mediaUrlHint")}: {formats} — {t("chatbot.builder.field.mediaMaxSize")} {maxSizeMb} MB
+        </p>
+      )}
+      <div className="flex items-center gap-2 pt-1 text-xs text-ink-faint">
+        <span className="h-px flex-1 bg-line" />
+        {t("chatbot.builder.field.mediaOrUrl")}
+        <span className="h-px flex-1 bg-line" />
+      </div>
+      <Field label={t("chatbot.builder.field.mediaUrl")} value={midiaUrl ?? ""} onChange={(e) => onUrlChange(e.target.value)} placeholder="https://..." />
+    </div>
   );
 }
 

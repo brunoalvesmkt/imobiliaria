@@ -6,7 +6,12 @@ export type MessageMediaType = "text" | "image" | "audio" | "video" | "document"
 export interface MessageNodeData {
   tipo?: MessageMediaType;
   texto: string;
+  /** URL pública informada manualmente — ignorada quando `arquivoId` está presente. */
   midiaUrl?: string;
+  /** Arquivo enviado por upload (ver lib/files.ts) — a referência estável é o id, nunca a URL de download (expira em minutos). */
+  arquivoId?: string;
+  /** Só para exibição no card/inspetor — o nome original do arquivo enviado. */
+  arquivoNome?: string;
 }
 
 export interface QuestionNodeData {
@@ -114,6 +119,26 @@ export const MESSAGE_TYPE_FORMATS: Record<MessageMediaType, string> = {
   audio: "MP3, OGG, AAC, AMR, OPUS",
   video: "MP4, 3GPP",
   document: "PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, TXT",
+  location: "",
+};
+
+/** Limites reais de tamanho de mídia do WhatsApp — validados no navegador antes do upload começar. */
+export const MESSAGE_TYPE_MAX_SIZE_MB: Record<MessageMediaType, number> = {
+  text: 0,
+  image: 5,
+  audio: 16,
+  video: 16,
+  document: 100,
+  location: 0,
+};
+
+/** Atributo `accept` do input de arquivo — orienta o seletor do SO, a validação real é por tamanho + o backend aceita qualquer mimeType coerente com o tipo. */
+export const MESSAGE_TYPE_ACCEPT: Record<MessageMediaType, string> = {
+  text: "",
+  image: "image/jpeg,image/png",
+  audio: "audio/mpeg,audio/ogg,audio/aac,audio/amr,.mp3,.ogg,.aac,.amr,.opus",
+  video: "video/mp4,video/3gpp",
+  document: ".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt",
   location: "",
 };
 

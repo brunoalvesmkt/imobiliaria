@@ -15,6 +15,7 @@ import { validateAnswer } from "./answer-validation.util";
 import { classifyLeadScore } from "../../crm/lead-score.util";
 import { LeadScoreConfigService } from "../../crm/lead-score-config.service";
 import { ChatbotTimeoutProducer } from "./chatbot-timeout.producer";
+import { FilesService } from "../../files/files.service";
 import type {
   AiNodeData,
   ConditionNodeData,
@@ -66,6 +67,7 @@ export class ChatbotEngineService {
     private readonly aiProviders: AiProviderRegistryService,
     private readonly leadScoreConfig: LeadScoreConfigService,
     private readonly timeoutProducer: ChatbotTimeoutProducer,
+    private readonly files: FilesService,
   ) {}
 
   async startFlow(flowId: string, conversationId: string): Promise<ChatbotExecution> {
@@ -477,7 +479,10 @@ export class ChatbotEngineService {
     await this.sendNodeMessage(execution, { texto });
   }
 
-  private async sendNodeMessage(execution: ChatbotExecution, data: Pick<MessageNodeData, "texto" | "tipo" | "midiaUrl">): Promise<void> {
+  private async sendNodeMessage(
+    execution: ChatbotExecution,
+    data: Pick<MessageNodeData, "texto" | "tipo" | "midiaUrl" | "arquivoId">,
+  ): Promise<void> {
     const conversation = await this.prisma.conversation.findUniqueOrThrow({ where: { id: execution.conversationId } });
     const number = await this.prisma.whatsAppNumber.findUniqueOrThrow({ where: { id: conversation.whatsAppNumberId } });
 
@@ -497,11 +502,25 @@ export class ChatbotEngineService {
       }
     }
 
+    // Arquivo enviado por upload: a URL assinada expira em minutos, então é sempre resolvida
+    // aqui, na hora do envio — nunca gravada no fluxo (ver flow-definition.types.ts).
+    let midiaUrl = data.midiaUrl;
+    if (data.arquivoId) {
+      try {
+        midiaUrl = (await this.files.createDownloadUrl(data.arquivoId)).downloadUrl;
+      } catch (err) {
+        this.logger.warn(
+          `Execução ${execution.id}: não foi possível resolver o arquivo "${data.arquivoId}" — mensagem enviada sem mídia. (${err instanceof Error ? err.message : String(err)})`,
+        );
+        midiaUrl = undefined;
+      }
+    }
+
     const provider = this.providers.resolve(number.provider);
     const result = await provider.sendMessage(
       { id: number.id, tenantId: number.tenantId, numero: number.numero, externalAccountId: number.externalAccountId },
       conversation.contatoNumero,
-      { tipo: data.tipo ?? "text", texto: data.texto, midiaUrl: data.midiaUrl },
+      { tipo: data.tipo ?? "text", texto: data.texto, midiaUrl },
     );
 
     const message = await this.tenantPrisma.message.create({
@@ -511,7 +530,7 @@ export class ChatbotEngineService {
         senderType: "chatbot",
         tipo: data.tipo ?? "text",
         conteudo: data.texto,
-        midiaUrl: data.midiaUrl ?? null,
+        midiaUrl: midiaUrl ?? null,
         externalId: result.externalId,
         statusEntrega: "sent",
       },

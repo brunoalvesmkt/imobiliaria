@@ -350,16 +350,29 @@ export class ChatbotEngineService {
     return persisted;
   }
 
-  /** Reativação por falta de resposta (question/menu) — jamais lança: card sem a funcionalidade ativada simplesmente não agenda nada. */
+  /**
+   * Reativação por falta de resposta (question/menu) — jamais lança: card sem a funcionalidade
+   * ativada simplesmente não agenda nada. Cada tentativa pode ter seu próprio tempo de espera
+   * (`timeoutSteps[N]` = espera antes da (N+1)-ésima reativação); o índice usado é o nº de
+   * reativações já disparadas para este card nesta execução (`context.timeoutAttempts`) — 0 na
+   * primeira vez que o card é enviado, 1 depois da 1ª reativação, e assim por diante. Além do
+   * fim do array, repete o último passo configurado.
+   */
   private async scheduleTimeoutIfConfigured(execution: ChatbotExecution, node: FlowNode): Promise<void> {
     if (!TIMEOUT_NODE_TYPES.includes(node.type)) {
       return;
     }
-    const data = node.data as unknown as { timeoutEnabled?: boolean; timeoutQuantidade?: number; timeoutUnidade?: TimeoutUnit };
-    if (!data.timeoutEnabled || !data.timeoutQuantidade || data.timeoutQuantidade <= 0) {
+    const data = node.data as unknown as { timeoutEnabled?: boolean; timeoutSteps?: { quantidade?: number; unidade?: TimeoutUnit }[] };
+    if (!data.timeoutEnabled || !data.timeoutSteps || data.timeoutSteps.length === 0) {
       return;
     }
-    const delayMs = timeoutUnitToMs(data.timeoutQuantidade, data.timeoutUnidade ?? "minutes");
+    const context = (execution.contextData as ExecutionContext | null) ?? {};
+    const attempts = context.timeoutAttempts?.[node.id] ?? 0;
+    const step = data.timeoutSteps[Math.min(attempts, data.timeoutSteps.length - 1)];
+    if (!step?.quantidade || step.quantidade <= 0) {
+      return;
+    }
+    const delayMs = timeoutUnitToMs(step.quantidade, step.unidade ?? "minutes");
     await this.timeoutProducer.schedule(execution.id, node.id, delayMs);
   }
 

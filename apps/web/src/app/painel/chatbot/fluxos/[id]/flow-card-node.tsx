@@ -12,6 +12,7 @@ import {
   TIMEOUT_LIMIT_HANDLE,
   type MessageMediaType,
   type MessageNodeData,
+  type TimeoutStep,
 } from "./node-types";
 import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
@@ -115,8 +116,7 @@ export function FlowCardNode({ data, id }: NodeProps) {
       {timeoutEnabled && (
         <TimeoutHandles
           color={color}
-          quantidade={(payload as unknown as QuestionNodeData | MenuNodeData).timeoutQuantidade}
-          unidade={(payload as unknown as QuestionNodeData | MenuNodeData).timeoutUnidade}
+          steps={(payload as unknown as QuestionNodeData | MenuNodeData).timeoutSteps}
           maxTentativas={(payload as unknown as QuestionNodeData | MenuNodeData).timeoutMaxTentativas}
         />
       )}
@@ -225,22 +225,23 @@ function MenuHandles({ color, opcoes }: { color: string; opcoes: MenuNodeData["o
 /** Saídas visuais da reativação por falta de resposta — mesmo padrão de MenuHandles, conexão real no canvas (nunca um seletor). */
 function TimeoutHandles({
   color,
-  quantidade,
-  unidade,
+  steps,
   maxTentativas,
 }: {
   color: string;
-  quantidade?: number | undefined;
-  unidade?: string | undefined;
+  steps?: TimeoutStep[] | undefined;
   maxTentativas?: number | undefined;
 }) {
   const { t } = useI18n();
-  const unitLabel = unidade ? t(`chatbot.builder.field.timeoutUnit.${unidade}` as DictionaryKey) : "";
+  const summary = (steps ?? [])
+    .filter((s) => Boolean(s?.quantidade))
+    .map((s) => `${s.quantidade}${t(`chatbot.builder.field.timeoutUnit.${s.unidade ?? "minutes"}` as DictionaryKey).charAt(0).toLowerCase()}`)
+    .join(", ");
   return (
     <div className="flex flex-col gap-1 border-t border-dashed px-2.5 py-1.5" style={{ borderColor: color }}>
-      {Boolean(quantidade) && (
+      {Boolean(summary) && (
         <p className="text-[10px] text-ink-faint">
-          ⏱ {quantidade} {unitLabel} · {t("chatbot.builder.field.timeoutMaxTentativas")}: {maxTentativas ?? 1}
+          ⏱ {summary} · {t("chatbot.builder.field.timeoutMaxTentativas")}: {maxTentativas ?? 1}
         </p>
       )}
       <div className="relative flex items-center justify-between text-[11px] text-ink-faint">

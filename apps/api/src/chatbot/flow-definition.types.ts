@@ -47,6 +47,12 @@ export function timeoutUnitToMs(quantidade: number, unidade: TimeoutUnit): numbe
   return quantidade * perUnit[unidade];
 }
 
+/** Um passo de espera da reativação — o N-ésimo item é o tempo usado na N-ésima reativação (ver `TimeoutStep`). */
+export interface TimeoutStep {
+  quantidade: number;
+  unidade: TimeoutUnit;
+}
+
 /** Tipos de card que exigem `flow.aiEnabled === true` para serem publicados. */
 export const AI_NODE_TYPES: FlowNodeType[] = ["ai", "knowledge_query"];
 
@@ -77,10 +83,10 @@ export interface QuestionNodeData {
    * a saída "Limite atingido" (`TIMEOUT_LIMIT_HANDLE`) é opcional.
    */
   timeoutEnabled?: boolean;
-  timeoutQuantidade?: number;
-  timeoutUnidade?: TimeoutUnit;
   /** Nº máximo de reativações (reenvios) antes de seguir pela saída "Limite atingido" (ou encerrar, se não conectada). Default: 1. */
   timeoutMaxTentativas?: number;
+  /** Um passo por tentativa (`timeoutSteps[0]` = espera antes da 1ª reativação, `timeoutSteps[1]` = antes da 2ª, ...) — tamanho normalmente igual a `timeoutMaxTentativas`. */
+  timeoutSteps?: TimeoutStep[];
 }
 
 export interface MenuOption {
@@ -98,9 +104,8 @@ export interface MenuNodeData {
   maxTentativas?: number;
   /** Reativação por falta de resposta — ver QuestionNodeData. */
   timeoutEnabled?: boolean;
-  timeoutQuantidade?: number;
-  timeoutUnidade?: TimeoutUnit;
   timeoutMaxTentativas?: number;
+  timeoutSteps?: TimeoutStep[];
 }
 
 export interface ConditionNodeData {
@@ -193,12 +198,12 @@ export function validateFlowDefinition(definition: FlowDefinition): FlowValidati
   // a saída "Não respondeu" conectada — a saída "Limite atingido" é opcional.
   for (const node of definition.nodes) {
     if (!TIMEOUT_NODE_TYPES.includes(node.type)) continue;
-    const data = node.data as { timeoutEnabled?: boolean; timeoutQuantidade?: number } | undefined;
+    const data = node.data as { timeoutEnabled?: boolean; timeoutSteps?: TimeoutStep[] } | undefined;
     if (!data?.timeoutEnabled) continue;
 
-    if (!data.timeoutQuantidade || data.timeoutQuantidade <= 0) {
+    if (!data.timeoutSteps || data.timeoutSteps.length === 0 || data.timeoutSteps.some((s) => !s.quantidade || s.quantidade <= 0)) {
       errors.push({
-        message: `Card "${node.id}": configure o tempo de espera da reativação por falta de resposta.`,
+        message: `Card "${node.id}": configure o tempo de espera de cada reativação.`,
         nodeId: node.id,
       });
     }

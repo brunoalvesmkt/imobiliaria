@@ -833,6 +833,7 @@ const dictionary: Record<DictionaryKey, string> = {
   "chatbot.builder.field.timeoutUnit.hours": "Horas",
   "chatbot.builder.field.timeoutUnit.days": "Días",
   "chatbot.builder.field.timeoutMaxTentativas": "Nº máximo de reactivaciones",
+  "chatbot.builder.field.timeoutAttempt": "Intento {n}",
   "chatbot.builder.field.timeoutEdgeHint": "Conecte las salidas \"No respondió\" y \"Límite alcanzado\" (opcional) en la tarjeta, abajo.",
   "chatbot.builder.field.timeoutDisabledHint": "La tarjeta funciona normalmente, sin reactivación por falta de respuesta.",
   "chatbot.builder.field.timeoutNoResponse": "No respondió",

@@ -17,6 +17,7 @@ import {
   MESSAGE_TYPE_LABEL_KEY,
   MESSAGE_TYPE_MAX_SIZE_MB,
   type MessageMediaType,
+  type TimeoutStep,
   type TimeoutUnit,
 } from "./node-types";
 import type {
@@ -265,65 +266,106 @@ const TIMEOUT_UNITS: TimeoutUnit[] = ["minutes", "hours", "days"];
  * saídas nomeadas do card (ver flow-card-node.tsx: TimeoutHandles). Este painel só configura
  * tempo de espera e limite de tentativas.
  */
+const MAX_TIMEOUT_STEPS = 10;
+
+/** Redimensiona a lista de passos para o novo nº de tentativas, preservando os já preenchidos. */
+function resizeTimeoutSteps(steps: TimeoutStep[] | undefined, count: number): TimeoutStep[] {
+  const current = steps ?? [];
+  if (current.length === count) return current;
+  if (current.length > count) return current.slice(0, count);
+  const next = [...current];
+  while (next.length < count) {
+    next.push({ quantidade: 1, unidade: "minutes" });
+  }
+  return next;
+}
+
 function TimeoutFields({
   timeoutEnabled,
-  timeoutQuantidade,
-  timeoutUnidade,
   timeoutMaxTentativas,
+  timeoutSteps,
   onChange,
 }: {
   timeoutEnabled?: boolean | undefined;
-  timeoutQuantidade?: number | undefined;
-  timeoutUnidade?: TimeoutUnit | undefined;
   timeoutMaxTentativas?: number | undefined;
+  timeoutSteps?: TimeoutStep[] | undefined;
   onChange: (patch: {
     timeoutEnabled?: boolean | undefined;
-    timeoutQuantidade?: number | undefined;
-    timeoutUnidade?: TimeoutUnit | undefined;
     timeoutMaxTentativas?: number | undefined;
+    timeoutSteps?: TimeoutStep[] | undefined;
   }) => void;
 }) {
   const { t } = useI18n();
+
+  function onToggle(checked: boolean) {
+    if (checked) {
+      const count = timeoutMaxTentativas ?? 1;
+      onChange({ timeoutEnabled: true, timeoutMaxTentativas: count, timeoutSteps: resizeTimeoutSteps(timeoutSteps, count) });
+    } else {
+      onChange({ timeoutEnabled: false });
+    }
+  }
+
+  function onMaxTentativasChange(value: number | undefined) {
+    const count = value && value > 0 ? Math.min(value, MAX_TIMEOUT_STEPS) : undefined;
+    onChange({ timeoutMaxTentativas: count, timeoutSteps: resizeTimeoutSteps(timeoutSteps, count ?? 0) });
+  }
+
+  function onStepChange(index: number, patch: { quantidade?: number | undefined; unidade?: TimeoutUnit | undefined }) {
+    const next = resizeTimeoutSteps(timeoutSteps, timeoutMaxTentativas ?? 1);
+    next[index] = { ...next[index], ...patch };
+    onChange({ timeoutSteps: next });
+  }
+
   return (
     <div className="flex flex-col gap-2 rounded-md border border-line bg-surface-alt p-3">
       <label className="flex items-center gap-2 text-xs font-semibold text-ink">
-        <input
-          type="checkbox"
-          checked={timeoutEnabled ?? false}
-          onChange={(e) => onChange({ timeoutEnabled: e.target.checked })}
-        />
+        <input type="checkbox" checked={timeoutEnabled ?? false} onChange={(e) => onToggle(e.target.checked)} />
         {t("chatbot.builder.field.timeoutTitle")}
       </label>
       {timeoutEnabled ? (
         <>
           <p className="text-xs text-ink-faint">{t("chatbot.builder.field.timeoutHint")}</p>
-          <div className="flex gap-2">
-            <div className="min-w-0 flex-1">
-              <Field
-                label={t("chatbot.builder.field.timeoutQuantidade")}
-                type="number"
-                min={1}
-                value={timeoutQuantidade ?? ""}
-                onChange={(e) => onChange({ timeoutQuantidade: e.target.value ? Number(e.target.value) : undefined })}
-                className="w-full"
-              />
-            </div>
-            <div className="min-w-0 flex-1">
-              <Select
-                label={t("chatbot.builder.field.timeoutUnidade")}
-                value={timeoutUnidade ?? "minutes"}
-                onChange={(v) => onChange({ timeoutUnidade: v as TimeoutUnit })}
-                options={TIMEOUT_UNITS.map((u) => ({ value: u, label: t(`chatbot.builder.field.timeoutUnit.${u}` as DictionaryKey) }))}
-              />
-            </div>
-          </div>
           <Field
             label={t("chatbot.builder.field.timeoutMaxTentativas")}
             type="number"
             min={1}
+            max={MAX_TIMEOUT_STEPS}
             value={timeoutMaxTentativas ?? ""}
-            onChange={(e) => onChange({ timeoutMaxTentativas: e.target.value ? Number(e.target.value) : undefined })}
+            onChange={(e) => onMaxTentativasChange(e.target.value ? Number(e.target.value) : undefined)}
           />
+          <div className="flex flex-col gap-2">
+            {Array.from({ length: timeoutMaxTentativas ?? 0 }).map((_, index) => {
+              const step = timeoutSteps?.[index];
+              return (
+                <div key={index} className="flex flex-col gap-1.5 rounded-md border border-line bg-surface p-2">
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-ink-faint">
+                    {t("chatbot.builder.field.timeoutAttempt").replace("{n}", String(index + 1))}
+                  </p>
+                  <div className="flex gap-2">
+                    <div className="min-w-0 flex-1">
+                      <Field
+                        label={t("chatbot.builder.field.timeoutQuantidade")}
+                        type="number"
+                        min={1}
+                        value={step?.quantidade ?? ""}
+                        onChange={(e) => onStepChange(index, { quantidade: e.target.value ? Number(e.target.value) : undefined })}
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <Select
+                        label={t("chatbot.builder.field.timeoutUnidade")}
+                        value={step?.unidade ?? "minutes"}
+                        onChange={(v) => onStepChange(index, { unidade: v as TimeoutUnit })}
+                        options={TIMEOUT_UNITS.map((u) => ({ value: u, label: t(`chatbot.builder.field.timeoutUnit.${u}` as DictionaryKey) }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
           <p className="text-xs text-ink-faint">{t("chatbot.builder.field.timeoutEdgeHint")}</p>
         </>
       ) : (
@@ -385,9 +427,8 @@ function QuestionFields({
       />
       <TimeoutFields
         timeoutEnabled={payload.timeoutEnabled}
-        timeoutQuantidade={payload.timeoutQuantidade}
-        timeoutUnidade={payload.timeoutUnidade}
         timeoutMaxTentativas={payload.timeoutMaxTentativas}
+        timeoutSteps={payload.timeoutSteps}
         onChange={(patch) => onChange({ ...payload, ...patch })}
       />
     </>
@@ -464,9 +505,8 @@ function MenuFields({
       />
       <TimeoutFields
         timeoutEnabled={payload.timeoutEnabled}
-        timeoutQuantidade={payload.timeoutQuantidade}
-        timeoutUnidade={payload.timeoutUnidade}
         timeoutMaxTentativas={payload.timeoutMaxTentativas}
+        timeoutSteps={payload.timeoutSteps}
         onChange={(patch) => onChange({ ...payload, ...patch })}
       />
     </>

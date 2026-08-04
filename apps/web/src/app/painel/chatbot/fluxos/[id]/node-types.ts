@@ -16,6 +16,12 @@ export interface MessageNodeData {
 
 export type TimeoutUnit = "minutes" | "hours" | "days";
 
+/** Um passo por tentativa — `timeoutSteps[0]` é a espera antes da 1ª reativação, `[1]` antes da 2ª, etc. */
+export interface TimeoutStep {
+  quantidade?: number | undefined;
+  unidade?: TimeoutUnit | undefined;
+}
+
 export interface QuestionNodeData {
   texto: string;
   variavel: string;
@@ -25,9 +31,8 @@ export interface QuestionNodeData {
   maxTentativas?: number;
   pontuacao?: number;
   timeoutEnabled?: boolean;
-  timeoutQuantidade?: number;
-  timeoutUnidade?: TimeoutUnit;
   timeoutMaxTentativas?: number;
+  timeoutSteps?: TimeoutStep[];
 }
 
 export interface MenuOption {
@@ -43,9 +48,8 @@ export interface MenuNodeData {
   mensagemErro?: string;
   maxTentativas?: number;
   timeoutEnabled?: boolean;
-  timeoutQuantidade?: number;
-  timeoutUnidade?: TimeoutUnit;
   timeoutMaxTentativas?: number;
+  timeoutSteps?: TimeoutStep[];
 }
 
 /** Saídas reservadas (`FlowEdge.sourceHandle`) da reativação por falta de resposta — ver flow-definition.types.ts no backend. */

@@ -207,6 +207,16 @@ export default function FlowBuilderPage() {
     }
   }
 
+  /** Descarta as alterações não salvas no canvas, voltando ao que está gravado na última versão salva — não mexe no servidor. */
+  function onCancelEdits() {
+    if (!definition.data) return;
+    setNodes(definition.data.definicao.nodes.map(toReactFlowNode));
+    setEdges(definition.data.definicao.edges.map(toReactFlowEdge));
+    setSelectedNodeId(null);
+    setDirty(false);
+    setSaveMessage(null);
+  }
+
   async function onNewVersion() {
     setNewVersionError(null);
     try {
@@ -250,6 +260,11 @@ export default function FlowBuilderPage() {
           )}
           {saveMessage === "saved" && <span className="text-xs text-brand-700">{t("chatbot.builder.saved")}</span>}
           {saveMessage === "error" && <span className="text-xs text-red-600">{t("chatbot.builder.saveError")}</span>}
+          {!readOnly && dirty && (
+            <Button variant="ghost" onClick={onCancelEdits}>
+              {t("common.cancel")}
+            </Button>
+          )}
           {!readOnly && (
             <Button variant="secondary" onClick={onSave} loading={saveDefinition.isPending}>
               {t("chatbot.builder.save")}

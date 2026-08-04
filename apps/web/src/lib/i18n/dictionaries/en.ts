@@ -714,7 +714,7 @@ const dictionary: Record<DictionaryKey, string> = {
   "chatbot.action.publish": "Publish",
   "chatbot.action.pause": "Pause",
   "chatbot.action.archive": "Archive",
-  "chatbot.action.newVersion": "New version",
+  "chatbot.action.newVersion": "Edit",
   "chatbot.action.delete": "Delete",
   "chatbot.action.deleteConfirmText": "Delete permanently?",
   "chatbot.action.deleteConfirmYes": "Yes, delete",

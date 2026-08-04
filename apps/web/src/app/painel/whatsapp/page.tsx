@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useAcceptRisk,
@@ -97,6 +98,8 @@ function NumberRow({ number }: { number: WhatsAppNumber }) {
   const liveQr = usesLiveQr(number);
   const qr = useNumberQr(number.id, liveQr && number.status === "authenticating");
   const [showFlows, setShowFlows] = useState(false);
+  const [showRiskModal, setShowRiskModal] = useState(false);
+  const canConnect = number.modalidade !== "unofficial" || number.riskAccepted;
 
   useEffect(() => {
     if (qr.data?.status === "connected") {
@@ -135,7 +138,7 @@ function NumberRow({ number }: { number: WhatsAppNumber }) {
         </td>
         <td className="px-4 py-2 text-right">
           <div className="flex justify-end gap-2">
-            {number.status === "disconnected" && (
+            {number.status === "disconnected" && canConnect && (
               <button
                 type="button"
                 disabled={connect.isPending}
@@ -166,9 +169,8 @@ function NumberRow({ number }: { number: WhatsAppNumber }) {
             {number.modalidade === "unofficial" && !number.riskAccepted && (
               <button
                 type="button"
-                onClick={() => acceptRisk.mutate(number.id)}
-                className="text-xs font-medium text-ink-dim hover:underline"
-                title={riskTerm.data?.texto ?? t("whatsapp.acceptRiskNotice")}
+                onClick={() => setShowRiskModal(true)}
+                className="text-xs font-medium text-amber-600 hover:underline"
               >
                 {t("whatsapp.acceptRisk")}
               </button>
@@ -207,6 +209,36 @@ function NumberRow({ number }: { number: WhatsAppNumber }) {
           </td>
         </tr>
       )}
+      {showRiskModal &&
+        createPortal(
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowRiskModal(false)}>
+            <div
+              role="dialog"
+              aria-modal="true"
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md rounded-lg border border-line bg-surface p-5 shadow-lg"
+            >
+              <h2 className="mb-3 text-sm font-semibold text-ink">{t("whatsapp.acceptRiskTitle")}</h2>
+              <p className="mb-5 whitespace-pre-line text-sm text-ink-dim">
+                {riskTerm.data?.texto ?? t("whatsapp.acceptRiskNotice")}
+              </p>
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" onClick={() => setShowRiskModal(false)}>
+                  {t("common.no")}
+                </Button>
+                <Button
+                  loading={acceptRisk.isPending}
+                  onClick={() => {
+                    acceptRisk.mutate(number.id, { onSuccess: () => setShowRiskModal(false) });
+                  }}
+                >
+                  {t("common.accept")}
+                </Button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
     </>
   );
 }

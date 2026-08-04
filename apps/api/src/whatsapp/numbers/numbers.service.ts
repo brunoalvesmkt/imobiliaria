@@ -196,6 +196,9 @@ export class NumbersService {
 
   async connect(id: string, actorId: string) {
     const number = await this.get(id);
+    if (number.modalidade === "unofficial" && !number.riskAccepted) {
+      throw new ForbiddenException("É preciso aceitar o termo de risco antes de conectar esta conexão não oficial.");
+    }
     const provider = this.providers.resolve(number.provider);
     const result = await provider.connect(this.toContext(number));
 

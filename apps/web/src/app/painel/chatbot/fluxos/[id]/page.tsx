@@ -209,7 +209,7 @@ export default function FlowBuilderPage() {
         <div className="min-w-0 flex-1">
           <ReactFlowProvider>
             <FlowCanvas
-              nodes={nodes.map((n) => ({ ...n, data: { ...n.data, selected: n.id === selectedNodeId } }))}
+              nodes={nodes.map((n) => ({ ...n, data: { ...n.data, selected: n.id === selectedNodeId, readOnly } }))}
               edges={edges}
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}

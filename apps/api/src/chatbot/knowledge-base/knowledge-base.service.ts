@@ -86,4 +86,20 @@ export class KnowledgeBaseService {
 
     return updated;
   }
+
+  async remove(id: string, actorId: string) {
+    const item = await this.get(id);
+    await this.tenantPrisma.knowledgeBaseItem.delete({ where: { id } });
+
+    await this.audit.record({
+      actorId,
+      actorType: "tenant_user",
+      action: "knowledge_base_item.delete",
+      entity: "KnowledgeBaseItem",
+      entityId: id,
+      previousData: { titulo: item.titulo, tipo: item.tipo },
+    });
+
+    return { status: "ok" as const };
+  }
 }

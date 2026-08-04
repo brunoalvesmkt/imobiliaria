@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
 import { TenantAuthGuard } from "../../auth/guards/tenant-auth.guard";
 import { ModuleActiveGuard } from "../../common/modules/module-active.guard";
 import { PermissionsGuard } from "../../common/permissions/permissions.guard";
@@ -60,6 +60,12 @@ export class FlowsController {
   @RequirePermission("chatbot", "publish")
   pause(@Param("id") id: string, @CurrentUser() user: AuthenticatedRequestUser) {
     return this.service.pause(id, user.id);
+  }
+
+  @Delete(":id")
+  @RequirePermission("chatbot", "delete")
+  remove(@Param("id") id: string, @CurrentUser() user: AuthenticatedRequestUser) {
+    return this.service.remove(id, user.id);
   }
 
   @Post(":id/archive")

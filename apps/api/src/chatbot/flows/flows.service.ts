@@ -153,6 +153,37 @@ export class FlowsService {
     return updated;
   }
 
+  /**
+   * Exclusão definitiva — diferente de `archive` (que só muda o status e
+   * mantém o histórico). Só permitida sem nenhuma execução registrada
+   * (mesma lógica de "não pode excluir com movimentação" já usada em
+   * `ContactsService.remove`) — um fluxo com execuções vira "Arquivar" em
+   * vez de excluir, para não perder o histórico de conversas que passaram
+   * por ele.
+   */
+  async remove(id: string, actorId: string) {
+    const flow = await this.get(id);
+    const executionsCount = await this.tenantPrisma.chatbotExecution.findFirst({ where: { chatbotFlowId: id } });
+    if (executionsCount) {
+      throw new BadRequestException(
+        "Este fluxo já tem execuções registradas e não pode ser excluído — use Arquivar para desativá-lo sem perder o histórico.",
+      );
+    }
+
+    await this.tenantPrisma.chatbotFlow.delete({ where: { id } });
+
+    await this.audit.record({
+      actorId,
+      actorType: "tenant_user",
+      action: "chatbot_flow.delete",
+      entity: "ChatbotFlow",
+      entityId: id,
+      previousData: { nome: flow.nome },
+    });
+
+    return { status: "ok" as const };
+  }
+
   async archive(id: string, actorId: string) {
     await this.get(id);
     const updated = await this.tenantPrisma.chatbotFlow.update({ where: { id }, data: { status: "archived" } });

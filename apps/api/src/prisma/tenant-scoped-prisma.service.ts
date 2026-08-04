@@ -360,6 +360,8 @@ export class TenantScopedPrismaService {
 
       update: (args: { where: { id: string }; data: Prisma.ChatbotFlowUncheckedUpdateInput }) =>
         this.prisma.chatbotFlow.update({ where: { id: args.where.id, tenantId }, data: args.data }),
+
+      delete: (args: { where: { id: string } }) => this.prisma.chatbotFlow.delete({ where: { id: args.where.id, tenantId } }),
     };
   }
 
@@ -394,6 +396,8 @@ export class TenantScopedPrismaService {
 
       update: (args: { where: { id: string }; data: Prisma.KnowledgeBaseItemUncheckedUpdateInput }) =>
         this.prisma.knowledgeBaseItem.update({ where: { id: args.where.id, tenantId }, data: args.data }),
+
+      delete: (args: { where: { id: string } }) => this.prisma.knowledgeBaseItem.delete({ where: { id: args.where.id, tenantId } }),
     };
   }
 

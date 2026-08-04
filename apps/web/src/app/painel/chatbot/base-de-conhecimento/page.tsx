@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useCreateKnowledgeItem, useKnowledgeBase, useUpdateKnowledgeItem, type KnowledgeBaseItem, type KnowledgeItemType } from "@/lib/chatbot";
+import {
+  useCreateKnowledgeItem,
+  useDeleteKnowledgeItem,
+  useKnowledgeBase,
+  useUpdateKnowledgeItem,
+  type KnowledgeBaseItem,
+  type KnowledgeItemType,
+} from "@/lib/chatbot";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
@@ -50,6 +57,8 @@ export default function KnowledgeBasePage() {
 function ItemRow({ item }: { item: KnowledgeBaseItem }) {
   const { t } = useI18n();
   const update = useUpdateKnowledgeItem();
+  const deleteItem = useDeleteKnowledgeItem();
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   return (
     <div className={`rounded-lg border border-line bg-surface p-3 ${!item.ativo ? "opacity-60" : ""}`}>
@@ -61,13 +70,29 @@ function ItemRow({ item }: { item: KnowledgeBaseItem }) {
           <p className="mt-1 text-sm font-medium text-ink">{item.titulo}</p>
           <p className="mt-0.5 whitespace-pre-wrap text-sm text-ink-dim">{item.conteudo}</p>
         </div>
-        <button
-          type="button"
-          onClick={() => update.mutate({ id: item.id, ativo: !item.ativo })}
-          className="flex-none text-xs font-medium text-ink-dim hover:underline"
-        >
-          {item.ativo ? t("chatbot.kb.deactivate") : t("chatbot.kb.activate")}
-        </button>
+        <div className="flex flex-none items-center gap-2">
+          <button
+            type="button"
+            onClick={() => update.mutate({ id: item.id, ativo: !item.ativo })}
+            className="text-xs font-medium text-ink-dim hover:underline"
+          >
+            {item.ativo ? t("chatbot.kb.deactivate") : t("chatbot.kb.activate")}
+          </button>
+          {confirmingDelete ? (
+            <>
+              <button type="button" onClick={() => deleteItem.mutate(item.id)} className="text-xs font-medium text-red-600 hover:underline">
+                {t("chatbot.kb.deleteConfirmYes")}
+              </button>
+              <button type="button" onClick={() => setConfirmingDelete(false)} className="text-xs font-medium text-ink-faint hover:underline">
+                {t("common.cancel")}
+              </button>
+            </>
+          ) : (
+            <button type="button" onClick={() => setConfirmingDelete(true)} className="text-xs font-medium text-red-600 hover:underline">
+              {t("chatbot.kb.delete")}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

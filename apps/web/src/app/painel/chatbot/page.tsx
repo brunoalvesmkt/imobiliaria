@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   useArchiveFlow,
   useCreateFlow,
+  useDeleteFlow,
   useFlows,
   useNewFlowVersion,
   usePauseFlow,
@@ -14,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
+import { ApiError } from "@/lib/api-client";
 import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 
@@ -65,7 +67,20 @@ function FlowRow({ flow }: { flow: ChatbotFlow }) {
   const pause = usePauseFlow();
   const archive = useArchiveFlow();
   const newVersion = useNewFlowVersion();
+  const deleteFlow = useDeleteFlow();
   const [publishErrors, setPublishErrors] = useState<string[] | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function onDelete() {
+    setDeleteError(null);
+    try {
+      await deleteFlow.mutateAsync(flow.id);
+    } catch (err) {
+      setDeleteError(err instanceof ApiError ? err.message : t("chatbot.errorGeneric"));
+      setConfirmingDelete(false);
+    }
+  }
 
   async function onPublish() {
     setPublishErrors(null);
@@ -130,7 +145,27 @@ function FlowRow({ flow }: { flow: ChatbotFlow }) {
               {t("chatbot.action.archive")}
             </button>
           )}
+          {confirmingDelete ? (
+            <>
+              <span className="text-xs text-ink-dim">{t("chatbot.action.deleteConfirmText")}</span>
+              <button type="button" onClick={onDelete} className="text-xs font-medium text-red-600 hover:underline">
+                {t("chatbot.action.deleteConfirmYes")}
+              </button>
+              <button type="button" onClick={() => setConfirmingDelete(false)} className="text-xs font-medium text-ink-faint hover:underline">
+                {t("common.cancel")}
+              </button>
+            </>
+          ) : (
+            <button type="button" onClick={() => setConfirmingDelete(true)} className="text-xs font-medium text-red-600 hover:underline">
+              {t("chatbot.action.delete")}
+            </button>
+          )}
         </div>
+        {deleteError && (
+          <div className="mt-2 max-w-md">
+            <Alert tone="error">{deleteError}</Alert>
+          </div>
+        )}
       </td>
     </tr>
   );

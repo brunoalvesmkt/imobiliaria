@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiGet, apiPatch, apiPost } from "./api-client";
+import { apiDelete, apiGet, apiPatch, apiPost } from "./api-client";
 
 export type FlowStatus = "draft" | "published" | "paused" | "archived";
 
@@ -151,6 +151,14 @@ export function useNewFlowVersion() {
   return useFlowAction("new-version");
 }
 
+export function useDeleteFlow() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiDelete<{ status: "ok" }>(`/chatbot/flows/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["chatbot", "flows"] }),
+  });
+}
+
 export function useKnowledgeBase(tipo?: string) {
   const qs = tipo ? `?tipo=${encodeURIComponent(tipo)}` : "";
   return useQuery({
@@ -180,6 +188,14 @@ export function useUpdateKnowledgeItem() {
   return useMutation({
     mutationFn: ({ id, ...input }: { id: string; ativo?: boolean; titulo?: string; conteudo?: string }) =>
       apiPatch<KnowledgeBaseItem>(`/chatbot/knowledge-base/${id}`, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["chatbot", "knowledge-base"] }),
+  });
+}
+
+export function useDeleteKnowledgeItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiDelete<{ status: "ok" }>(`/chatbot/knowledge-base/${id}`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["chatbot", "knowledge-base"] }),
   });
 }

@@ -3,7 +3,7 @@ const dictionary = {
   "theme.switchToDark": "Mudar para modo escuro",
   "language.label": "Idioma",
 
-  "nav.inicio": "Início",
+  "nav.inicio": "Dashboard",
   "nav.crm": "CRM",
   "nav.whatsapp": "WhatsApp",
   "nav.atendimento": "Atendimento",
@@ -254,7 +254,7 @@ const dictionary = {
   "auth.resetPassword.errorInvalidToken": "Token inválido ou expirado.",
   "auth.resetPassword.errorGeneric": "Não foi possível redefinir a senha. Tente novamente.",
 
-  "dashboard.title": "Início",
+  "dashboard.title": "Dashboard",
   "dashboard.subtitle": "Visão geral da sua empresa — os cartões abaixo variam conforme os módulos ativos.",
   "dashboard.noModules": "Nenhum módulo comercial está ativo para a sua empresa ainda. Fale com o suporte para habilitar CRM, WhatsApp, Chatbot ou Automação.",
   "dashboard.errorGeneric": "Não foi possível carregar o dashboard. Tente novamente.",

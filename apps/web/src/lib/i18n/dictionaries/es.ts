@@ -5,7 +5,7 @@ const dictionary: Record<DictionaryKey, string> = {
   "theme.switchToDark": "Cambiar a modo oscuro",
   "language.label": "Idioma",
 
-  "nav.inicio": "Inicio",
+  "nav.inicio": "Dashboard",
   "nav.crm": "CRM",
   "nav.whatsapp": "WhatsApp",
   "nav.atendimento": "Atención",
@@ -256,7 +256,7 @@ const dictionary: Record<DictionaryKey, string> = {
   "auth.resetPassword.errorInvalidToken": "Token inválido o vencido.",
   "auth.resetPassword.errorGeneric": "No se pudo restablecer la contraseña. Intenta de nuevo.",
 
-  "dashboard.title": "Inicio",
+  "dashboard.title": "Dashboard",
   "dashboard.subtitle": "Visión general de tu empresa — las tarjetas varían según los módulos activos.",
   "dashboard.noModules": "Ningún módulo comercial está activo para tu empresa todavía. Pide al soporte que active CRM, WhatsApp, Chatbot o Automatización.",
   "dashboard.errorGeneric": "No se pudo cargar el panel. Intenta de nuevo.",

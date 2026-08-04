@@ -728,6 +728,8 @@ const dictionary: Record<DictionaryKey, string> = {
 
   "chatbot.builder.back": "Back to flows",
   "chatbot.builder.addNode": "Add card",
+  "chatbot.builder.undo": "Undo",
+  "chatbot.builder.redo": "Redo",
   "chatbot.builder.save": "Save",
   "chatbot.builder.saved": "Saved",
   "chatbot.builder.mobilePanHint": "Drag with your finger to move around the flow and pinch to zoom.",

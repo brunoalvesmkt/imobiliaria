@@ -81,6 +81,10 @@ export default function FlowBuilderPage() {
   // "Publicar" só libera depois de "Salvar" — evita publicar em cima de uma definição diferente
   // do que está desenhado na tela (ver saveCurrentDefinition/onPublish mais abaixo).
   const [dirty, setDirty] = useState(false);
+  // Desfazer/Refazer (Ctrl+Z-like) — snapshots de nodes/edges tirados ANTES de cada edição real.
+  // Limitado a 50 passos para não crescer sem limite em sessões de edição muito longas.
+  const [history, setHistory] = useState<{ nodes: Node<FlowCardData>[]; edges: Edge[] }[]>([]);
+  const [future, setFuture] = useState<{ nodes: Node<FlowCardData>[]; edges: Edge[] }[]>([]);
 
   const readOnly = flow.data ? flow.data.status !== "draft" : true;
 
@@ -91,29 +95,61 @@ export default function FlowBuilderPage() {
     setEdges(definition.data.definicao.edges.map(toReactFlowEdge));
     setLoadedVersion(definition.data.versao);
     setDirty(false);
+    setHistory([]);
+    setFuture([]);
   }, [definition.data, loadedVersion, setNodes, setEdges]);
+
+  /** Tira um snapshot do estado ATUAL (antes da próxima edição ser aplicada) para a pilha de desfazer. */
+  function pushHistory() {
+    setHistory((h) => [...h.slice(-49), { nodes, edges }]);
+    setFuture([]);
+  }
+
+  function undo() {
+    if (history.length === 0) return;
+    const prev = history[history.length - 1]!;
+    setFuture((f) => [{ nodes, edges }, ...f]);
+    setHistory((h) => h.slice(0, -1));
+    setNodes(prev.nodes);
+    setEdges(prev.edges);
+    setSelectedNodeId(null);
+    setDirty(true);
+  }
+
+  function redo() {
+    if (future.length === 0) return;
+    const next = future[0]!;
+    setHistory((h) => [...h, { nodes, edges }]);
+    setFuture((f) => f.slice(1));
+    setNodes(next.nodes);
+    setEdges(next.edges);
+    setSelectedNodeId(null);
+    setDirty(true);
+  }
 
   // O React Flow dispara onNodesChange sozinho para eventos que não são edições reais
   // (medição inicial de tamanho ao montar = "dimensions", clique para selecionar = "select").
   // Contar esses tipos como "dirty" fazia o botão Cancelar aparecer sem nada para descartar.
   const handleNodesChange = useCallback<OnNodesChange<Node<FlowCardData>>>(
     (changes) => {
-      onNodesChange(changes);
       if (changes.some((c) => c.type !== "select" && c.type !== "dimensions")) {
+        pushHistory();
         setDirty(true);
       }
+      onNodesChange(changes);
     },
-    [onNodesChange],
+    [onNodesChange, nodes, edges],
   );
 
   const handleEdgesChange = useCallback<OnEdgesChange<Edge>>(
     (changes) => {
-      onEdgesChange(changes);
       if (changes.some((c) => c.type !== "select")) {
+        pushHistory();
         setDirty(true);
       }
+      onEdgesChange(changes);
     },
-    [onEdgesChange],
+    [onEdgesChange, nodes, edges],
   );
 
   const selectedNode = useMemo(() => nodes.find((n) => n.id === selectedNodeId) ?? null, [nodes, selectedNodeId]);
@@ -121,10 +157,11 @@ export default function FlowBuilderPage() {
   const onConnect = useCallback(
     (connection: Connection) => {
       if (readOnly) return;
+      pushHistory();
       setEdges((eds) => addEdge({ ...connection, id: `e-${connection.source}-${connection.sourceHandle ?? "out"}-${connection.target}` }, eds));
       setDirty(true);
     },
-    [readOnly, setEdges],
+    [readOnly, setEdges, nodes, edges],
   );
 
   function addNode(type: FlowNodeType) {
@@ -132,6 +169,7 @@ export default function FlowBuilderPage() {
   }
 
   function addNodeAt(type: FlowNodeType, position: { x: number; y: number }) {
+    pushHistory();
     const nodeId = `${type}-${Math.random().toString(36).slice(2, 8)}`;
     const newNode: Node<FlowCardData> = {
       id: nodeId,
@@ -145,6 +183,7 @@ export default function FlowBuilderPage() {
   }
 
   function addConnectedNode(sourceId: string, type: FlowNodeType) {
+    pushHistory();
     const source = nodes.find((n) => n.id === sourceId);
     const position = source ? { x: source.position.x, y: source.position.y + 160 } : { x: 120, y: 120 };
     const nodeId = `${type}-${Math.random().toString(36).slice(2, 8)}`;
@@ -162,11 +201,13 @@ export default function FlowBuilderPage() {
 
   function updateSelectedNodeData(payload: Record<string, unknown>) {
     if (!selectedNodeId) return;
+    pushHistory();
     setNodes((nds) => nds.map((n) => (n.id === selectedNodeId ? { ...n, data: { ...n.data, payload } } : n)));
     setDirty(true);
   }
 
   function deleteNodeById(id: string) {
+    pushHistory();
     setNodes((nds) => nds.filter((n) => n.id !== id));
     setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id));
     setSelectedNodeId((prev) => (prev === id ? null : prev));
@@ -237,6 +278,8 @@ export default function FlowBuilderPage() {
     setSelectedNodeId(null);
     setDirty(false);
     setSaveMessage(null);
+    setHistory([]);
+    setFuture([]);
   }
 
   async function onNewVersion() {
@@ -278,6 +321,28 @@ export default function FlowBuilderPage() {
           {!readOnly && (
             <div className="relative">
               <AddNodeMenu onAdd={addNode} />
+            </div>
+          )}
+          {!readOnly && (
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                title={t("chatbot.builder.undo")}
+                onClick={undo}
+                disabled={history.length === 0}
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-line text-ink-dim hover:bg-surface-alt disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                ↶
+              </button>
+              <button
+                type="button"
+                title={t("chatbot.builder.redo")}
+                onClick={redo}
+                disabled={future.length === 0}
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-line text-ink-dim hover:bg-surface-alt disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                ↷
+              </button>
             </div>
           )}
           {saveMessage === "saved" && <span className="text-xs text-brand-700">{t("chatbot.builder.saved")}</span>}

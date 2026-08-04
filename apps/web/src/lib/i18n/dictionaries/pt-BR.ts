@@ -726,6 +726,8 @@ const dictionary = {
 
   "chatbot.builder.back": "Voltar para fluxos",
   "chatbot.builder.addNode": "Adicionar card",
+  "chatbot.builder.undo": "Desfazer",
+  "chatbot.builder.redo": "Refazer",
   "chatbot.builder.save": "Salvar",
   "chatbot.builder.saved": "Salvo",
   "chatbot.builder.mobilePanHint": "Arraste com o dedo para navegar pelo fluxo e belisque para dar zoom.",

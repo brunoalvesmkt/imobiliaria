@@ -61,6 +61,8 @@ export interface KnowledgeQueryNodeData {
   variavel?: string;
 }
 
+export const ADDABLE_TYPES: FlowNodeType[] = ["message", "question", "menu", "condition", "subflow", "transfer", "ai", "knowledge_query", "end"];
+
 export const NODE_COLORS: Record<FlowNodeType, string> = {
   start: "#1f6f5c",
   message: "#3b7fd4",

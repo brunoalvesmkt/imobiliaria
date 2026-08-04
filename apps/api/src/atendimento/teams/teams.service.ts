@@ -4,6 +4,7 @@ import { TenantScopedPrismaService } from "../../prisma/tenant-scoped-prisma.ser
 import { AuditService } from "../../common/audit/audit.service";
 import { requireCurrentTenantId } from "../../common/tenant/tenant-context";
 import type { CreateTeamDto } from "./dto/create-team.dto";
+import type { UpdateTeamDto } from "./dto/update-team.dto";
 import type { AddMemberDto } from "./dto/add-member.dto";
 import type { UpdateMemberDto } from "./dto/update-member.dto";
 
@@ -46,6 +47,23 @@ export class TeamsService {
     });
 
     return team;
+  }
+
+  async update(id: string, dto: UpdateTeamDto, actorId: string) {
+    const team = await this.get(id);
+    const updated = await this.tenantPrisma.team.update({ where: { id }, data: { ...dto } });
+
+    await this.audit.record({
+      actorId,
+      actorType: "tenant_user",
+      action: "team.update",
+      entity: "Team",
+      entityId: id,
+      previousData: { nome: team.nome },
+      newData: { ...dto },
+    });
+
+    return updated;
   }
 
   async deactivate(id: string, actorId: string) {

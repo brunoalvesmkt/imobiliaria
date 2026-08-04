@@ -457,6 +457,7 @@ export interface Opportunity {
   status: "open" | "won" | "lost";
   probabilidade: number | null;
   createdAt: string;
+  stageEnteredAt: string;
   contact: { id: string; nome: string; whatsapp: string | null };
 }
 

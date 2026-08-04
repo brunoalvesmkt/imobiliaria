@@ -17,6 +17,7 @@ import {
   useRemoveTeamMember,
   useTeams,
   useUpdateQueue,
+  useUpdateTeam,
   useUpdateTeamMemberPriority,
   type Queue,
   type Team,
@@ -78,15 +79,29 @@ function TeamCard({ team }: { team: Team }) {
   const addMember = useAddTeamMember(team.id);
   const removeMember = useRemoveTeamMember(team.id);
   const updatePriority = useUpdateTeamMemberPriority(team.id);
+  const updateTeam = useUpdateTeam(team.id);
   const deactivateTeam = useDeactivateTeam();
   const reactivateTeam = useReactivateTeam();
   const deleteTeam = useDeleteTeam();
   const [selectedUserId, setSelectedUserId] = useState("");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [nome, setNome] = useState(team.nome);
+  const [updateError, setUpdateError] = useState<string | null>(null);
 
   const memberIds = new Set(team.members.map((m) => m.tenantUserId));
   const available = tenantUsers.data?.filter((u) => !memberIds.has(u.id)) ?? [];
+
+  async function onSaveName() {
+    setUpdateError(null);
+    try {
+      await updateTeam.mutateAsync({ nome });
+      setEditing(false);
+    } catch (err) {
+      setUpdateError(err instanceof ApiError ? err.message : t("atendimento.teams.errorGeneric"));
+    }
+  }
 
   async function onDelete() {
     setDeleteError(null);
@@ -110,6 +125,17 @@ function TeamCard({ team }: { team: Team }) {
           )}
         </div>
         <div className="flex flex-none items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setNome(team.nome);
+              setUpdateError(null);
+              setEditing((v) => !v);
+            }}
+            className="text-xs font-medium text-brand-700 hover:underline"
+          >
+            {t("common.edit")}
+          </button>
           {team.ativo ? (
             <button
               type="button"
@@ -148,6 +174,23 @@ function TeamCard({ team }: { team: Team }) {
           <Alert tone="error">{deleteError}</Alert>
         </div>
       )}
+
+      {editing && (
+        <div className="mt-2 flex flex-col gap-2 border-t border-line pt-2">
+          {updateError && <Alert tone="error">{updateError}</Alert>}
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <Field label={t("atendimento.teams.name")} value={nome} onChange={(e) => setNome(e.target.value)} />
+            </div>
+            <div className="flex items-end">
+              <Button loading={updateTeam.isPending} disabled={!nome.trim()} onClick={onSaveName}>
+                {t("common.save")}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {team.members.length > 0 ? (
         <ul className="mt-1 flex flex-wrap gap-1">
           {team.members.map((m) => (
@@ -223,6 +266,7 @@ function QueueCard({ queue }: { queue: Queue }) {
   const deleteQueue = useDeleteQueue();
   const [editing, setEditing] = useState(false);
   const [showHours, setShowHours] = useState(false);
+  const [nome, setNome] = useState(queue.nome);
   const [distribuicao, setDistribuicao] = useState(queue.distribuicao);
   const [prioridade, setPrioridade] = useState(String(queue.prioridade ?? 0));
   const [diaSemana, setDiaSemana] = useState("1");
@@ -256,7 +300,14 @@ function QueueCard({ queue }: { queue: Queue }) {
           <p className="text-xs text-ink-faint">{t(`atendimento.queues.distribution.${queue.distribuicao}` as DictionaryKey)}</p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-1">
-          <button type="button" onClick={() => setEditing((v) => !v)} className="text-xs font-medium text-brand-700 hover:underline">
+          <button
+            type="button"
+            onClick={() => {
+              setNome(queue.nome);
+              setEditing((v) => !v);
+            }}
+            className="text-xs font-medium text-brand-700 hover:underline"
+          >
             {t("common.edit")}
           </button>
           <button type="button" onClick={() => setShowHours((v) => !v)} className="text-xs font-medium text-brand-700 hover:underline">
@@ -303,6 +354,7 @@ function QueueCard({ queue }: { queue: Queue }) {
 
       {editing && (
         <div className="mt-3 flex flex-col gap-2 border-t border-line pt-3">
+          <Field label={t("atendimento.queues.name")} value={nome} onChange={(e) => setNome(e.target.value)} />
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-ink">{t("atendimento.queues.distributionLabel")}</label>
             <select
@@ -325,8 +377,9 @@ function QueueCard({ queue }: { queue: Queue }) {
           <div>
             <Button
               loading={updateQueue.isPending}
+              disabled={!nome.trim()}
               onClick={async () => {
-                await updateQueue.mutateAsync({ distribuicao, prioridade: Number(prioridade) });
+                await updateQueue.mutateAsync({ nome, distribuicao, prioridade: Number(prioridade) });
                 setEditing(false);
               }}
             >

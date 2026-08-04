@@ -21,15 +21,28 @@ export class OpportunitiesService {
     private readonly followUps: FollowUpsService,
   ) {}
 
-  list(funnelId?: string, stageId?: string) {
-    const where: Prisma.OpportunityWhereInput = { deletedAt: null };
+  async list(funnelId?: string, stageId?: string) {
+    const tenantId = requireCurrentTenantId();
+    const where: Prisma.OpportunityWhereInput = { deletedAt: null, tenantId };
     if (funnelId) where.funnelId = funnelId;
     if (stageId) where.stageId = stageId;
-    return this.tenantPrisma.opportunity.findMany({
+    // Consulta direta ao PrismaService (em vez do wrapper tenantPrisma.opportunity, cujo
+    // tipo fixo de retorno não preserva a relação "include" abaixo) — tenantId já filtrado acima.
+    const opportunities = await this.prisma.opportunity.findMany({
       where,
       orderBy: [{ ordem: "asc" }, { createdAt: "desc" }],
-      include: { contact: { select: { id: true, nome: true, whatsapp: true } } },
+      include: {
+        contact: { select: { id: true, nome: true, whatsapp: true } },
+        // Linha "aberta" (exitedAt nulo) do histórico é a etapa atual — usada pelo
+        // Kanban para mostrar há quanto tempo a oportunidade está na etapa em que se encontra.
+        stageHistory: { where: { exitedAt: null }, orderBy: { enteredAt: "desc" }, take: 1, select: { enteredAt: true } },
+      },
     });
+
+    return opportunities.map(({ stageHistory, ...o }) => ({
+      ...o,
+      stageEnteredAt: stageHistory[0]?.enteredAt ?? o.createdAt,
+    }));
   }
 
   async get(id: string) {

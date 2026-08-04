@@ -571,6 +571,18 @@ function NewStageForm({ funnel }: { funnel: Funnel }) {
   );
 }
 
+/** "3d 4h" / "45min" a partir de um timestamp ISO até agora — usado nos cards do Kanban. */
+function formatElapsed(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const totalMinutes = Math.max(0, Math.floor(ms / 60_000));
+  if (totalMinutes < 60) return `${totalMinutes}min`;
+  const totalHours = Math.floor(totalMinutes / 60);
+  if (totalHours < 24) return `${totalHours}h`;
+  const days = Math.floor(totalHours / 24);
+  const remainingHours = totalHours % 24;
+  return remainingHours === 0 ? `${days}d` : `${days}d ${remainingHours}h`;
+}
+
 function Board({
   funnel,
   otherFunnels,
@@ -708,13 +720,17 @@ function Board({
                       <p className="font-medium text-ink">{opportunity.contact.nome}</p>
                       {opportunity.valor && <p className="text-ink-dim">{Number(opportunity.valor).toLocaleString(locale)}</p>}
                       <p className="mt-1 text-xs text-ink-faint">
-                        {t("crm.funnel.enteredAt")} {new Date(opportunity.createdAt).toLocaleString(locale)}
+                        {t("crm.funnel.createdAgo")} {formatElapsed(opportunity.createdAt)}
+                      </p>
+                      <p className="text-xs text-ink-faint">
+                        {t("crm.funnel.inStageAgo")} {formatElapsed(opportunity.stageEnteredAt)}
                       </p>
                       <div className="mt-2 flex items-center justify-between">
                         <div className="flex gap-1">
                           <button
                             type="button"
                             disabled={stageIndex === 0}
+                            title={t("crm.funnel.prevStageTitle")}
                             onClick={() => moveTo(opportunity, "prev")}
                             className="rounded border border-line px-1.5 py-0.5 text-xs text-ink-dim hover:bg-surface-alt disabled:opacity-30"
                           >
@@ -723,6 +739,7 @@ function Board({
                           <button
                             type="button"
                             disabled={stageIndex === funnel.stages.length - 1}
+                            title={t("crm.funnel.nextStageTitle")}
                             onClick={() => moveTo(opportunity, "next")}
                             className="rounded border border-line px-1.5 py-0.5 text-xs text-ink-dim hover:bg-surface-alt disabled:opacity-30"
                           >

@@ -206,8 +206,19 @@ export function useCreateKnowledgeItem() {
 export function useUpdateKnowledgeItem() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...input }: { id: string; ativo?: boolean; titulo?: string; conteudo?: string }) =>
-      apiPatch<KnowledgeBaseItem>(`/chatbot/knowledge-base/${id}`, input),
+    mutationFn: ({
+      id,
+      ...input
+    }: {
+      id: string;
+      ativo?: boolean;
+      tipo?: KnowledgeItemType;
+      titulo?: string;
+      conteudo?: string;
+      variacoes?: string[];
+      palavraChave?: string;
+      prioridade?: number;
+    }) => apiPatch<KnowledgeBaseItem>(`/chatbot/knowledge-base/${id}`, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["chatbot", "knowledge-base"] }),
   });
 }

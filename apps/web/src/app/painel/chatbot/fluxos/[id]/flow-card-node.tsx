@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { FlowNodeType } from "@/lib/chatbot";
-import { NODE_COLORS } from "./node-types";
+import { ADDABLE_TYPES, NODE_COLORS } from "./node-types";
 import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 import type { MenuNodeData } from "./node-types";
@@ -13,6 +14,7 @@ export interface FlowCardData extends Record<string, unknown> {
   selected?: boolean;
   readOnly?: boolean;
   onDeleteNode?: (id: string) => void;
+  onAddConnectedNode?: (id: string, type: FlowNodeType) => void;
 }
 
 const TERMINAL_TYPES: FlowNodeType[] = ["end", "transfer"];
@@ -50,6 +52,9 @@ export function FlowCardNode({ data, id }: NodeProps) {
   const hasTarget = !SOURCELESS_TARGET_TYPES.includes(flowNodeType);
   // O card "Início" é o ponto de entrada obrigatório do fluxo — não pode ser removido individualmente.
   const isDeletable = !SOURCELESS_TARGET_TYPES.includes(flowNodeType) && !cardData.readOnly;
+  // Só cards com uma única saída simples (handle inferior) ganham o atalho "+" —
+  // "menu"/"condition" têm múltiplas saídas nomeadas e exigem escolher o ramo manualmente.
+  const canAddConnected = !isTerminal && flowNodeType !== "menu" && flowNodeType !== "condition" && !cardData.readOnly;
 
   return (
     <div
@@ -79,6 +84,50 @@ export function FlowCardNode({ data, id }: NodeProps) {
       {flowNodeType === "condition" && <ConditionHandles color={color} />}
       {!isTerminal && flowNodeType !== "menu" && flowNodeType !== "condition" && (
         <Handle type="source" position={Position.Bottom} style={{ background: color }} />
+      )}
+
+      {canAddConnected && <AddConnectedButton onAdd={(type) => cardData.onAddConnectedNode?.(id, type)} />}
+    </div>
+  );
+}
+
+function AddConnectedButton({ onAdd }: { onAdd: (type: FlowNodeType) => void }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="absolute -bottom-2 -right-2 z-10">
+      <button
+        type="button"
+        title={t("chatbot.builder.addNode")}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
+        className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 text-[13px] font-bold leading-none text-white shadow hover:bg-brand-700"
+      >
+        +
+      </button>
+      {open && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="absolute right-0 top-full z-20 mt-1 w-44 rounded-md border border-line bg-surface py-1 shadow-lg"
+        >
+          {ADDABLE_TYPES.map((type) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => {
+                onAdd(type);
+                setOpen(false);
+              }}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-ink hover:bg-surface-alt"
+            >
+              <span className="h-2 w-2 rounded-full" style={{ background: NODE_COLORS[type] }} />
+              {t(`chatbot.builder.nodeType.${type}` as DictionaryKey)}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );

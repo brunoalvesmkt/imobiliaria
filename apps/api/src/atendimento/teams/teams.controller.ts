@@ -8,6 +8,7 @@ import { CurrentUser } from "../../auth/current-user.decorator";
 import type { AuthenticatedRequestUser } from "../../auth/jwt-payload.interface";
 import { TeamsService } from "./teams.service";
 import { CreateTeamDto } from "./dto/create-team.dto";
+import { UpdateTeamDto } from "./dto/update-team.dto";
 import { AddMemberDto } from "./dto/add-member.dto";
 import { UpdateMemberDto } from "./dto/update-member.dto";
 
@@ -33,6 +34,12 @@ export class TeamsController {
   @RequirePermission("atendimento", "administer")
   create(@Body() dto: CreateTeamDto, @CurrentUser() user: AuthenticatedRequestUser) {
     return this.service.create(dto, user.id);
+  }
+
+  @Patch(":id")
+  @RequirePermission("atendimento", "administer")
+  update(@Param("id") id: string, @Body() dto: UpdateTeamDto, @CurrentUser() user: AuthenticatedRequestUser) {
+    return this.service.update(id, dto, user.id);
   }
 
   @Post(":id/deactivate")

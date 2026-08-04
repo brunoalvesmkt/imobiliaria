@@ -154,6 +154,14 @@ export function useRemoveTeamMember(teamId: string) {
   });
 }
 
+export function useUpdateTeam(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Partial<{ nome: string }>) => apiPatch<Team>(`/atendimento/teams/${id}`, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["atendimento", "teams"] }),
+  });
+}
+
 export function useDeactivateTeam() {
   const queryClient = useQueryClient();
   return useMutation({

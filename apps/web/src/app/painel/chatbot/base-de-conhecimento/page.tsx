@@ -59,6 +59,35 @@ function ItemRow({ item }: { item: KnowledgeBaseItem }) {
   const update = useUpdateKnowledgeItem();
   const deleteItem = useDeleteKnowledgeItem();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [titulo, setTitulo] = useState(item.titulo);
+  const [conteudo, setConteudo] = useState(item.conteudo);
+  const [variacoesText, setVariacoesText] = useState(item.variacoes.join("\n"));
+  const [palavraChave, setPalavraChave] = useState(item.palavraChave ?? "");
+  const [prioridade, setPrioridade] = useState(String(item.prioridade ?? 0));
+
+  async function onSaveEdit() {
+    try {
+      await update.mutateAsync({
+        id: item.id,
+        titulo,
+        conteudo,
+        ...(item.tipo === "faq"
+          ? {
+              variacoes: variacoesText
+                .split("\n")
+                .map((v) => v.trim())
+                .filter(Boolean),
+              palavraChave,
+              prioridade: Number(prioridade) || 0,
+            }
+          : {}),
+      });
+      setEditing(false);
+    } catch {
+      // erro exibido abaixo
+    }
+  }
 
   return (
     <div className={`rounded-lg border border-line bg-surface p-3 ${!item.ativo ? "opacity-60" : ""}`}>
@@ -71,6 +100,20 @@ function ItemRow({ item }: { item: KnowledgeBaseItem }) {
           <p className="mt-0.5 whitespace-pre-wrap text-sm text-ink-dim">{item.conteudo}</p>
         </div>
         <div className="flex flex-none items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setTitulo(item.titulo);
+              setConteudo(item.conteudo);
+              setVariacoesText(item.variacoes.join("\n"));
+              setPalavraChave(item.palavraChave ?? "");
+              setPrioridade(String(item.prioridade ?? 0));
+              setEditing((v) => !v);
+            }}
+            className="text-xs font-medium text-brand-700 hover:underline"
+          >
+            {t("common.edit")}
+          </button>
           <button
             type="button"
             onClick={() => update.mutate({ id: item.id, ativo: !item.ativo })}
@@ -94,6 +137,44 @@ function ItemRow({ item }: { item: KnowledgeBaseItem }) {
           )}
         </div>
       </div>
+
+      {editing && (
+        <div className="mt-3 flex flex-col gap-3 border-t border-line pt-3">
+          {update.error && <Alert tone="error">{t("chatbot.errorGeneric")}</Alert>}
+          <Field label={t("chatbot.kb.itemTitle")} required value={titulo} onChange={(e) => setTitulo(e.target.value)} />
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-ink">{t("chatbot.kb.itemContent")}</label>
+            <textarea
+              required
+              value={conteudo}
+              onChange={(e) => setConteudo(e.target.value)}
+              rows={4}
+              className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+            />
+          </div>
+          {item.tipo === "faq" && (
+            <div className="grid grid-cols-1 gap-3 rounded-md border border-line bg-surface-alt p-3 sm:grid-cols-2">
+              <div className="flex flex-col gap-1.5 sm:col-span-2">
+                <label className="text-sm font-medium text-ink">{t("chatbot.kb.variations")}</label>
+                <textarea
+                  value={variacoesText}
+                  onChange={(e) => setVariacoesText(e.target.value)}
+                  rows={3}
+                  placeholder={t("chatbot.kb.variationsPlaceholder")}
+                  className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                />
+              </div>
+              <Field label={t("chatbot.kb.keyword")} value={palavraChave} onChange={(e) => setPalavraChave(e.target.value)} />
+              <Field label={t("chatbot.kb.priority")} type="number" value={prioridade} onChange={(e) => setPrioridade(e.target.value)} />
+            </div>
+          )}
+          <div>
+            <Button loading={update.isPending} disabled={!titulo.trim() || !conteudo.trim()} onClick={onSaveEdit}>
+              {t("common.save")}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

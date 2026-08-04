@@ -39,9 +39,8 @@ import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 import { FlowCardNode, type FlowCardData } from "./flow-card-node";
 import { NodeInspector } from "./node-inspector";
-import { NODE_COLORS, defaultDataFor } from "./node-types";
+import { ADDABLE_TYPES, NODE_COLORS, defaultDataFor } from "./node-types";
 
-const ADDABLE_TYPES: FlowNodeType[] = ["message", "question", "menu", "condition", "subflow", "transfer", "ai", "knowledge_query", "end"];
 const DRAG_MIME_TYPE = "application/x-flow-node-type";
 
 const NODE_TYPES: NodeTypes = { flowCard: FlowCardNode };
@@ -94,10 +93,15 @@ export default function FlowBuilderPage() {
     setDirty(false);
   }, [definition.data, loadedVersion, setNodes, setEdges]);
 
+  // O React Flow dispara onNodesChange sozinho para eventos que não são edições reais
+  // (medição inicial de tamanho ao montar = "dimensions", clique para selecionar = "select").
+  // Contar esses tipos como "dirty" fazia o botão Cancelar aparecer sem nada para descartar.
   const handleNodesChange = useCallback<OnNodesChange<Node<FlowCardData>>>(
     (changes) => {
       onNodesChange(changes);
-      setDirty(true);
+      if (changes.some((c) => c.type !== "select" && c.type !== "dimensions")) {
+        setDirty(true);
+      }
     },
     [onNodesChange],
   );
@@ -105,7 +109,9 @@ export default function FlowBuilderPage() {
   const handleEdgesChange = useCallback<OnEdgesChange<Edge>>(
     (changes) => {
       onEdgesChange(changes);
-      setDirty(true);
+      if (changes.some((c) => c.type !== "select")) {
+        setDirty(true);
+      }
     },
     [onEdgesChange],
   );
@@ -134,6 +140,22 @@ export default function FlowBuilderPage() {
       data: { flowNodeType: type, payload: defaultDataFor(type) },
     };
     setNodes((nds) => [...nds, newNode]);
+    setSelectedNodeId(nodeId);
+    setDirty(true);
+  }
+
+  function addConnectedNode(sourceId: string, type: FlowNodeType) {
+    const source = nodes.find((n) => n.id === sourceId);
+    const position = source ? { x: source.position.x, y: source.position.y + 160 } : { x: 120, y: 120 };
+    const nodeId = `${type}-${Math.random().toString(36).slice(2, 8)}`;
+    const newNode: Node<FlowCardData> = {
+      id: nodeId,
+      type: "flowCard",
+      position,
+      data: { flowNodeType: type, payload: defaultDataFor(type) },
+    };
+    setNodes((nds) => [...nds, newNode]);
+    setEdges((eds) => addEdge({ source: sourceId, target: nodeId, id: `e-${sourceId}-out-${nodeId}` }, eds));
     setSelectedNodeId(nodeId);
     setDirty(true);
   }
@@ -265,6 +287,14 @@ export default function FlowBuilderPage() {
               {t("common.cancel")}
             </Button>
           )}
+          <Button variant="secondary" onClick={onDuplicate} loading={duplicateFlow.isPending}>
+            {t("chatbot.action.duplicate")}
+          </Button>
+          {(flow.data?.status === "published" || flow.data?.status === "paused") && (
+            <Button variant="secondary" onClick={onNewVersion} loading={newVersion.isPending}>
+              {t("chatbot.action.newVersion")}
+            </Button>
+          )}
           {!readOnly && (
             <Button variant="secondary" onClick={onSave} loading={saveDefinition.isPending}>
               {t("chatbot.builder.save")}
@@ -275,14 +305,6 @@ export default function FlowBuilderPage() {
               {t("chatbot.builder.publish")}
             </Button>
           )}
-          {(flow.data?.status === "published" || flow.data?.status === "paused") && (
-            <Button variant="secondary" onClick={onNewVersion} loading={newVersion.isPending}>
-              {t("chatbot.action.newVersion")}
-            </Button>
-          )}
-          <Button variant="secondary" onClick={onDuplicate} loading={duplicateFlow.isPending}>
-            {t("chatbot.action.duplicate")}
-          </Button>
         </div>
       </div>
 
@@ -320,7 +342,13 @@ export default function FlowBuilderPage() {
             <FlowCanvas
               nodes={nodes.map((n) => ({
                 ...n,
-                data: { ...n.data, selected: n.id === selectedNodeId, readOnly, onDeleteNode: deleteNodeById },
+                data: {
+                  ...n.data,
+                  selected: n.id === selectedNodeId,
+                  readOnly,
+                  onDeleteNode: deleteNodeById,
+                  onAddConnectedNode: addConnectedNode,
+                },
               }))}
               edges={edges}
               onNodesChange={handleNodesChange}

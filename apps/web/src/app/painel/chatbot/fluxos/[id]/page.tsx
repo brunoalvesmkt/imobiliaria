@@ -544,8 +544,18 @@ function MobilePanHint() {
 function AddNodeMenu({ onAdd }: { onAdd: (type: FlowNodeType) => void }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDocClick() {
+      setOpen(false);
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [open]);
+
   return (
-    <div className="relative">
+    <div className="relative" onMouseDown={(e) => e.stopPropagation()}>
       <Button variant="secondary" onClick={() => setOpen((v) => !v)}>
         + {t("chatbot.builder.addNode")}
       </Button>

@@ -47,6 +47,9 @@ export interface QuestionNodeData {
   maxTentativas?: number; // default 3
   /** Pontos somados ao Lead Score do contato quando esta pergunta é respondida validamente (prompt mestre §4). Pode ser negativo. */
   pontuacao?: number;
+  /** Reengajamento por timeout (ver TIMEOUT_NODE_TYPES) — segundos sem resposta até pular para `timeoutTargetNodeId`. */
+  timeoutSeconds?: number;
+  timeoutTargetNodeId?: string;
 }
 
 export interface MenuOption {

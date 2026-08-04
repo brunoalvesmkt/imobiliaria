@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useAcceptRisk,
+  useActivateNumberFlowAsAny,
   useConfirmConnection,
   useConnectNumber,
   useCreateNumber,
@@ -261,6 +262,14 @@ function QrPanel({ connectQrCode, liveQrCode }: { connectQrCode: string | undefi
   );
 }
 
+/** Aceita termos separados por linha e/ou por vírgula, com ou sem espaços ao redor. */
+function parseTermos(text: string): string[] {
+  return text
+    .split(/[\n,]/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+}
+
 /**
  * "Fluxos do chatbot" (documento de alterações) — uma conexão pode ter vários fluxos
  * vinculados, cada um com sua própria regra de ativação. Só fluxos publicados aparecem como
@@ -295,6 +304,7 @@ function FlowLinkRow({ numberId, link }: { numberId: string; link: NumberFlowLin
   const { t } = useI18n();
   const update = useUpdateNumberFlow(numberId);
   const unlink = useUnlinkNumberFlow(numberId);
+  const activateAsAny = useActivateNumberFlowAsAny(numberId);
   const [editing, setEditing] = useState(false);
   const [regra, setRegra] = useState<FlowActivationRule>(link.regraAtivacao);
   const [termosText, setTermosText] = useState(link.termos.join("\n"));
@@ -307,7 +317,7 @@ function FlowLinkRow({ numberId, link }: { numberId: string; link: NumberFlowLin
       await update.mutateAsync({
         id: link.id,
         regraAtivacao: regra,
-        termos: regra === "keyword" ? termosText.split("\n").map((t) => t.trim()).filter(Boolean) : [],
+        termos: regra === "keyword" ? parseTermos(termosText) : [],
         prioridade: Number(prioridade) || 0,
       });
       setEditing(false);
@@ -328,6 +338,15 @@ function FlowLinkRow({ numberId, link }: { numberId: string; link: NumberFlowLin
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {link.regraAtivacao === "any" && !link.ativo && (
+            <button
+              type="button"
+              onClick={() => activateAsAny.mutate(link.id)}
+              className="text-xs font-medium text-brand-700 hover:underline"
+            >
+              {t("whatsapp.chatbotFlows.useAsDefault")}
+            </button>
+          )}
           <button type="button" onClick={() => setEditing((v) => !v)} className="text-xs font-medium text-brand-700 hover:underline">
             {t("common.edit")}
           </button>
@@ -403,7 +422,7 @@ function LinkFlowForm({ numberId, existingFlowIds, onDone }: { numberId: string;
       await link.mutateAsync({
         chatbotFlowId,
         regraAtivacao: regra,
-        termos: regra === "keyword" ? termosText.split("\n").map((t) => t.trim()).filter(Boolean) : [],
+        termos: regra === "keyword" ? parseTermos(termosText) : [],
         prioridade: Number(prioridade) || 0,
       });
       onDone();

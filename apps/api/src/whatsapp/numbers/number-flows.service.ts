@@ -112,6 +112,40 @@ export class NumberFlowsService {
     return updated;
   }
 
+  /**
+   * Define este vínculo como O fluxo de "qualquer mensagem" da conexão, inativando
+   * automaticamente qualquer outro vínculo "any" que já estivesse ativo — evita o usuário ter
+   * que inativar manualmente o anterior antes de ativar o novo.
+   */
+  async activateAsAny(numberId: string, id: string, actorId: string) {
+    await this.getNumber(numberId);
+    const link = await this.getLink(numberId, id);
+    if (link.regraAtivacao !== "any") {
+      throw new BadRequestException('Este vínculo não usa a regra "Qualquer mensagem".');
+    }
+
+    const others = await this.tenantPrisma.whatsAppNumberFlow.findMany({
+      where: { whatsAppNumberId: numberId, ativo: true, regraAtivacao: "any", id: { not: id } },
+    });
+
+    for (const other of others) {
+      await this.tenantPrisma.whatsAppNumberFlow.update({ where: { id: other.id }, data: { ativo: false } });
+    }
+    const updated = await this.tenantPrisma.whatsAppNumberFlow.update({ where: { id }, data: { ativo: true } });
+
+    await this.audit.record({
+      actorId,
+      actorType: "tenant_user",
+      action: "whatsapp_number_flow.activate_as_any",
+      entity: "WhatsAppNumberFlow",
+      entityId: id,
+      previousData: { deactivatedIds: others.map((o) => o.id) },
+      newData: { ativo: true },
+    });
+
+    return updated;
+  }
+
   async remove(numberId: string, id: string, actorId: string) {
     await this.getNumber(numberId);
     const link = await this.getLink(numberId, id);

@@ -129,6 +129,16 @@ export class NumbersController {
     return this.flowsService.update(id, flowLinkId, dto, user.id);
   }
 
+  @Patch(":id/flows/:flowLinkId/activate-any")
+  @RequirePermission("whatsapp", "administer")
+  activateAsAny(
+    @Param("id") id: string,
+    @Param("flowLinkId") flowLinkId: string,
+    @CurrentUser() user: AuthenticatedRequestUser,
+  ) {
+    return this.flowsService.activateAsAny(id, flowLinkId, user.id);
+  }
+
   @Delete(":id/flows/:flowLinkId")
   @RequirePermission("whatsapp", "administer")
   unlinkFlow(@Param("id") id: string, @Param("flowLinkId") flowLinkId: string, @CurrentUser() user: AuthenticatedRequestUser) {

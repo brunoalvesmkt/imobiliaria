@@ -89,6 +89,14 @@ export function useUpdateNumberFlow(numberId: string) {
   });
 }
 
+export function useActivateNumberFlowAsAny(numberId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiPatch<NumberFlowLink>(`/whatsapp/numbers/${numberId}/flows/${id}/activate-any`, {}),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["whatsapp", "numbers", numberId, "flows"] }),
+  });
+}
+
 export function useUnlinkNumberFlow(numberId: string) {
   const queryClient = useQueryClient();
   return useMutation({

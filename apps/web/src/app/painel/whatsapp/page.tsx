@@ -270,23 +270,10 @@ function QrPanel({ connectQrCode, liveQrCode }: { connectQrCode: string | undefi
 function ChatbotFlowsPanel({ number }: { number: WhatsAppNumber }) {
   const { t } = useI18n();
   const links = useNumberFlows(number.id);
-  const updateNumber = useUpdateNumber();
   const [showLinkForm, setShowLinkForm] = useState(false);
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1.5 rounded-md border border-line bg-surface p-3">
-        <label className="flex items-center gap-2 text-sm text-ink">
-          <input
-            type="checkbox"
-            checked={number.interromperFluxoAtual}
-            onChange={(e) => updateNumber.mutate({ id: number.id, interromperFluxoAtual: e.target.checked })}
-          />
-          {t("whatsapp.chatbotFlows.interruptCurrent")}
-        </label>
-        <p className="text-xs text-ink-faint">{t("whatsapp.chatbotFlows.interruptCurrentHint")}</p>
-      </div>
-
       <div className="flex flex-col gap-2">
         {links.data?.map((link) => (
           <FlowLinkRow key={link.id} numberId={number.id} link={link} />

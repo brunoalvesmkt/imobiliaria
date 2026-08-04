@@ -864,8 +864,6 @@ const dictionary: Record<DictionaryKey, string> = {
   "whatsapp.chatbotFlows.termsLabel": "Words or phrases (one per line)",
   "whatsapp.chatbotFlows.termsPlaceholder": "quote\ntalk to sales\nbilling",
   "whatsapp.chatbotFlows.priority": "Priority",
-  "whatsapp.chatbotFlows.interruptCurrent": "Allow a new keyword to interrupt the current flow",
-  "whatsapp.chatbotFlows.interruptCurrentHint": "When off, a flow already running is never interrupted by a new message — it's treated as a reply to it.",
 
   "automation.title": "Automation",
   "automation.newAutomation": "New automation",

@@ -206,11 +206,9 @@ export class ConversationsService {
    * checado primeiro, primeiro que bater na mensagem vence), 2) o fluxo
    * "qualquer mensagem" (no máximo um ativo por conexão), 3) nada.
    *
-   * Se já existe uma execução em andamento nesta conversa, ela recebe a
-   * resposta normalmente — a menos que `interromperFluxoAtual` esteja
-   * ligado NA CONEXÃO e a mensagem bata em um fluxo específico (nunca no
-   * fallback "qualquer mensagem"), caso em que a execução atual é
-   * interrompida e o novo fluxo é iniciado no lugar.
+   * Se já existe uma execução em andamento nesta conversa, ela sempre
+   * recebe a resposta normalmente — um fluxo em andamento nunca é
+   * interrompido por uma nova mensagem, mesmo que ela bata em outro fluxo.
    */
   private async routeToChatbotIfApplicable(
     conversationId: string,
@@ -226,32 +224,22 @@ export class ConversationsService {
       return;
     }
 
-    const number = await this.prisma.whatsAppNumber.findUniqueOrThrow({ where: { id: whatsAppNumberId } });
-
     const runningExecution = await this.tenantPrisma.chatbotExecution.findFirst({
       where: { conversationId, status: "running" },
       orderBy: { startedAt: "desc" },
     });
 
-    if (runningExecution && !number.interromperFluxoAtual) {
+    if (runningExecution) {
       await this.chatbotEngine.handleReply(runningExecution, incomingText);
       return;
     }
 
-    const match = await this.matchChatbotFlow(whatsAppNumberId, incomingText);
-
-    if (runningExecution) {
-      // "any" nunca interrompe um fluxo já em andamento — só uma palavra/frase específica pode.
-      if (!match || match.regraAtivacao !== "keyword") {
-        await this.chatbotEngine.handleReply(runningExecution, incomingText);
-        return;
-      }
-      await this.chatbotEngine.abandon(runningExecution);
-      await this.startMatchedFlow(conversationId, whatsAppNumberId, match, runningExecution.chatbotFlowId);
+    if (!isNewConversation) {
       return;
     }
 
-    if (!isNewConversation || !match) {
+    const match = await this.matchChatbotFlow(whatsAppNumberId, incomingText);
+    if (!match) {
       return;
     }
 

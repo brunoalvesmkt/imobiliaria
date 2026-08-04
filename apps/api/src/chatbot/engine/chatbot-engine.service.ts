@@ -361,16 +361,6 @@ export class ChatbotEngineService {
     return this.advance(advanced);
   }
 
-  /**
-   * Interrompe uma execução em andamento porque uma nova palavra-chave de outro fluxo bateu e a
-   * conexão está configurada para permitir a troca (WhatsAppNumber.interromperFluxoAtual) — ver
-   * ConversationsService.routeToChatbotIfApplicable.
-   */
-  async abandon(execution: ChatbotExecution): Promise<ChatbotExecution> {
-    const context = (execution.contextData as ExecutionContext | null) ?? {};
-    await this.timeoutProducer.cancel(execution.id);
-    return this.finish(execution, "abandoned", context);
-  }
 
   // ---------------------------------------------------------------------
   // Auxiliares

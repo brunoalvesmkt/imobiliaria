@@ -862,8 +862,6 @@ const dictionary = {
   "whatsapp.chatbotFlows.termsLabel": "Palavras ou frases (uma por linha)",
   "whatsapp.chatbotFlows.termsPlaceholder": "orçamento\nfalar com comercial\nsegunda via",
   "whatsapp.chatbotFlows.priority": "Prioridade",
-  "whatsapp.chatbotFlows.interruptCurrent": "Permitir que uma nova palavra-chave interrompa o fluxo atual",
-  "whatsapp.chatbotFlows.interruptCurrentHint": "Quando desligado, um fluxo em andamento nunca é interrompido por uma nova mensagem — ela é tratada como resposta dele.",
 
   "automation.title": "Automação",
   "automation.newAutomation": "Nova automação",

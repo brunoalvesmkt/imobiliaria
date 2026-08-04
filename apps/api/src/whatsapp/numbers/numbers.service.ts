@@ -143,7 +143,6 @@ export class NumbersService {
     const data: Prisma.WhatsAppNumberUncheckedUpdateInput = {};
     if (dto.nome !== undefined) data.nome = dto.nome;
     if (dto.responsavelId !== undefined) data.responsavelId = dto.responsavelId;
-    if (dto.interromperFluxoAtual !== undefined) data.interromperFluxoAtual = dto.interromperFluxoAtual;
 
     const updated = await this.tenantPrisma.whatsAppNumber.update({ where: { id }, data });
 

@@ -713,10 +713,6 @@ model WhatsAppNumber {
   externalAccountId String? // phone_number_id da Meta, quando modalidade = official_api
   responsavelId String?
   chatbotFlowId String? // legado — substituído por WhatsAppNumberFlow (múltiplos fluxos por conexão); mantido só para não perder o vínculo de conexões antigas, não é mais lido pelo motor
-  // Se true, uma mensagem que ativa um fluxo específico (palavra/frase) interrompe o fluxo em
-  // andamento na conversa e inicia o novo; se false (padrão), o fluxo em andamento nunca é
-  // interrompido por uma nova palavra-chave — a mensagem é tratada como resposta dele.
-  interromperFluxoAtual Boolean @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?

@@ -12,7 +12,6 @@ export interface WhatsAppNumber {
   externalAccountId: string | null;
   riskAccepted: boolean;
   chatbotFlowId: string | null;
-  interromperFluxoAtual: boolean;
   createdAt: string;
 }
 
@@ -50,7 +49,7 @@ export function useCreateNumber() {
 export function useUpdateNumber() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...input }: { id: string; nome?: string; interromperFluxoAtual?: boolean }) =>
+    mutationFn: ({ id, ...input }: { id: string; nome?: string }) =>
       apiPatch<WhatsAppNumber>(`/whatsapp/numbers/${id}`, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["whatsapp", "numbers"] }),
   });

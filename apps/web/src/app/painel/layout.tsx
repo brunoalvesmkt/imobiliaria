@@ -55,7 +55,7 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
 
   return (
     <RealtimeProvider enabled={currentUser.isSuccess}>
-      <div className="flex min-h-screen flex-col bg-surface-alt">
+      <div className="flex h-screen flex-col overflow-hidden bg-surface-alt">
         {currentUser.data?.impersonation && <ImpersonationBanner impersonation={currentUser.data.impersonation} />}
         {layout === "horizontal" ? (
           <div className="flex min-h-0 flex-1 flex-col">

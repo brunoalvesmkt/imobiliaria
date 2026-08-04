@@ -2,7 +2,7 @@
 
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ReactFlow,
@@ -22,8 +22,10 @@ import {
   type OnEdgesChange,
 } from "@xyflow/react";
 import {
+  useDuplicateFlow,
   useFlow,
   useFlowDefinition,
+  useNewFlowVersion,
   usePublishFlow,
   useSaveFlowDefinition,
   type FlowEdge,
@@ -32,6 +34,7 @@ import {
 } from "@/lib/chatbot";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
+import { ApiError } from "@/lib/api-client";
 import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 import { FlowCardNode, type FlowCardData } from "./flow-card-node";
@@ -59,11 +62,16 @@ function toReactFlowEdge(edge: FlowEdge): Edge {
 export default function FlowBuilderPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
+  const router = useRouter();
   const { t } = useI18n();
   const flow = useFlow(id);
   const definition = useFlowDefinition(id);
   const saveDefinition = useSaveFlowDefinition(id);
   const publish = usePublishFlow();
+  const newVersion = useNewFlowVersion();
+  const duplicateFlow = useDuplicateFlow();
+  const [newVersionError, setNewVersionError] = useState<string | null>(null);
+  const [duplicateError, setDuplicateError] = useState<string | null>(null);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<FlowCardData>>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -199,6 +207,27 @@ export default function FlowBuilderPage() {
     }
   }
 
+  async function onNewVersion() {
+    setNewVersionError(null);
+    try {
+      await newVersion.mutateAsync(id);
+      // O refetch de flow/definition (invalidado pelo hook) já traz status "draft" e a
+      // definição da nova versão — readOnly cai sozinho, sem precisar de mais nada aqui.
+    } catch (err) {
+      setNewVersionError(err instanceof ApiError ? err.message : t("chatbot.errorGeneric"));
+    }
+  }
+
+  async function onDuplicate() {
+    setDuplicateError(null);
+    try {
+      await duplicateFlow.mutateAsync(id);
+      router.push("/painel/chatbot");
+    } catch (err) {
+      setDuplicateError(err instanceof ApiError ? err.message : t("chatbot.errorGeneric"));
+    }
+  }
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-surface px-4 py-2.5">
@@ -231,6 +260,14 @@ export default function FlowBuilderPage() {
               {t("chatbot.builder.publish")}
             </Button>
           )}
+          {(flow.data?.status === "published" || flow.data?.status === "paused") && (
+            <Button variant="secondary" onClick={onNewVersion} loading={newVersion.isPending}>
+              {t("chatbot.action.newVersion")}
+            </Button>
+          )}
+          <Button variant="secondary" onClick={onDuplicate} loading={duplicateFlow.isPending}>
+            {t("chatbot.action.duplicate")}
+          </Button>
         </div>
       </div>
 
@@ -249,6 +286,16 @@ export default function FlowBuilderPage() {
               ))}
             </ul>
           </Alert>
+        </div>
+      )}
+      {newVersionError && (
+        <div className="border-b border-line px-4 py-2">
+          <Alert tone="error">{newVersionError}</Alert>
+        </div>
+      )}
+      {duplicateError && (
+        <div className="border-b border-line px-4 py-2">
+          <Alert tone="error">{duplicateError}</Alert>
         </div>
       )}
 

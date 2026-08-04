@@ -8,7 +8,6 @@ import {
   useDeleteFlow,
   useDuplicateFlow,
   useFlows,
-  useNewFlowVersion,
   usePauseFlow,
   usePublishFlow,
   useUpdateFlow,
@@ -68,7 +67,6 @@ function FlowRow({ flow }: { flow: ChatbotFlow }) {
   const publish = usePublishFlow();
   const pause = usePauseFlow();
   const archive = useArchiveFlow();
-  const newVersion = useNewFlowVersion();
   const deleteFlow = useDeleteFlow();
   const duplicateFlow = useDuplicateFlow();
   const [publishErrors, setPublishErrors] = useState<string[] | null>(null);
@@ -169,15 +167,6 @@ function FlowRow({ flow }: { flow: ChatbotFlow }) {
           {flow.status === "published" && (
             <button type="button" onClick={() => pause.mutate(flow.id)} className="text-xs font-medium text-ink-dim hover:underline">
               {t("chatbot.action.pause")}
-            </button>
-          )}
-          {(flow.status === "published" || flow.status === "paused") && (
-            <button
-              type="button"
-              onClick={() => newVersion.mutate(flow.id)}
-              className="text-xs font-medium text-brand-700 hover:underline"
-            >
-              {t("chatbot.action.newVersion")}
             </button>
           )}
           {flow.status !== "archived" && (

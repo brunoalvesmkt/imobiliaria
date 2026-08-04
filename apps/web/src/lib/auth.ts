@@ -25,6 +25,8 @@ export interface MyProfile {
   twoFactorEnabled?: boolean;
   /** Papel com a permissão `configuracoes:administer` — usado para esconder botões administrativos (ex.: "Configurações") de usuários comuns. */
   isAdmin: boolean;
+  /** Papel com a permissão `atendimento:administer` — usado para esconder Editar/Inativar/Excluir em Equipes e Filas de usuários comuns do módulo. */
+  atendimentoAdmin: boolean;
 }
 
 export interface TenantInfo {
@@ -62,6 +64,12 @@ export function useMyProfile(enabled: boolean) {
 export function useIsAdmin(): boolean {
   const profile = useMyProfile(true);
   return profile.data?.isAdmin ?? false;
+}
+
+/** Editar/Inativar/Excluir em Equipes e Filas (módulo Atendimento) só aparecem para quem tem `atendimento:administer`. */
+export function useIsAtendimentoAdmin(): boolean {
+  const profile = useMyProfile(true);
+  return profile.data?.atendimentoAdmin ?? false;
 }
 
 export function useTenantInfo(enabled: boolean) {

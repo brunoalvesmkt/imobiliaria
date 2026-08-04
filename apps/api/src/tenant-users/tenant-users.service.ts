@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
-import type { Prisma, TenantUser } from "@chatbot-saas/database";
+import type { Prisma, TenantUser, PermissionAction } from "@chatbot-saas/database";
 import { PrismaService } from "../prisma/prisma.service";
 import { TenantScopedPrismaService } from "../prisma/tenant-scoped-prisma.service";
 import { AuditService } from "../common/audit/audit.service";
@@ -34,19 +34,22 @@ export class TenantUsersService {
     if (!user) {
       throw new NotFoundException("Usuário não encontrado.");
     }
-    return { ...toPublicTenantUser(user), isAdmin: await this.hasAdminPermission(user.roleId) };
+    return {
+      ...toPublicTenantUser(user),
+      isAdmin: await this.hasPermission(user.roleId, "configuracoes", "administer"),
+      atendimentoAdmin: await this.hasPermission(user.roleId, "atendimento", "administer"),
+    };
   }
 
   /**
    * "Administrador", do ponto de vista do frontend (para esconder botões
-   * como "Configurações"), é definido exatamente como o backend já define
-   * para autorizar ações administrativas: papel com a permissão
-   * `configuracoes:administer` — não um nome de papel fixo.
+   * como "Configurações" ou as ações de gestão de Equipes/Filas), é
+   * definido exatamente como o backend já define para autorizar ações
+   * administrativas: papel com a permissão `<módulo>:administer` — não um
+   * nome de papel fixo.
    */
-  private async hasAdminPermission(roleId: string): Promise<boolean> {
-    const permission = await this.prisma.permission.findFirst({
-      where: { roleId, module: "configuracoes", action: "administer" },
-    });
+  private async hasPermission(roleId: string, module: string, action: PermissionAction): Promise<boolean> {
+    const permission = await this.prisma.permission.findFirst({ where: { roleId, module, action } });
     return !!permission;
   }
 
@@ -66,7 +69,8 @@ export class TenantUsersService {
       email: masterUser.email,
       roleId,
       status: "active",
-      isAdmin: await this.hasAdminPermission(roleId),
+      isAdmin: await this.hasPermission(roleId, "configuracoes", "administer"),
+      atendimentoAdmin: await this.hasPermission(roleId, "atendimento", "administer"),
     };
   }
 

@@ -23,6 +23,7 @@ import {
   type Team,
 } from "@/lib/atendimento";
 import { useTenantUsers } from "@/lib/tenant-users";
+import { useIsAtendimentoAdmin } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
@@ -75,6 +76,7 @@ export default function EquipesPage() {
 
 function TeamCard({ team }: { team: Team }) {
   const { t } = useI18n();
+  const isAdmin = useIsAtendimentoAdmin();
   const tenantUsers = useTenantUsers();
   const addMember = useAddTeamMember(team.id);
   const removeMember = useRemoveTeamMember(team.id);
@@ -124,50 +126,52 @@ function TeamCard({ team }: { team: Team }) {
             </span>
           )}
         </div>
-        <div className="flex flex-none items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setNome(team.nome);
-              setUpdateError(null);
-              setEditing((v) => !v);
-            }}
-            className="text-xs font-medium text-brand-700 hover:underline"
-          >
-            {t("common.edit")}
-          </button>
-          {team.ativo ? (
+        {isAdmin && (
+          <div className="flex flex-none items-center gap-2">
             <button
               type="button"
-              onClick={() => deactivateTeam.mutate(team.id)}
-              className="text-xs font-medium text-ink-dim hover:underline"
+              onClick={() => {
+                setNome(team.nome);
+                setUpdateError(null);
+                setEditing((v) => !v);
+              }}
+              className="text-xs font-medium text-brand-700 hover:underline"
             >
-              {t("atendimento.teams.deactivate")}
+              {t("common.edit")}
             </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => reactivateTeam.mutate(team.id)}
-              className="text-xs font-medium text-ink-dim hover:underline"
-            >
-              {t("atendimento.teams.reactivate")}
-            </button>
-          )}
-          {confirmingDelete ? (
-            <>
-              <button type="button" onClick={onDelete} className="text-xs font-medium text-red-600 hover:underline">
-                {t("atendimento.teams.deleteConfirmYes")}
+            {team.ativo ? (
+              <button
+                type="button"
+                onClick={() => deactivateTeam.mutate(team.id)}
+                className="text-xs font-medium text-ink-dim hover:underline"
+              >
+                {t("atendimento.teams.deactivate")}
               </button>
-              <button type="button" onClick={() => setConfirmingDelete(false)} className="text-xs font-medium text-ink-faint hover:underline">
-                {t("common.cancel")}
+            ) : (
+              <button
+                type="button"
+                onClick={() => reactivateTeam.mutate(team.id)}
+                className="text-xs font-medium text-ink-dim hover:underline"
+              >
+                {t("atendimento.teams.reactivate")}
               </button>
-            </>
-          ) : (
-            <button type="button" onClick={() => setConfirmingDelete(true)} className="text-xs font-medium text-red-600 hover:underline">
-              {t("atendimento.teams.delete")}
-            </button>
-          )}
-        </div>
+            )}
+            {confirmingDelete ? (
+              <>
+                <button type="button" onClick={onDelete} className="text-xs font-medium text-red-600 hover:underline">
+                  {t("atendimento.teams.deleteConfirmYes")}
+                </button>
+                <button type="button" onClick={() => setConfirmingDelete(false)} className="text-xs font-medium text-ink-faint hover:underline">
+                  {t("common.cancel")}
+                </button>
+              </>
+            ) : (
+              <button type="button" onClick={() => setConfirmingDelete(true)} className="text-xs font-medium text-red-600 hover:underline">
+                {t("atendimento.teams.delete")}
+              </button>
+            )}
+          </div>
+        )}
       </div>
       {deleteError && (
         <div className="mt-2">
@@ -175,7 +179,7 @@ function TeamCard({ team }: { team: Team }) {
         </div>
       )}
 
-      {editing && (
+      {isAdmin && editing && (
         <div className="mt-2 flex flex-col gap-2 border-t border-line pt-2">
           {updateError && <Alert tone="error">{updateError}</Alert>}
           <div className="flex gap-2">
@@ -258,6 +262,7 @@ function TeamCard({ team }: { team: Team }) {
 
 function QueueCard({ queue }: { queue: Queue }) {
   const { t } = useI18n();
+  const isAdmin = useIsAtendimentoAdmin();
   const updateQueue = useUpdateQueue(queue.id);
   const businessHours = useBusinessHours(queue.id);
   const addBusinessHours = useAddBusinessHours(queue.id);
@@ -300,50 +305,54 @@ function QueueCard({ queue }: { queue: Queue }) {
           <p className="text-xs text-ink-faint">{t(`atendimento.queues.distribution.${queue.distribuicao}` as DictionaryKey)}</p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-1">
-          <button
-            type="button"
-            onClick={() => {
-              setNome(queue.nome);
-              setEditing((v) => !v);
-            }}
-            className="text-xs font-medium text-brand-700 hover:underline"
-          >
-            {t("common.edit")}
-          </button>
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => {
+                setNome(queue.nome);
+                setEditing((v) => !v);
+              }}
+              className="text-xs font-medium text-brand-700 hover:underline"
+            >
+              {t("common.edit")}
+            </button>
+          )}
           <button type="button" onClick={() => setShowHours((v) => !v)} className="text-xs font-medium text-brand-700 hover:underline">
             {t("atendimento.businessHours.title")}
           </button>
-          {queue.ativo ? (
-            <button
-              type="button"
-              onClick={() => deactivateQueue.mutate(queue.id)}
-              className="text-xs font-medium text-ink-dim hover:underline"
-            >
-              {t("atendimento.queues.deactivate")}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => reactivateQueue.mutate(queue.id)}
-              className="text-xs font-medium text-ink-dim hover:underline"
-            >
-              {t("atendimento.queues.reactivate")}
-            </button>
-          )}
-          {confirmingDelete ? (
-            <>
-              <button type="button" onClick={onDelete} className="text-xs font-medium text-red-600 hover:underline">
-                {t("atendimento.queues.deleteConfirmYes")}
+          {isAdmin &&
+            (queue.ativo ? (
+              <button
+                type="button"
+                onClick={() => deactivateQueue.mutate(queue.id)}
+                className="text-xs font-medium text-ink-dim hover:underline"
+              >
+                {t("atendimento.queues.deactivate")}
               </button>
-              <button type="button" onClick={() => setConfirmingDelete(false)} className="text-xs font-medium text-ink-faint hover:underline">
-                {t("common.cancel")}
+            ) : (
+              <button
+                type="button"
+                onClick={() => reactivateQueue.mutate(queue.id)}
+                className="text-xs font-medium text-ink-dim hover:underline"
+              >
+                {t("atendimento.queues.reactivate")}
               </button>
-            </>
-          ) : (
-            <button type="button" onClick={() => setConfirmingDelete(true)} className="text-xs font-medium text-red-600 hover:underline">
-              {t("atendimento.queues.delete")}
-            </button>
-          )}
+            ))}
+          {isAdmin &&
+            (confirmingDelete ? (
+              <>
+                <button type="button" onClick={onDelete} className="text-xs font-medium text-red-600 hover:underline">
+                  {t("atendimento.queues.deleteConfirmYes")}
+                </button>
+                <button type="button" onClick={() => setConfirmingDelete(false)} className="text-xs font-medium text-ink-faint hover:underline">
+                  {t("common.cancel")}
+                </button>
+              </>
+            ) : (
+              <button type="button" onClick={() => setConfirmingDelete(true)} className="text-xs font-medium text-red-600 hover:underline">
+                {t("atendimento.queues.delete")}
+              </button>
+            ))}
         </div>
       </div>
       {deleteError && (
@@ -352,7 +361,7 @@ function QueueCard({ queue }: { queue: Queue }) {
         </div>
       )}
 
-      {editing && (
+      {isAdmin && editing && (
         <div className="mt-3 flex flex-col gap-2 border-t border-line pt-3">
           <Field label={t("atendimento.queues.name")} value={nome} onChange={(e) => setNome(e.target.value)} />
           <div className="flex flex-col gap-1.5">

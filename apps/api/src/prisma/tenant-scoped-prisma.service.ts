@@ -304,6 +304,11 @@ export class TenantScopedPrismaService {
 
       create: (args: Omit<Prisma.TeamCreateArgs, "data"> & { data: Omit<Prisma.TeamUncheckedCreateInput, "tenantId"> }) =>
         this.prisma.team.create({ ...args, data: { ...args.data, tenantId } }),
+
+      update: (args: { where: { id: string }; data: Prisma.TeamUncheckedUpdateInput }) =>
+        this.prisma.team.update({ where: { id: args.where.id, tenantId }, data: args.data }),
+
+      delete: (args: { where: { id: string } }) => this.prisma.team.delete({ where: { id: args.where.id, tenantId } }),
     };
   }
 
@@ -321,6 +326,8 @@ export class TenantScopedPrismaService {
 
       update: (args: { where: { id: string }; data: Prisma.QueueUncheckedUpdateInput }) =>
         this.prisma.queue.update({ where: { id: args.where.id, tenantId }, data: args.data }),
+
+      delete: (args: { where: { id: string } }) => this.prisma.queue.delete({ where: { id: args.where.id, tenantId } }),
     };
   }
 

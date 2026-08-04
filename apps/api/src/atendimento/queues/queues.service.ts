@@ -77,6 +77,58 @@ export class QueuesService {
     return updated;
   }
 
+  async deactivate(id: string, actorId: string) {
+    await this.get(id);
+    const updated = await this.tenantPrisma.queue.update({ where: { id }, data: { ativo: false } });
+
+    await this.audit.record({
+      actorId,
+      actorType: "tenant_user",
+      action: "queue.deactivate",
+      entity: "Queue",
+      entityId: id,
+    });
+
+    return updated;
+  }
+
+  async reactivate(id: string, actorId: string) {
+    await this.get(id);
+    const updated = await this.tenantPrisma.queue.update({ where: { id }, data: { ativo: true } });
+
+    await this.audit.record({
+      actorId,
+      actorType: "tenant_user",
+      action: "queue.reactivate",
+      entity: "Queue",
+      entityId: id,
+    });
+
+    return updated;
+  }
+
+  /**
+   * Exclusão definitiva — cascata apaga os horários de atendimento
+   * (BusinessHours) desta fila; conversas que apontavam para ela ficam sem
+   * fila (onDelete: SetNull no schema), não são apagadas. Quem quiser
+   * manter esse histórico deve usar "Inativar" em vez de excluir.
+   */
+  async remove(id: string, actorId: string) {
+    const queue = await this.get(id);
+    await this.tenantPrisma.queue.delete({ where: { id } });
+
+    await this.audit.record({
+      actorId,
+      actorType: "tenant_user",
+      action: "queue.delete",
+      entity: "Queue",
+      entityId: id,
+      previousData: { nome: queue.nome },
+    });
+
+    return { status: "ok" as const };
+  }
+
   async addBusinessHours(queueId: string, dto: CreateBusinessHoursDto, actorId: string) {
     await this.get(queueId);
 

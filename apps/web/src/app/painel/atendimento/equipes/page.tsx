@@ -7,7 +7,13 @@ import {
   useBusinessHours,
   useCreateQueue,
   useCreateTeam,
+  useDeactivateQueue,
+  useDeactivateTeam,
+  useDeleteQueue,
+  useDeleteTeam,
   useQueues,
+  useReactivateQueue,
+  useReactivateTeam,
   useRemoveTeamMember,
   useTeams,
   useUpdateQueue,
@@ -18,6 +24,8 @@ import {
 import { useTenantUsers } from "@/lib/tenant-users";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
+import { Alert } from "@/components/ui/alert";
+import { ApiError } from "@/lib/api-client";
 import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 
@@ -70,14 +78,76 @@ function TeamCard({ team }: { team: Team }) {
   const addMember = useAddTeamMember(team.id);
   const removeMember = useRemoveTeamMember(team.id);
   const updatePriority = useUpdateTeamMemberPriority(team.id);
+  const deactivateTeam = useDeactivateTeam();
+  const reactivateTeam = useReactivateTeam();
+  const deleteTeam = useDeleteTeam();
   const [selectedUserId, setSelectedUserId] = useState("");
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const memberIds = new Set(team.members.map((m) => m.tenantUserId));
   const available = tenantUsers.data?.filter((u) => !memberIds.has(u.id)) ?? [];
 
+  async function onDelete() {
+    setDeleteError(null);
+    try {
+      await deleteTeam.mutateAsync(team.id);
+    } catch (err) {
+      setDeleteError(err instanceof ApiError ? err.message : t("atendimento.teams.errorGeneric"));
+      setConfirmingDelete(false);
+    }
+  }
+
   return (
-    <li className="rounded-lg border border-line bg-surface p-3">
-      <p className="text-sm font-medium text-ink">{team.nome}</p>
+    <li className={`rounded-lg border border-line bg-surface p-3 ${!team.ativo ? "opacity-60" : ""}`}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium text-ink">{team.nome}</p>
+          {!team.ativo && (
+            <span className="rounded-full bg-surface-muted px-2 py-0.5 text-xs font-medium text-ink-faint">
+              {t("atendimento.teams.inactiveBadge")}
+            </span>
+          )}
+        </div>
+        <div className="flex flex-none items-center gap-2">
+          {team.ativo ? (
+            <button
+              type="button"
+              onClick={() => deactivateTeam.mutate(team.id)}
+              className="text-xs font-medium text-ink-dim hover:underline"
+            >
+              {t("atendimento.teams.deactivate")}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => reactivateTeam.mutate(team.id)}
+              className="text-xs font-medium text-ink-dim hover:underline"
+            >
+              {t("atendimento.teams.reactivate")}
+            </button>
+          )}
+          {confirmingDelete ? (
+            <>
+              <button type="button" onClick={onDelete} className="text-xs font-medium text-red-600 hover:underline">
+                {t("atendimento.teams.deleteConfirmYes")}
+              </button>
+              <button type="button" onClick={() => setConfirmingDelete(false)} className="text-xs font-medium text-ink-faint hover:underline">
+                {t("common.cancel")}
+              </button>
+            </>
+          ) : (
+            <button type="button" onClick={() => setConfirmingDelete(true)} className="text-xs font-medium text-red-600 hover:underline">
+              {t("atendimento.teams.delete")}
+            </button>
+          )}
+        </div>
+      </div>
+      {deleteError && (
+        <div className="mt-2">
+          <Alert tone="error">{deleteError}</Alert>
+        </div>
+      )}
       {team.members.length > 0 ? (
         <ul className="mt-1 flex flex-wrap gap-1">
           {team.members.map((m) => (
@@ -148,6 +218,9 @@ function QueueCard({ queue }: { queue: Queue }) {
   const updateQueue = useUpdateQueue(queue.id);
   const businessHours = useBusinessHours(queue.id);
   const addBusinessHours = useAddBusinessHours(queue.id);
+  const deactivateQueue = useDeactivateQueue();
+  const reactivateQueue = useReactivateQueue();
+  const deleteQueue = useDeleteQueue();
   const [editing, setEditing] = useState(false);
   const [showHours, setShowHours] = useState(false);
   const [distribuicao, setDistribuicao] = useState(queue.distribuicao);
@@ -155,23 +228,78 @@ function QueueCard({ queue }: { queue: Queue }) {
   const [diaSemana, setDiaSemana] = useState("1");
   const [horaInicio, setHoraInicio] = useState("09:00");
   const [horaFim, setHoraFim] = useState("18:00");
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function onDelete() {
+    setDeleteError(null);
+    try {
+      await deleteQueue.mutateAsync(queue.id);
+    } catch (err) {
+      setDeleteError(err instanceof ApiError ? err.message : t("atendimento.queues.errorGeneric"));
+      setConfirmingDelete(false);
+    }
+  }
 
   return (
-    <li className="rounded-lg border border-line bg-surface p-3 text-sm">
+    <li className={`rounded-lg border border-line bg-surface p-3 text-sm ${!queue.ativo ? "opacity-60" : ""}`}>
       <div className="flex items-start justify-between">
         <div>
-          <p className="font-medium text-ink">{queue.nome}</p>
+          <div className="flex items-center gap-2">
+            <p className="font-medium text-ink">{queue.nome}</p>
+            {!queue.ativo && (
+              <span className="rounded-full bg-surface-muted px-2 py-0.5 text-xs font-medium text-ink-faint">
+                {t("atendimento.queues.inactiveBadge")}
+              </span>
+            )}
+          </div>
           <p className="text-xs text-ink-faint">{t(`atendimento.queues.distribution.${queue.distribuicao}` as DictionaryKey)}</p>
         </div>
-        <div className="flex gap-1">
+        <div className="flex flex-wrap items-center justify-end gap-1">
           <button type="button" onClick={() => setEditing((v) => !v)} className="text-xs font-medium text-brand-700 hover:underline">
             {t("common.edit")}
           </button>
           <button type="button" onClick={() => setShowHours((v) => !v)} className="text-xs font-medium text-brand-700 hover:underline">
             {t("atendimento.businessHours.title")}
           </button>
+          {queue.ativo ? (
+            <button
+              type="button"
+              onClick={() => deactivateQueue.mutate(queue.id)}
+              className="text-xs font-medium text-ink-dim hover:underline"
+            >
+              {t("atendimento.queues.deactivate")}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => reactivateQueue.mutate(queue.id)}
+              className="text-xs font-medium text-ink-dim hover:underline"
+            >
+              {t("atendimento.queues.reactivate")}
+            </button>
+          )}
+          {confirmingDelete ? (
+            <>
+              <button type="button" onClick={onDelete} className="text-xs font-medium text-red-600 hover:underline">
+                {t("atendimento.queues.deleteConfirmYes")}
+              </button>
+              <button type="button" onClick={() => setConfirmingDelete(false)} className="text-xs font-medium text-ink-faint hover:underline">
+                {t("common.cancel")}
+              </button>
+            </>
+          ) : (
+            <button type="button" onClick={() => setConfirmingDelete(true)} className="text-xs font-medium text-red-600 hover:underline">
+              {t("atendimento.queues.delete")}
+            </button>
+          )}
         </div>
       </div>
+      {deleteError && (
+        <div className="mt-2">
+          <Alert tone="error">{deleteError}</Alert>
+        </div>
+      )}
 
       {editing && (
         <div className="mt-3 flex flex-col gap-2 border-t border-line pt-3">

@@ -48,6 +48,58 @@ export class TeamsService {
     return team;
   }
 
+  async deactivate(id: string, actorId: string) {
+    await this.get(id);
+    const updated = await this.tenantPrisma.team.update({ where: { id }, data: { ativo: false } });
+
+    await this.audit.record({
+      actorId,
+      actorType: "tenant_user",
+      action: "team.deactivate",
+      entity: "Team",
+      entityId: id,
+    });
+
+    return updated;
+  }
+
+  async reactivate(id: string, actorId: string) {
+    await this.get(id);
+    const updated = await this.tenantPrisma.team.update({ where: { id }, data: { ativo: true } });
+
+    await this.audit.record({
+      actorId,
+      actorType: "tenant_user",
+      action: "team.reactivate",
+      entity: "Team",
+      entityId: id,
+    });
+
+    return updated;
+  }
+
+  /**
+   * Exclusão definitiva — cascata apaga os membros e as mensagens rápidas
+   * (QuickMessage) restritas a esta equipe; filas vinculadas ficam sem
+   * equipe (onDelete: SetNull no schema), não são apagadas. Quem quiser
+   * manter esse histórico deve usar "Inativar" em vez de excluir.
+   */
+  async remove(id: string, actorId: string) {
+    const team = await this.get(id);
+    await this.tenantPrisma.team.delete({ where: { id } });
+
+    await this.audit.record({
+      actorId,
+      actorType: "tenant_user",
+      action: "team.delete",
+      entity: "Team",
+      entityId: id,
+      previousData: { nome: team.nome },
+    });
+
+    return { status: "ok" as const };
+  }
+
   async addMember(teamId: string, dto: AddMemberDto, actorId: string) {
     const tenantId = requireCurrentTenantId();
     await this.get(teamId);

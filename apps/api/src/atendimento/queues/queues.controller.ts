@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
 import { TenantAuthGuard } from "../../auth/guards/tenant-auth.guard";
 import { ModuleActiveGuard } from "../../common/modules/module-active.guard";
 import { PermissionsGuard } from "../../common/permissions/permissions.guard";
@@ -39,6 +39,24 @@ export class QueuesController {
   @RequirePermission("atendimento", "administer")
   update(@Param("id") id: string, @Body() dto: UpdateQueueDto, @CurrentUser() user: AuthenticatedRequestUser) {
     return this.service.update(id, dto, user.id);
+  }
+
+  @Post(":id/deactivate")
+  @RequirePermission("atendimento", "administer")
+  deactivate(@Param("id") id: string, @CurrentUser() user: AuthenticatedRequestUser) {
+    return this.service.deactivate(id, user.id);
+  }
+
+  @Post(":id/reactivate")
+  @RequirePermission("atendimento", "administer")
+  reactivate(@Param("id") id: string, @CurrentUser() user: AuthenticatedRequestUser) {
+    return this.service.reactivate(id, user.id);
+  }
+
+  @Delete(":id")
+  @RequirePermission("atendimento", "administer")
+  remove(@Param("id") id: string, @CurrentUser() user: AuthenticatedRequestUser) {
+    return this.service.remove(id, user.id);
   }
 
   @Get(":id/business-hours")

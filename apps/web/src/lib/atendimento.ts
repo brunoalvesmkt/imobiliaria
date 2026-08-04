@@ -106,6 +106,7 @@ export function useReopenConversation() {
 export interface Team {
   id: string;
   nome: string;
+  ativo: boolean;
   members: {
     id: string;
     tenantUserId: string;
@@ -153,6 +154,30 @@ export function useRemoveTeamMember(teamId: string) {
   });
 }
 
+export function useDeactivateTeam() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiPost<Team>(`/atendimento/teams/${id}/deactivate`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["atendimento", "teams"] }),
+  });
+}
+
+export function useReactivateTeam() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiPost<Team>(`/atendimento/teams/${id}/reactivate`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["atendimento", "teams"] }),
+  });
+}
+
+export function useDeleteTeam() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiDelete<{ status: "ok" }>(`/atendimento/teams/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["atendimento", "teams"] }),
+  });
+}
+
 export interface Queue {
   id: string;
   nome: string;
@@ -163,6 +188,7 @@ export interface Queue {
   slaMinutos: number | null;
   mensagemEspera: string | null;
   mensagemForaExpediente: string | null;
+  ativo: boolean;
 }
 
 export function useQueues() {
@@ -182,6 +208,30 @@ export function useUpdateQueue(id: string) {
   return useMutation({
     mutationFn: (input: Partial<{ nome: string; descricao: string; teamId: string; prioridade: number; distribuicao: Queue["distribuicao"]; slaMinutos: number; mensagemEspera: string; mensagemForaExpediente: string }>) =>
       apiPatch<Queue>(`/atendimento/queues/${id}`, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["atendimento", "queues"] }),
+  });
+}
+
+export function useDeactivateQueue() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiPost<Queue>(`/atendimento/queues/${id}/deactivate`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["atendimento", "queues"] }),
+  });
+}
+
+export function useReactivateQueue() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiPost<Queue>(`/atendimento/queues/${id}/reactivate`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["atendimento", "queues"] }),
+  });
+}
+
+export function useDeleteQueue() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiDelete<{ status: "ok" }>(`/atendimento/queues/${id}`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["atendimento", "queues"] }),
   });
 }

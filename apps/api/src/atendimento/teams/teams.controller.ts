@@ -35,6 +35,24 @@ export class TeamsController {
     return this.service.create(dto, user.id);
   }
 
+  @Post(":id/deactivate")
+  @RequirePermission("atendimento", "administer")
+  deactivate(@Param("id") id: string, @CurrentUser() user: AuthenticatedRequestUser) {
+    return this.service.deactivate(id, user.id);
+  }
+
+  @Post(":id/reactivate")
+  @RequirePermission("atendimento", "administer")
+  reactivate(@Param("id") id: string, @CurrentUser() user: AuthenticatedRequestUser) {
+    return this.service.reactivate(id, user.id);
+  }
+
+  @Delete(":id")
+  @RequirePermission("atendimento", "administer")
+  remove(@Param("id") id: string, @CurrentUser() user: AuthenticatedRequestUser) {
+    return this.service.remove(id, user.id);
+  }
+
   @Post(":id/members")
   @RequirePermission("atendimento", "administer")
   addMember(@Param("id") id: string, @Body() dto: AddMemberDto, @CurrentUser() user: AuthenticatedRequestUser) {

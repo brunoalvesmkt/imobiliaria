@@ -865,6 +865,7 @@ model Team {
   id        String   @id @default(uuid())
   tenantId  String
   nome      String
+  ativo     Boolean  @default(true)
   createdAt DateTime @default(now())
 
   tenant  Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -906,6 +907,7 @@ model Queue {
   slaMinutos             Int?
   mensagemEspera         String?
   mensagemForaExpediente String?
+  ativo                  Boolean  @default(true)
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 

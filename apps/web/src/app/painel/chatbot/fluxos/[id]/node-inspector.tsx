@@ -415,11 +415,6 @@ function QuestionFields({
         onChange={(e) => onChange({ ...payload, maxTentativas: e.target.value ? Number(e.target.value) : undefined })}
       />
       <Field
-        label={t("chatbot.builder.field.saveToCrm")}
-        value={payload.salvarNoCrm ?? ""}
-        onChange={(e) => onChange({ ...payload, salvarNoCrm: e.target.value })}
-      />
-      <Field
         label={t("chatbot.builder.field.leadScore")}
         type="number"
         value={payload.pontuacao ?? ""}

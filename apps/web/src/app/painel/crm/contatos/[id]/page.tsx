@@ -418,7 +418,10 @@ export default function ContactDetailPage() {
                         {new Date(stage.enteredAt).toLocaleString(locale)}
                         {" → "}
                         {stage.exitedAt ? new Date(stage.exitedAt).toLocaleString(locale) : t("crm.contacts.timeline.stillHere")}
-                        {stage.durationHours !== null && ` · ${formatHoursDuration(stage.durationHours)}`}
+                        {" · "}
+                        {formatHoursDuration(
+                          stage.durationHours ?? (Date.now() - new Date(stage.enteredAt).getTime()) / 3_600_000,
+                        )}
                       </span>
                     </li>
                   ))}

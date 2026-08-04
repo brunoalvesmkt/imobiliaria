@@ -186,9 +186,12 @@ function TeamCard({ team }: { team: Team }) {
             <div className="flex-1">
               <Field label={t("atendimento.teams.name")} value={nome} onChange={(e) => setNome(e.target.value)} />
             </div>
-            <div className="flex items-end">
+            <div className="flex items-end gap-2">
               <Button loading={updateTeam.isPending} disabled={!nome.trim()} onClick={onSaveName}>
                 {t("common.save")}
+              </Button>
+              <Button variant="ghost" onClick={() => setEditing(false)}>
+                {t("common.cancel")}
               </Button>
             </div>
           </div>
@@ -383,7 +386,7 @@ function QueueCard({ queue }: { queue: Queue }) {
             value={prioridade}
             onChange={(e) => setPrioridade(e.target.value)}
           />
-          <div>
+          <div className="flex gap-2">
             <Button
               loading={updateQueue.isPending}
               disabled={!nome.trim()}
@@ -393,6 +396,9 @@ function QueueCard({ queue }: { queue: Queue }) {
               }}
             >
               {t("common.save")}
+            </Button>
+            <Button variant="ghost" onClick={() => setEditing(false)}>
+              {t("common.cancel")}
             </Button>
           </div>
         </div>

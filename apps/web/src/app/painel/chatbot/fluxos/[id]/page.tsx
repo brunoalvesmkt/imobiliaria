@@ -553,8 +553,10 @@ function AddNodeMenu({ onAdd }: { onAdd: (type: FlowNodeType, presetTipo?: Messa
     function onDocClick() {
       setOpen(false);
     }
-    document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
+    // Fase de captura: o canvas do React Flow intercepta/pára a propagação de mousedown na fase
+    // de bolha para lidar com pan/drag, o que impedia este listener de disparar ao clicar nele.
+    document.addEventListener("mousedown", onDocClick, true);
+    return () => document.removeEventListener("mousedown", onDocClick, true);
   }, [open]);
 
   return (

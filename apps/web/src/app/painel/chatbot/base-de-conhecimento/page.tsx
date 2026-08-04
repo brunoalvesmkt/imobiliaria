@@ -168,9 +168,12 @@ function ItemRow({ item }: { item: KnowledgeBaseItem }) {
               <Field label={t("chatbot.kb.priority")} type="number" value={prioridade} onChange={(e) => setPrioridade(e.target.value)} />
             </div>
           )}
-          <div>
+          <div className="flex gap-2">
             <Button loading={update.isPending} disabled={!titulo.trim() || !conteudo.trim()} onClick={onSaveEdit}>
               {t("common.save")}
+            </Button>
+            <Button variant="ghost" onClick={() => setEditing(false)}>
+              {t("common.cancel")}
             </Button>
           </div>
         </div>

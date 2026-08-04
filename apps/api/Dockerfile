@@ -55,6 +55,12 @@ ENV NODE_ENV=production
 RUN apk add --no-cache openssl
 RUN addgroup -S app && adduser -S app -G app
 COPY --from=build --chown=app:app /out ./
+# BaileysConnectionManagerService cria esta pasta em tempo de execução (uma
+# subpasta por número conectado, guardando as credenciais da sessão do
+# WhatsApp) — sem existir e já pertencer ao usuário não-root "app" de
+# antemão, o primeiro `mkdir` dela falha com EACCES (o restante de /app é
+# só de leitura/execução para "app", herdado do dono root do WORKDIR).
+RUN mkdir -p /app/.baileys-sessions && chown -R app:app /app/.baileys-sessions
 USER app
 EXPOSE 3001
 CMD ["node", "dist/main.js"]

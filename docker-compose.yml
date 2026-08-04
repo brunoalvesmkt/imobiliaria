@@ -63,6 +63,19 @@ services:
     # para uso local sem o profile "production".
     ports:
       - "127.0.0.1:3001:3001"
+    # Credenciais de sessão do WhatsApp não oficial (Baileys) — sem isso, um
+    # rebuild/restart do container perde a sessão e força escanear o QR Code
+    # de novo em todo número conectado (o processo já não sobrevive a um
+    # restart frio para retomar sozinho, ver comentário em
+    # BaileysConnectionManagerService; ao menos a credencial persiste). Volume
+    # nomeado (não bind mount tipo `./.docker-data/...`, como postgres/redis
+    # usam) de propósito: um bind mount herdaria o dono do diretório do HOST
+    # (root, criado automaticamente pelo Docker) e o container roda como
+    # usuário não-root "app" — voltaria o mesmo erro de permissão que este
+    # volume resolve. Um volume nomeado, na primeira execução, herda a
+    # pasta (vazia, já com dono "app") de dentro da própria imagem.
+    volumes:
+      - baileys-sessions:/app/.baileys-sessions
     depends_on:
       postgres:
         condition: service_healthy

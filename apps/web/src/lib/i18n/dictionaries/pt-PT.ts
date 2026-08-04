@@ -697,7 +697,7 @@ const dictionary: Record<DictionaryKey, string> = {
   "chatbot.status.published": "Publicado",
   "chatbot.status.paused": "Pausado",
   "chatbot.status.archived": "Arquivado",
-  "chatbot.action.edit": "Editar",
+  "chatbot.action.edit": "Alterar nome",
   "chatbot.action.duplicate": "Duplicar",
   "chatbot.action.publish": "Publicar",
   "chatbot.action.pause": "Pausar",

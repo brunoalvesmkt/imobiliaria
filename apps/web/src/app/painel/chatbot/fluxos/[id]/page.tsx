@@ -124,8 +124,7 @@ export default function FlowBuilderPage() {
     deleteNodeById(selectedNodeId);
   }
 
-  async function onSave() {
-    setSaveMessage(null);
+  async function saveCurrentDefinition() {
     const flowNodes: FlowNode[] = nodes.map((n) => ({
       id: n.id,
       type: n.data.flowNodeType,
@@ -138,16 +137,34 @@ export default function FlowBuilderPage() {
       target: e.target,
       ...(e.sourceHandle ? { sourceHandle: e.sourceHandle } : {}),
     }));
+    await saveDefinition.mutateAsync({ nodes: flowNodes, edges: flowEdges });
+  }
+
+  async function onSave() {
+    setSaveMessage(null);
     try {
-      await saveDefinition.mutateAsync({ nodes: flowNodes, edges: flowEdges });
+      await saveCurrentDefinition();
       setSaveMessage("saved");
     } catch {
       setSaveMessage("error");
     }
   }
 
+  /**
+   * "Publicar" valida a última definição salva no servidor, não o que está
+   * desenhado na tela — sem salvar antes, conexões feitas no canvas mas
+   * ainda não persistidas fariam a validação rodar em cima do estado
+   * antigo, acusando erros que já foram corrigidos visualmente.
+   */
   async function onPublish() {
     setPublishErrors(null);
+    setSaveMessage(null);
+    try {
+      await saveCurrentDefinition();
+    } catch {
+      setPublishErrors([t("chatbot.builder.saveError")]);
+      return;
+    }
     try {
       await publish.mutateAsync(id);
     } catch (err) {

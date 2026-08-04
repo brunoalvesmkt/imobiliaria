@@ -77,6 +77,7 @@ model Tenant {
   opportunities Opportunity[]
   crmTasks      CrmTask[]
   whatsAppNumbers   WhatsAppNumber[]
+  whatsAppNumberFlows WhatsAppNumberFlow[]
   whatsAppTemplates WhatsAppTemplate[]
   riskAcceptances   RiskAcceptance[]
   conversations     Conversation[]
@@ -711,7 +712,11 @@ model WhatsAppNumber {
   provider      String // identifica a implementação de WhatsAppProvider usada (ex.: "meta", "fake_unofficial")
   externalAccountId String? // phone_number_id da Meta, quando modalidade = official_api
   responsavelId String?
-  chatbotFlowId String? // fluxo disparado automaticamente em toda conversa nova neste número (tipo = chatbot)
+  chatbotFlowId String? // legado — substituído por WhatsAppNumberFlow (múltiplos fluxos por conexão); mantido só para não perder o vínculo de conexões antigas, não é mais lido pelo motor
+  // Se true, uma mensagem que ativa um fluxo específico (palavra/frase) interrompe o fluxo em
+  // andamento na conversa e inicia o novo; se false (padrão), o fluxo em andamento nunca é
+  // interrompido por uma nova palavra-chave — a mensagem é tratada como resposta dele.
+  interromperFluxoAtual Boolean @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
@@ -719,6 +724,7 @@ model WhatsAppNumber {
   tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   responsavel   TenantUser?      @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
   chatbotFlow   ChatbotFlow?     @relation(fields: [chatbotFlowId], references: [id], onDelete: SetNull)
+  flows         WhatsAppNumberFlow[]
   templates     WhatsAppTemplate[]
   riskAcceptances RiskAcceptance[]
   conversations Conversation[]
@@ -726,6 +732,36 @@ model WhatsAppNumber {
   @@unique([tenantId, numero])
   @@index([tenantId, status])
   @@map("whatsapp_numbers")
+}
+
+// Vincula múltiplos fluxos de chatbot a uma mesma conexão de WhatsApp, cada um com sua própria
+// regra de ativação — substitui o antigo WhatsAppNumber.chatbotFlowId (1 fluxo só). A mesma
+// linha é a fonte de verdade tanto para a seção "Fluxos do chatbot" da conexão quanto para a
+// "Configuração de entrada" dentro do fluxo — nunca duas telas com dados duplicados.
+model WhatsAppNumberFlow {
+  id               String   @id @default(uuid())
+  tenantId         String
+  whatsAppNumberId String
+  chatbotFlowId    String
+  ativo            Boolean  @default(true)
+  regraAtivacao    String   @default("keyword") // keyword | any — ver ACCEPTANCE_CRITERIA.md
+  // Palavras/frases cadastradas tal como digitadas (exibição) — a comparação em tempo de
+  // execução usa uma versão normalizada (minúsculas, sem acento, espaços colapsados), calculada
+  // sob demanda, não armazenada, para não desalinhar se a regra de normalização evoluir.
+  termos           String[] @default([])
+  // Menor valor = maior prioridade (1 = primeiro a ser checado) — desempate quando mais de um
+  // fluxo específico corresponde à mesma mensagem.
+  prioridade       Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant         Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  whatsAppNumber WhatsAppNumber @relation(fields: [whatsAppNumberId], references: [id], onDelete: Cascade)
+  chatbotFlow    ChatbotFlow    @relation(fields: [chatbotFlowId], references: [id], onDelete: Cascade)
+
+  @@unique([whatsAppNumberId, chatbotFlowId])
+  @@index([tenantId, whatsAppNumberId, ativo])
+  @@map("whatsapp_number_flows")
 }
 
 model WhatsAppTemplate {
@@ -974,6 +1010,7 @@ model ChatbotFlow {
   versions       ChatbotFlowVersion[]
   executions     ChatbotExecution[]
   whatsAppNumbers WhatsAppNumber[]
+  numberFlows    WhatsAppNumberFlow[]
 
   @@unique([tenantId, nome])
   @@index([tenantId, status])

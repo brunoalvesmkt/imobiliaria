@@ -8,16 +8,22 @@ import { RequirePermission } from "../../common/permissions/permissions.decorato
 import { CurrentUser } from "../../auth/current-user.decorator";
 import type { AuthenticatedRequestUser } from "../../auth/jwt-payload.interface";
 import { NumbersService } from "./numbers.service";
+import { NumberFlowsService } from "./number-flows.service";
 import { CreateNumberDto } from "./dto/create-number.dto";
 import { UpdateNumberDto } from "./dto/update-number.dto";
 import { AcceptRiskDto } from "./dto/accept-risk.dto";
 import { SetChatbotFlowDto } from "./dto/set-chatbot-flow.dto";
+import { CreateNumberFlowDto } from "./dto/create-number-flow.dto";
+import { UpdateNumberFlowDto } from "./dto/update-number-flow.dto";
 
 @Controller("whatsapp/numbers")
 @UseGuards(TenantAuthGuard, ModuleActiveGuard, PermissionsGuard)
 @RequireModule("whatsapp")
 export class NumbersController {
-  constructor(private readonly service: NumbersService) {}
+  constructor(
+    private readonly service: NumbersService,
+    private readonly flowsService: NumberFlowsService,
+  ) {}
 
   @Get()
   @RequirePermission("whatsapp", "view")
@@ -98,5 +104,34 @@ export class NumbersController {
     @CurrentUser() user: AuthenticatedRequestUser,
   ) {
     return this.service.setChatbotFlow(id, dto, user.id);
+  }
+
+  @Get(":id/flows")
+  @RequirePermission("whatsapp", "view")
+  listFlows(@Param("id") id: string) {
+    return this.flowsService.list(id);
+  }
+
+  @Post(":id/flows")
+  @RequirePermission("whatsapp", "administer")
+  linkFlow(@Param("id") id: string, @Body() dto: CreateNumberFlowDto, @CurrentUser() user: AuthenticatedRequestUser) {
+    return this.flowsService.create(id, dto, user.id);
+  }
+
+  @Patch(":id/flows/:flowLinkId")
+  @RequirePermission("whatsapp", "administer")
+  updateFlowLink(
+    @Param("id") id: string,
+    @Param("flowLinkId") flowLinkId: string,
+    @Body() dto: UpdateNumberFlowDto,
+    @CurrentUser() user: AuthenticatedRequestUser,
+  ) {
+    return this.flowsService.update(id, flowLinkId, dto, user.id);
+  }
+
+  @Delete(":id/flows/:flowLinkId")
+  @RequirePermission("whatsapp", "administer")
+  unlinkFlow(@Param("id") id: string, @Param("flowLinkId") flowLinkId: string, @CurrentUser() user: AuthenticatedRequestUser) {
+    return this.flowsService.remove(id, flowLinkId, user.id);
   }
 }

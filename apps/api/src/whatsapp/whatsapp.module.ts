@@ -6,6 +6,7 @@ import { PlatformSettingsModule } from "../master/settings/platform-settings.mod
 import { ProvidersModule } from "./providers/providers.module";
 import { NumbersController } from "./numbers/numbers.controller";
 import { NumbersService } from "./numbers/numbers.service";
+import { NumberFlowsService } from "./numbers/number-flows.service";
 import { ConversationsController } from "./conversations/conversations.controller";
 import { ConversationsService } from "./conversations/conversations.service";
 import { TemplatesController } from "./templates/templates.controller";
@@ -16,7 +17,7 @@ import { BaileysIncomingListener } from "./baileys-incoming.listener";
 @Module({
   imports: [ProvidersModule, RealtimeModule, ChatbotModule, AutomationModule, PlatformSettingsModule],
   controllers: [NumbersController, ConversationsController, TemplatesController, WebhooksController],
-  providers: [NumbersService, ConversationsService, TemplatesService, BaileysIncomingListener],
+  providers: [NumbersService, NumberFlowsService, ConversationsService, TemplatesService, BaileysIncomingListener],
   exports: [ConversationsService],
 })
 export class WhatsappModule {}

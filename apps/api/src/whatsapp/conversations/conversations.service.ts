@@ -11,7 +11,15 @@ import { requireCurrentTenantId } from "../../common/tenant/tenant-context";
 import { ChatbotEngineService } from "../../chatbot/engine/chatbot-engine.service";
 import { DomainEventsService } from "../../common/events/domain-events.service";
 import { FollowUpsService } from "../../automation/followups.service";
+import { normalizeTriggerText } from "../../common/text/normalize-text.util";
 import type { SendMessageDto } from "./dto/send-message.dto";
+
+interface ChatbotFlowMatch {
+  chatbotFlowId: string;
+  regraAtivacao: string;
+  prioridade: number;
+  termo: string | null;
+}
 
 @Injectable()
 export class ConversationsService {
@@ -190,11 +198,19 @@ export class ConversationsService {
   }
 
   /**
-   * Integração Chatbot + WhatsApp (ver MODULE_DEPENDENCIES.md): se já existe
-   * uma execução de fluxo em andamento nesta conversa, a resposta do
-   * cliente é roteada para o motor; se é uma conversa nova e o número tem
-   * um fluxo publicado configurado, o fluxo é iniciado automaticamente.
-   * Sem módulo "chatbot" ativo ou sem fluxo configurado, não faz nada.
+   * Integração Chatbot + WhatsApp (ver MODULE_DEPENDENCIES.md e
+   * ACCEPTANCE_CRITERIA.md — "Ativação dos fluxos do chatbot"): uma conexão
+   * pode ter vários fluxos vinculados (WhatsAppNumberFlow), cada um com sua
+   * própria regra — palavra/frase específica ou "qualquer mensagem"
+   * (fallback). Prioridade: 1) fluxos específicos (menor `prioridade` =
+   * checado primeiro, primeiro que bater na mensagem vence), 2) o fluxo
+   * "qualquer mensagem" (no máximo um ativo por conexão), 3) nada.
+   *
+   * Se já existe uma execução em andamento nesta conversa, ela recebe a
+   * resposta normalmente — a menos que `interromperFluxoAtual` esteja
+   * ligado NA CONEXÃO e a mensagem bata em um fluxo específico (nunca no
+   * fallback "qualquer mensagem"), caso em que a execução atual é
+   * interrompida e o novo fluxo é iniciado no lugar.
    */
   private async routeToChatbotIfApplicable(
     conversationId: string,
@@ -210,29 +226,86 @@ export class ConversationsService {
       return;
     }
 
+    const number = await this.prisma.whatsAppNumber.findUniqueOrThrow({ where: { id: whatsAppNumberId } });
+
     const runningExecution = await this.tenantPrisma.chatbotExecution.findFirst({
       where: { conversationId, status: "running" },
       orderBy: { startedAt: "desc" },
     });
 
-    if (runningExecution) {
+    if (runningExecution && !number.interromperFluxoAtual) {
       await this.chatbotEngine.handleReply(runningExecution, incomingText);
       return;
     }
 
-    if (!isNewConversation) {
+    const match = await this.matchChatbotFlow(whatsAppNumberId, incomingText);
+
+    if (runningExecution) {
+      // "any" nunca interrompe um fluxo já em andamento — só uma palavra/frase específica pode.
+      if (!match || match.regraAtivacao !== "keyword") {
+        await this.chatbotEngine.handleReply(runningExecution, incomingText);
+        return;
+      }
+      await this.chatbotEngine.abandon(runningExecution);
+      await this.startMatchedFlow(conversationId, whatsAppNumberId, match, runningExecution.chatbotFlowId);
       return;
     }
 
-    const number = await this.prisma.whatsAppNumber.findUniqueOrThrow({ where: { id: whatsAppNumberId } });
-    if (!number.chatbotFlowId) {
+    if (!isNewConversation || !match) {
       return;
     }
 
-    const flow = await this.prisma.chatbotFlow.findUnique({ where: { id: number.chatbotFlowId } });
-    if (!flow || flow.status !== "published") {
-      return;
+    await this.startMatchedFlow(conversationId, whatsAppNumberId, match, null);
+  }
+
+  /** Palavras/frases específicas sempre têm prioridade sobre o fluxo "qualquer mensagem" — ver ACCEPTANCE_CRITERIA.md. */
+  private async matchChatbotFlow(whatsAppNumberId: string, incomingText: string): Promise<ChatbotFlowMatch | null> {
+    const rules = await this.prisma.whatsAppNumberFlow.findMany({
+      where: { whatsAppNumberId, ativo: true, chatbotFlow: { status: "published", deletedAt: null } },
+      orderBy: { prioridade: "asc" },
+    });
+
+    const normalizedMessage = normalizeTriggerText(incomingText);
+    const keywordRules = rules.filter((r) => r.regraAtivacao === "keyword");
+    for (const rule of keywordRules) {
+      const termo = rule.termos.find((t) => normalizedMessage.includes(normalizeTriggerText(t)));
+      if (termo) {
+        return { chatbotFlowId: rule.chatbotFlowId, regraAtivacao: rule.regraAtivacao, prioridade: rule.prioridade, termo };
+      }
     }
+
+    const anyRule = rules.find((r) => r.regraAtivacao === "any");
+    if (anyRule) {
+      return { chatbotFlowId: anyRule.chatbotFlowId, regraAtivacao: anyRule.regraAtivacao, prioridade: anyRule.prioridade, termo: null };
+    }
+
+    return null;
+  }
+
+  /** Registra o histórico de ativação (ver ACCEPTANCE_CRITERIA.md, item 14) e inicia o fluxo. */
+  private async startMatchedFlow(
+    conversationId: string,
+    whatsAppNumberId: string,
+    match: ChatbotFlowMatch,
+    previousFlowId: string | null,
+  ): Promise<void> {
+    const flow = await this.prisma.chatbotFlow.findUniqueOrThrow({ where: { id: match.chatbotFlowId } });
+
+    await this.tenantPrisma.conversationEvent.create({
+      data: {
+        conversationId,
+        tipo: "chatbot_flow_started",
+        payload: {
+          whatsAppNumberId,
+          chatbotFlowId: flow.id,
+          flowNome: flow.nome,
+          regraAtivacao: match.regraAtivacao,
+          termo: match.termo,
+          prioridade: match.prioridade,
+          previousFlowId,
+        } as unknown as Prisma.InputJsonValue,
+      },
+    });
 
     await this.chatbotEngine.startFlow(flow.id, conversationId);
   }

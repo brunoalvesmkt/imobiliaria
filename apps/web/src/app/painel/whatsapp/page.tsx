@@ -9,11 +9,16 @@ import {
   useCreateNumber,
   useDeleteNumber,
   useDisconnectNumber,
+  useLinkNumberFlow,
   useNumbers,
+  useNumberFlows,
   useNumberQr,
   useRiskTerm,
-  useSetChatbotFlow,
+  useUnlinkNumberFlow,
   useUpdateNumber,
+  useUpdateNumberFlow,
+  type FlowActivationRule,
+  type NumberFlowLink,
   type WhatsAppNumber,
 } from "@/lib/whatsapp";
 import { useFlows } from "@/lib/chatbot";
@@ -90,6 +95,7 @@ function NumberRow({ number }: { number: WhatsAppNumber }) {
   const riskTerm = useRiskTerm();
   const liveQr = usesLiveQr(number);
   const qr = useNumberQr(number.id, liveQr && number.status === "authenticating");
+  const [showFlows, setShowFlows] = useState(false);
 
   useEffect(() => {
     if (qr.data?.status === "connected") {
@@ -112,7 +118,15 @@ function NumberRow({ number }: { number: WhatsAppNumber }) {
         <td className="px-4 py-2 text-ink-dim">{number.numero}</td>
         <td className="px-4 py-2 text-ink-dim">
           {t(`whatsapp.type.${number.tipo}` as DictionaryKey)}
-          {number.tipo === "chatbot" && <ChatbotFlowPicker number={number} />}
+          {number.tipo === "chatbot" && (
+            <button
+              type="button"
+              onClick={() => setShowFlows((v) => !v)}
+              className="mt-1 block text-xs font-medium text-brand-700 hover:underline"
+            >
+              {showFlows ? t("whatsapp.chatbotFlows.hide") : t("whatsapp.chatbotFlows.show")}
+            </button>
+          )}
         </td>
         <td className="px-4 py-2 text-ink-dim">{t(`whatsapp.modality.${number.modalidade}` as DictionaryKey)}</td>
         <td className="px-4 py-2">
@@ -167,6 +181,13 @@ function NumberRow({ number }: { number: WhatsAppNumber }) {
           </div>
         </td>
       </tr>
+      {showFlows && number.tipo === "chatbot" && (
+        <tr className="border-b border-line last:border-0">
+          <td colSpan={6} className="bg-surface-alt px-4 py-4">
+            <ChatbotFlowsPanel number={number} />
+          </td>
+        </tr>
+      )}
       {(connect.data?.qrCode || (liveQr && number.status === "authenticating")) && (
         <tr className="border-b border-line last:border-0">
           <td colSpan={6} className="bg-surface-alt px-4 py-4">
@@ -240,24 +261,209 @@ function QrPanel({ connectQrCode, liveQrCode }: { connectQrCode: string | undefi
   );
 }
 
-function ChatbotFlowPicker({ number }: { number: WhatsAppNumber }) {
+/**
+ * "Fluxos do chatbot" (documento de alterações) — uma conexão pode ter vários fluxos
+ * vinculados, cada um com sua própria regra de ativação. Só fluxos publicados aparecem como
+ * opção; a mesma tabela alimenta a validação de conflito no backend (só um "qualquer mensagem"
+ * ativo, sem palavra/frase duplicada entre fluxos ativos).
+ */
+function ChatbotFlowsPanel({ number }: { number: WhatsAppNumber }) {
   const { t } = useI18n();
-  const flows = useFlows();
-  const setFlow = useSetChatbotFlow();
+  const links = useNumberFlows(number.id);
+  const updateNumber = useUpdateNumber();
+  const [showLinkForm, setShowLinkForm] = useState(false);
 
   return (
-    <select
-      value={number.chatbotFlowId ?? ""}
-      onChange={(e) => setFlow.mutate({ id: number.id, chatbotFlowId: e.target.value || null })}
-      className="mt-1 block w-full rounded-md border border-line bg-surface px-2 py-1 text-xs"
-    >
-      <option value="">{t("whatsapp.chatbotFlowNone")}</option>
-      {flows.data?.map((flow) => (
-        <option key={flow.id} value={flow.id}>
-          {flow.nome}
-        </option>
-      ))}
-    </select>
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1.5 rounded-md border border-line bg-surface p-3">
+        <label className="flex items-center gap-2 text-sm text-ink">
+          <input
+            type="checkbox"
+            checked={number.interromperFluxoAtual}
+            onChange={(e) => updateNumber.mutate({ id: number.id, interromperFluxoAtual: e.target.checked })}
+          />
+          {t("whatsapp.chatbotFlows.interruptCurrent")}
+        </label>
+        <p className="text-xs text-ink-faint">{t("whatsapp.chatbotFlows.interruptCurrentHint")}</p>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        {links.data?.map((link) => (
+          <FlowLinkRow key={link.id} numberId={number.id} link={link} />
+        ))}
+        {links.data?.length === 0 && <p className="text-xs text-ink-faint">{t("whatsapp.chatbotFlows.empty")}</p>}
+      </div>
+
+      <div>
+        <Button variant="secondary" onClick={() => setShowLinkForm((v) => !v)}>
+          {showLinkForm ? t("common.cancel") : t("whatsapp.chatbotFlows.link")}
+        </Button>
+      </div>
+      {showLinkForm && <LinkFlowForm numberId={number.id} existingFlowIds={links.data?.map((l) => l.chatbotFlowId) ?? []} onDone={() => setShowLinkForm(false)} />}
+    </div>
+  );
+}
+
+function FlowLinkRow({ numberId, link }: { numberId: string; link: NumberFlowLink }) {
+  const { t } = useI18n();
+  const update = useUpdateNumberFlow(numberId);
+  const unlink = useUnlinkNumberFlow(numberId);
+  const [editing, setEditing] = useState(false);
+  const [regra, setRegra] = useState<FlowActivationRule>(link.regraAtivacao);
+  const [termosText, setTermosText] = useState(link.termos.join("\n"));
+  const [prioridade, setPrioridade] = useState(String(link.prioridade));
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSave() {
+    setError(null);
+    try {
+      await update.mutateAsync({
+        id: link.id,
+        regraAtivacao: regra,
+        termos: regra === "keyword" ? termosText.split("\n").map((t) => t.trim()).filter(Boolean) : [],
+        prioridade: Number(prioridade) || 0,
+      });
+      setEditing(false);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t("whatsapp.errorGeneric"));
+    }
+  }
+
+  return (
+    <div className={`rounded-md border border-line bg-surface p-3 text-sm ${!link.ativo ? "opacity-60" : ""}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="font-medium text-ink">{link.chatbotFlow.nome}</p>
+          <p className="text-xs text-ink-faint">
+            {t(`chatbot.status.${link.chatbotFlow.status}` as DictionaryKey)} · {t(`whatsapp.chatbotFlows.rule.${link.regraAtivacao}` as DictionaryKey)}
+            {link.regraAtivacao === "keyword" && link.termos.length > 0 && ` · ${link.termos.join(", ")}`}
+            {link.regraAtivacao === "keyword" && ` · ${t("whatsapp.chatbotFlows.priority")}: ${link.prioridade}`}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => setEditing((v) => !v)} className="text-xs font-medium text-brand-700 hover:underline">
+            {t("common.edit")}
+          </button>
+          <button
+            type="button"
+            onClick={() => update.mutate({ id: link.id, ativo: !link.ativo })}
+            className="text-xs font-medium text-ink-dim hover:underline"
+          >
+            {link.ativo ? t("whatsapp.chatbotFlows.deactivate") : t("whatsapp.chatbotFlows.activate")}
+          </button>
+          <button type="button" onClick={() => unlink.mutate(link.id)} className="text-xs font-medium text-red-600 hover:underline">
+            {t("whatsapp.chatbotFlows.unlink")}
+          </button>
+        </div>
+      </div>
+
+      {editing && (
+        <div className="mt-3 flex flex-col gap-2 border-t border-line pt-3">
+          {error && <Alert tone="error">{error}</Alert>}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-ink">{t("whatsapp.chatbotFlows.ruleLabel")}</label>
+            <select value={regra} onChange={(e) => setRegra(e.target.value as FlowActivationRule)} className="rounded-md border border-line bg-surface px-2 py-1 text-xs">
+              <option value="keyword">{t("whatsapp.chatbotFlows.rule.keyword")}</option>
+              <option value="any">{t("whatsapp.chatbotFlows.rule.any")}</option>
+            </select>
+          </div>
+          {regra === "keyword" && (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-ink">{t("whatsapp.chatbotFlows.termsLabel")}</label>
+                <textarea
+                  value={termosText}
+                  onChange={(e) => setTermosText(e.target.value)}
+                  rows={3}
+                  placeholder={t("whatsapp.chatbotFlows.termsPlaceholder")}
+                  className="rounded-md border border-line bg-surface px-2 py-1.5 text-xs"
+                />
+              </div>
+              <Field label={t("whatsapp.chatbotFlows.priority")} type="number" value={prioridade} onChange={(e) => setPrioridade(e.target.value)} />
+            </>
+          )}
+          <div>
+            <Button loading={update.isPending} onClick={onSave}>
+              {t("common.save")}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LinkFlowForm({ numberId, existingFlowIds, onDone }: { numberId: string; existingFlowIds: string[]; onDone: () => void }) {
+  const { t } = useI18n();
+  const flows = useFlows();
+  const link = useLinkNumberFlow(numberId);
+  const [chatbotFlowId, setChatbotFlowId] = useState("");
+  const [regra, setRegra] = useState<FlowActivationRule>("keyword");
+  const [termosText, setTermosText] = useState("");
+  const [prioridade, setPrioridade] = useState("0");
+  const [error, setError] = useState<string | null>(null);
+
+  const availableFlows = (flows.data ?? []).filter((f) => f.status === "published" && !existingFlowIds.includes(f.id));
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!chatbotFlowId) return;
+    setError(null);
+    try {
+      await link.mutateAsync({
+        chatbotFlowId,
+        regraAtivacao: regra,
+        termos: regra === "keyword" ? termosText.split("\n").map((t) => t.trim()).filter(Boolean) : [],
+        prioridade: Number(prioridade) || 0,
+      });
+      onDone();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t("whatsapp.errorGeneric"));
+    }
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col gap-2 rounded-md border border-line bg-surface p-3">
+      {error && <Alert tone="error">{error}</Alert>}
+      <div className="flex flex-col gap-1.5">
+        <label className="text-xs font-medium text-ink">{t("whatsapp.chatbotFlows.flowLabel")}</label>
+        <select value={chatbotFlowId} onChange={(e) => setChatbotFlowId(e.target.value)} className="rounded-md border border-line bg-surface px-2 py-1 text-xs">
+          <option value="">{t("chatbot.builder.noneSelected")}</option>
+          {availableFlows.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.nome}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <label className="text-xs font-medium text-ink">{t("whatsapp.chatbotFlows.ruleLabel")}</label>
+        <select value={regra} onChange={(e) => setRegra(e.target.value as FlowActivationRule)} className="rounded-md border border-line bg-surface px-2 py-1 text-xs">
+          <option value="keyword">{t("whatsapp.chatbotFlows.rule.keyword")}</option>
+          <option value="any">{t("whatsapp.chatbotFlows.rule.any")}</option>
+        </select>
+      </div>
+      {regra === "keyword" && (
+        <>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-ink">{t("whatsapp.chatbotFlows.termsLabel")}</label>
+            <textarea
+              value={termosText}
+              onChange={(e) => setTermosText(e.target.value)}
+              rows={3}
+              placeholder={t("whatsapp.chatbotFlows.termsPlaceholder")}
+              className="rounded-md border border-line bg-surface px-2 py-1.5 text-xs"
+            />
+          </div>
+          <Field label={t("whatsapp.chatbotFlows.priority")} type="number" value={prioridade} onChange={(e) => setPrioridade(e.target.value)} />
+        </>
+      )}
+      <div>
+        <Button type="submit" loading={link.isPending} disabled={!chatbotFlowId}>
+          {t("whatsapp.chatbotFlows.link")}
+        </Button>
+      </div>
+    </form>
   );
 }
 

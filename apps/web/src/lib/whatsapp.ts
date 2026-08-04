@@ -12,7 +12,23 @@ export interface WhatsAppNumber {
   externalAccountId: string | null;
   riskAccepted: boolean;
   chatbotFlowId: string | null;
+  interromperFluxoAtual: boolean;
   createdAt: string;
+}
+
+export type FlowActivationRule = "keyword" | "any";
+
+export interface NumberFlowLink {
+  id: string;
+  whatsAppNumberId: string;
+  chatbotFlowId: string;
+  ativo: boolean;
+  regraAtivacao: FlowActivationRule;
+  termos: string[];
+  prioridade: number;
+  createdAt: string;
+  updatedAt: string;
+  chatbotFlow: { id: string; nome: string; status: string; versaoAtual: number; updatedAt: string };
 }
 
 export function useNumbers() {
@@ -34,8 +50,51 @@ export function useCreateNumber() {
 export function useUpdateNumber() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, nome }: { id: string; nome: string }) => apiPatch<WhatsAppNumber>(`/whatsapp/numbers/${id}`, { nome }),
+    mutationFn: ({ id, ...input }: { id: string; nome?: string; interromperFluxoAtual?: boolean }) =>
+      apiPatch<WhatsAppNumber>(`/whatsapp/numbers/${id}`, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["whatsapp", "numbers"] }),
+  });
+}
+
+export function useNumberFlows(numberId: string) {
+  return useQuery({
+    queryKey: ["whatsapp", "numbers", numberId, "flows"],
+    queryFn: () => apiGet<NumberFlowLink[]>(`/whatsapp/numbers/${numberId}/flows`),
+    enabled: !!numberId,
+  });
+}
+
+export function useLinkNumberFlow(numberId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { chatbotFlowId: string; regraAtivacao: FlowActivationRule; termos?: string[]; prioridade?: number }) =>
+      apiPost<NumberFlowLink>(`/whatsapp/numbers/${numberId}/flows`, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["whatsapp", "numbers", numberId, "flows"] }),
+  });
+}
+
+export function useUpdateNumberFlow(numberId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...input
+    }: {
+      id: string;
+      regraAtivacao?: FlowActivationRule;
+      termos?: string[];
+      prioridade?: number;
+      ativo?: boolean;
+    }) => apiPatch<NumberFlowLink>(`/whatsapp/numbers/${numberId}/flows/${id}`, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["whatsapp", "numbers", numberId, "flows"] }),
+  });
+}
+
+export function useUnlinkNumberFlow(numberId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiDelete<{ status: "ok" }>(`/whatsapp/numbers/${numberId}/flows/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["whatsapp", "numbers", numberId, "flows"] }),
   });
 }
 

@@ -234,6 +234,26 @@ export class TenantScopedPrismaService {
     };
   }
 
+  get whatsAppNumberFlow() {
+    const tenantId = requireCurrentTenantId();
+    return {
+      findMany: (args: Omit<Prisma.WhatsAppNumberFlowFindManyArgs, "where"> & { where?: Prisma.WhatsAppNumberFlowWhereInput } = {}) =>
+        this.prisma.whatsAppNumberFlow.findMany({ ...args, where: { ...args.where, tenantId } }),
+
+      findFirst: (args: Omit<Prisma.WhatsAppNumberFlowFindFirstArgs, "where"> & { where?: Prisma.WhatsAppNumberFlowWhereInput } = {}) =>
+        this.prisma.whatsAppNumberFlow.findFirst({ ...args, where: { ...args.where, tenantId } }),
+
+      create: (args: Omit<Prisma.WhatsAppNumberFlowCreateArgs, "data"> & { data: Omit<Prisma.WhatsAppNumberFlowUncheckedCreateInput, "tenantId"> }) =>
+        this.prisma.whatsAppNumberFlow.create({ ...args, data: { ...args.data, tenantId } }),
+
+      update: (args: { where: { id: string }; data: Prisma.WhatsAppNumberFlowUncheckedUpdateInput }) =>
+        this.prisma.whatsAppNumberFlow.update({ where: { id: args.where.id, tenantId }, data: args.data }),
+
+      delete: (args: { where: { id: string } }) =>
+        this.prisma.whatsAppNumberFlow.delete({ where: { id: args.where.id, tenantId } }),
+    };
+  }
+
   get whatsAppTemplate() {
     const tenantId = requireCurrentTenantId();
     return {

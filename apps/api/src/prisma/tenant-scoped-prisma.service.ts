@@ -163,6 +163,8 @@ export class TenantScopedPrismaService {
       update: (args: { where: { id: string }; data: Prisma.CrmTaskUncheckedUpdateInput }) =>
         this.prisma.crmTask.update({ where: { id: args.where.id, tenantId }, data: args.data }),
 
+      delete: (args: { where: { id: string } }) => this.prisma.crmTask.delete({ where: { id: args.where.id, tenantId } }),
+
       count: (args: Omit<Prisma.CrmTaskCountArgs, "where"> & { where?: Prisma.CrmTaskWhereInput } = {}) =>
         this.prisma.crmTask.count({ ...args, where: { ...args.where, tenantId } }),
     };

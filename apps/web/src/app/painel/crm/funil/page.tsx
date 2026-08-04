@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   useAddStage,
   useCloseOpportunity,
@@ -597,6 +598,7 @@ function Board({
   onOpenNewContact: () => void;
 }) {
   const { t, locale } = useI18n();
+  const router = useRouter();
   const opportunities = useOpportunities(funnel.id);
   const moveStage = useMoveOpportunityStage();
   const reorderOpportunities = useReorderOpportunities();
@@ -713,7 +715,8 @@ function Board({
                         }
                         setDraggedId(null);
                       }}
-                      className={`cursor-grab rounded-md border border-line bg-surface p-3 text-sm shadow-sm active:cursor-grabbing ${
+                      onClick={() => router.push(`/painel/crm/oportunidades/${opportunity.id}`)}
+                      className={`cursor-pointer rounded-md border border-line bg-surface p-3 text-sm shadow-sm hover:border-brand-400 active:cursor-grabbing ${
                         draggedId === opportunity.id ? "opacity-40" : ""
                       }`}
                     >
@@ -731,7 +734,10 @@ function Board({
                             type="button"
                             disabled={stageIndex === 0}
                             title={t("crm.funnel.prevStageTitle")}
-                            onClick={() => moveTo(opportunity, "prev")}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              moveTo(opportunity, "prev");
+                            }}
                             className="rounded border border-line px-1.5 py-0.5 text-xs text-ink-dim hover:bg-surface-alt disabled:opacity-30"
                           >
                             {t("crm.funnel.prevStage")}
@@ -740,7 +746,10 @@ function Board({
                             type="button"
                             disabled={stageIndex === funnel.stages.length - 1}
                             title={t("crm.funnel.nextStageTitle")}
-                            onClick={() => moveTo(opportunity, "next")}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              moveTo(opportunity, "next");
+                            }}
                             className="rounded border border-line px-1.5 py-0.5 text-xs text-ink-dim hover:bg-surface-alt disabled:opacity-30"
                           >
                             {t("crm.funnel.nextStage")}
@@ -749,14 +758,20 @@ function Board({
                         <div className="flex gap-1">
                           <button
                             type="button"
-                            onClick={() => closeOpportunity.mutate({ id: opportunity.id, resultado: "won" })}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              closeOpportunity.mutate({ id: opportunity.id, resultado: "won" });
+                            }}
                             className="rounded px-1.5 py-0.5 text-xs font-medium text-brand-700 hover:bg-brand-50"
                           >
                             {t("crm.funnel.win")}
                           </button>
                           <button
                             type="button"
-                            onClick={() => closeOpportunity.mutate({ id: opportunity.id, resultado: "lost" })}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              closeOpportunity.mutate({ id: opportunity.id, resultado: "lost" });
+                            }}
                             className="rounded px-1.5 py-0.5 text-xs font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
                           >
                             {t("crm.funnel.lose")}

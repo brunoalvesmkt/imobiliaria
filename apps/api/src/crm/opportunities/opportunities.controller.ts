@@ -14,6 +14,7 @@ import { UpdateOpportunityDto } from "./dto/update-opportunity.dto";
 import { MoveStageDto } from "./dto/move-stage.dto";
 import { CloseOpportunityDto } from "./dto/close-opportunity.dto";
 import { ReorderDto } from "./dto/reorder.dto";
+import { TransferResponsavelDto } from "./dto/transfer-responsavel.dto";
 
 @Controller("crm/opportunities")
 @UseGuards(TenantAuthGuard, ModuleActiveGuard, PermissionsGuard)
@@ -43,6 +44,12 @@ export class OpportunitiesController {
   @RequirePermission("crm", "edit")
   update(@Param("id") id: string, @Body() dto: UpdateOpportunityDto, @CurrentUser() user: AuthenticatedRequestUser) {
     return this.service.update(id, dto, user.id);
+  }
+
+  @Patch(":id/responsavel")
+  @RequirePermission("crm", "transfer")
+  transferResponsavel(@Param("id") id: string, @Body() dto: TransferResponsavelDto, @CurrentUser() user: AuthenticatedRequestUser) {
+    return this.service.transferResponsavel(id, dto, user.id);
   }
 
   @Patch(":id/stage")

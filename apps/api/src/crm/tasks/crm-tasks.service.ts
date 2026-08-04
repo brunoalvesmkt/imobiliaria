@@ -153,4 +153,20 @@ export class CrmTasksService {
 
     return updated;
   }
+
+  async remove(id: string, actorId: string): Promise<{ status: "ok" }> {
+    const task = await this.get(id);
+    await this.tenantPrisma.crmTask.delete({ where: { id } });
+
+    await this.audit.record({
+      actorId,
+      actorType: "tenant_user",
+      action: "crm_task.delete",
+      entity: "CrmTask",
+      entityId: id,
+      previousData: { titulo: task.titulo, contactId: task.contactId },
+    });
+
+    return { status: "ok" };
+  }
 }

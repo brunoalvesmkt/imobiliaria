@@ -1,16 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useCreateTask, useTasks, useTaskTypes, useUpdateTask } from "@/lib/crm";
+import { useCreateTask, useDeleteTask, useTasks, useTaskTypes, useUpdateTask } from "@/lib/crm";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n";
 
-export function ContactTasks({ contactId }: { contactId: string }) {
+/** Reaproveitado tanto na ficha do contato quanto na tela de detalhes da oportunidade — `opportunityId`, quando informado, filtra e já vincula as tarefas criadas aqui à oportunidade (elas continuam aparecendo também na aba geral Tarefas do CRM). */
+export function ContactTasks({ contactId, opportunityId }: { contactId: string; opportunityId?: string }) {
   const { t } = useI18n();
-  const tasks = useTasks(contactId);
+  const tasks = useTasks(contactId, undefined, undefined, undefined, undefined, opportunityId);
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
+  const deleteTask = useDeleteTask();
   const taskTypes = useTaskTypes();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ titulo: "", tipo: "", dataHora: "" });
@@ -22,9 +24,21 @@ export function ContactTasks({ contactId }: { contactId: string }) {
 
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
-    await createTask.mutateAsync({ contactId, titulo: form.titulo, tipo: form.tipo, dataHora: new Date(form.dataHora).toISOString() });
+    await createTask.mutateAsync({
+      contactId,
+      titulo: form.titulo,
+      tipo: form.tipo,
+      dataHora: new Date(form.dataHora).toISOString(),
+      ...(opportunityId ? { opportunityId } : {}),
+    });
     setForm({ titulo: "", tipo: "", dataHora: "" });
     setShowForm(false);
+  }
+
+  function onDelete(id: string) {
+    if (window.confirm(t("crm.tasks.confirmDelete"))) {
+      deleteTask.mutate(id);
+    }
   }
 
   return (
@@ -83,14 +97,29 @@ export function ContactTasks({ contactId }: { contactId: string }) {
                 {task.tipo} · {new Date(task.dataHora).toLocaleString()}
               </p>
             </div>
-            {task.status !== "done" && (
-              <Button variant="secondary" onClick={() => updateTask.mutate({ id: task.id, status: "done" })} loading={updateTask.isPending}>
-                {t("crm.tasks.complete")}
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              {task.status !== "done" ? (
+                <Button variant="secondary" onClick={() => updateTask.mutate({ id: task.id, status: "done" })} loading={updateTask.isPending}>
+                  {t("crm.tasks.complete")}
+                </Button>
+              ) : (
+                <Button variant="secondary" onClick={() => updateTask.mutate({ id: task.id, status: "pending" })} loading={updateTask.isPending}>
+                  {t("crm.tasks.reopen")}
+                </Button>
+              )}
+              <button
+                type="button"
+                onClick={() => onDelete(task.id)}
+                className="text-xs font-medium text-red-600 hover:underline"
+              >
+                {t("common.remove")}
+              </button>
+            </div>
           </li>
         ))}
-        {tasks.data?.length === 0 && <p className="text-sm text-ink-faint">{t("crm.tasks.emptyForContact")}</p>}
+        {tasks.data?.length === 0 && (
+          <p className="text-sm text-ink-faint">{opportunityId ? t("crm.tasks.emptyForOpportunity") : t("crm.tasks.emptyForContact")}</p>
+        )}
       </ul>
     </section>
   );

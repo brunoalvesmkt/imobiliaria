@@ -10,6 +10,7 @@ import type { CreateOpportunityDto } from "./dto/create-opportunity.dto";
 import type { UpdateOpportunityDto } from "./dto/update-opportunity.dto";
 import type { MoveStageDto } from "./dto/move-stage.dto";
 import type { CloseOpportunityDto } from "./dto/close-opportunity.dto";
+import type { TransferResponsavelDto } from "./dto/transfer-responsavel.dto";
 
 @Injectable()
 export class OpportunitiesService {
@@ -45,10 +46,26 @@ export class OpportunitiesService {
     }));
   }
 
+  /**
+   * Tela de detalhes da oportunidade (documento "Detalhes da oportunidade no funil") — além dos
+   * dados básicos, inclui o contato com telefones/e-mails/origem, o responsável atual e o
+   * histórico completo de etapas (`stageHistory`, mais antiga primeiro) para o feed de
+   * movimentações. `tasks` fica de fora do include: a tela busca via `GET /crm/tasks?opportunityId=`
+   * (mesmo endpoint que já alimenta a aba geral de Tarefas), evitando duas fontes de verdade.
+   */
   async get(id: string) {
-    const opportunity = await this.tenantPrisma.opportunity.findFirst({
-      where: { id, deletedAt: null },
-      include: { contact: true, stage: true, funnel: true },
+    const tenantId = requireCurrentTenantId();
+    // Consulta direta ao PrismaService (mesmo motivo de list()): o wrapper tenantPrisma.opportunity
+    // tem tipo de retorno fixo que não preserva as relações do "include" abaixo.
+    const opportunity = await this.prisma.opportunity.findFirst({
+      where: { id, tenantId, deletedAt: null },
+      include: {
+        contact: { include: { phones: true, emails: true, origemRef: true } },
+        stage: true,
+        funnel: true,
+        responsavel: { select: { id: true, nome: true, email: true, status: true } },
+        stageHistory: { orderBy: { enteredAt: "asc" }, include: { stage: { select: { id: true, nome: true } } } },
+      },
     });
     if (!opportunity) {
       throw new NotFoundException("Oportunidade não encontrada.");
@@ -81,7 +98,9 @@ export class OpportunitiesService {
         probabilidade: stage.probabilidade,
         produto: dto.produto ?? null,
         servico: dto.servico ?? null,
-        responsavelId: dto.responsavelId ?? null,
+        // Responsável inicial (documento, item 8): o próprio usuário que criou a oportunidade,
+        // a menos que já tenha informado outro explicitamente.
+        responsavelId: dto.responsavelId ?? actorId,
         previsaoFechamento: dto.previsaoFechamento ? new Date(dto.previsaoFechamento) : null,
         origem: dto.origem ?? null,
         campanha: dto.campanha ?? null,
@@ -124,6 +143,46 @@ export class OpportunitiesService {
       action: "opportunity.update",
       entity: "Opportunity",
       entityId: id,
+    });
+
+    return updated;
+  }
+
+  /**
+   * Transferência de responsável (documento, itens 9-11) — endpoint dedicado (em vez de deixar
+   * só no `update()` genérico) para validar que o novo responsável é um usuário ativo do tenant
+   * antes de gravar, e para deixar uma trilha de auditoria específica com os nomes de "antes" e
+   * "depois" (mesmo espírito de `InboxService.transfer`, que também audita a troca de
+   * responsável de uma conversa separadamente do resto dos campos).
+   */
+  async transferResponsavel(id: string, dto: TransferResponsavelDto, actorId: string) {
+    const tenantId = requireCurrentTenantId();
+    const opportunity = await this.get(id);
+
+    let novoResponsavel: { id: string; nome: string } | null = null;
+    if (dto.responsavelId) {
+      const user = await this.prisma.tenantUser.findFirst({
+        where: { id: dto.responsavelId, tenantId, deletedAt: null, status: "active" },
+      });
+      if (!user) {
+        throw new NotFoundException("Usuário não encontrado, inativo ou sem acesso a esta empresa.");
+      }
+      novoResponsavel = { id: user.id, nome: user.nome };
+    }
+
+    const updated = await this.tenantPrisma.opportunity.update({
+      where: { id },
+      data: { responsavelId: novoResponsavel?.id ?? null },
+    });
+
+    await this.audit.record({
+      actorId,
+      actorType: "tenant_user",
+      action: "opportunity.responsavel_changed",
+      entity: "Opportunity",
+      entityId: id,
+      previousData: { responsavelId: opportunity.responsavelId, responsavelNome: opportunity.responsavel?.nome ?? null },
+      newData: { responsavelId: novoResponsavel?.id ?? null, responsavelNome: novoResponsavel?.nome ?? null },
     });
 
     return updated;

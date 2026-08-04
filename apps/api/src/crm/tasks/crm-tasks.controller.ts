@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { createCrmTaskSchema } from "@chatbot-saas/validation";
 import { ZodValidationPipe } from "../../common/validation/zod-validation.pipe";
 import { TenantAuthGuard } from "../../auth/guards/tenant-auth.guard";
@@ -49,5 +49,11 @@ export class CrmTasksController {
   @RequirePermission("crm", "edit")
   update(@Param("id") id: string, @Body() dto: UpdateTaskDto, @CurrentUser() user: AuthenticatedRequestUser) {
     return this.service.update(id, dto, user.id);
+  }
+
+  @Delete(":id")
+  @RequirePermission("crm", "delete")
+  remove(@Param("id") id: string, @CurrentUser() user: AuthenticatedRequestUser) {
+    return this.service.remove(id, user.id);
   }
 }

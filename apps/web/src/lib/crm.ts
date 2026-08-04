@@ -469,6 +469,88 @@ export function useOpportunities(funnelId: string) {
   });
 }
 
+/** Uma linha do histórico de etapas — "aberta" (`exitedAt: null`) é a etapa atual. */
+export interface OpportunityStageHistoryEntry {
+  id: string;
+  stageId: string;
+  stage: { id: string; nome: string };
+  enteredAt: string;
+  exitedAt: string | null;
+}
+
+/** Responsável — só o subconjunto de TenantUser necessário para exibir/escolher na tela de detalhes. */
+export interface OpportunityResponsavel {
+  id: string;
+  nome: string;
+  email: string;
+  status: "active" | "inactive";
+}
+
+/** Forma completa devolvida por `GET /crm/opportunities/:id` — tela de detalhes da oportunidade. */
+export interface OpportunityDetail {
+  id: string;
+  contactId: string;
+  funnelId: string;
+  stageId: string;
+  valor: string | null;
+  probabilidade: number | null;
+  produto: string | null;
+  servico: string | null;
+  responsavelId: string | null;
+  previsaoFechamento: string | null;
+  origem: string | null;
+  campanha: string | null;
+  motivoGanho: string | null;
+  motivoPerda: string | null;
+  observacoes: string | null;
+  status: "open" | "won" | "lost";
+  wonAt: string | null;
+  lostAt: string | null;
+  createdAt: string;
+  contact: Contact;
+  stage: FunnelStage;
+  funnel: Funnel;
+  responsavel: OpportunityResponsavel | null;
+  stageHistory: OpportunityStageHistoryEntry[];
+}
+
+export function useOpportunity(id: string) {
+  return useQuery({
+    queryKey: ["crm", "opportunities", "detail", id],
+    queryFn: () => apiGet<OpportunityDetail>(`/crm/opportunities/${id}`),
+    enabled: !!id,
+  });
+}
+
+export function useUpdateOpportunity(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      valor?: number;
+      produto?: string;
+      servico?: string;
+      previsaoFechamento?: string;
+      observacoes?: string;
+    }) => apiPatch<OpportunityDetail>(`/crm/opportunities/${id}`, input),
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: ["crm", "opportunities"] });
+      queryClient.setQueryData(["crm", "opportunities", "detail", id], updated);
+    },
+  });
+}
+
+export function useTransferOpportunityResponsavel(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (responsavelId: string | null) =>
+      apiPatch<OpportunityDetail>(`/crm/opportunities/${id}/responsavel`, { responsavelId }),
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: ["crm", "opportunities"] });
+      queryClient.setQueryData(["crm", "opportunities", "detail", id], updated);
+    },
+  });
+}
+
 export function useCreateOpportunity() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -513,6 +595,7 @@ export interface CrmTask {
   titulo: string;
   descricao: string | null;
   dataHora: string;
+  responsavelId: string | null;
   status: "pending" | "done" | "overdue";
   concluidaEm: string | null;
 }
@@ -525,9 +608,11 @@ export function useTasks(
   view?: CrmTaskView,
   range?: { dataInicio?: string; dataFim?: string },
   tipo?: string,
+  opportunityId?: string,
 ) {
   const params = new URLSearchParams();
   if (contactId) params.set("contactId", contactId);
+  if (opportunityId) params.set("opportunityId", opportunityId);
   if (status) params.set("status", status);
   if (view) params.set("view", view);
   if (range?.dataInicio) params.set("dataInicio", range.dataInicio);
@@ -535,7 +620,17 @@ export function useTasks(
   if (tipo) params.set("tipo", tipo);
   const qs = params.toString();
   return useQuery({
-    queryKey: ["crm", "tasks", contactId ?? "", status ?? "", view ?? "", range?.dataInicio ?? "", range?.dataFim ?? "", tipo ?? ""],
+    queryKey: [
+      "crm",
+      "tasks",
+      contactId ?? "",
+      opportunityId ?? "",
+      status ?? "",
+      view ?? "",
+      range?.dataInicio ?? "",
+      range?.dataFim ?? "",
+      tipo ?? "",
+    ],
     queryFn: () => apiGet<CrmTask[]>(`/crm/tasks${qs ? `?${qs}` : ""}`),
   });
 }
@@ -552,7 +647,25 @@ export function useCreateTask() {
 export function useUpdateTask() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...input }: { id: string; status?: string; titulo?: string }) => apiPatch<CrmTask>(`/crm/tasks/${id}`, input),
+    mutationFn: ({
+      id,
+      ...input
+    }: {
+      id: string;
+      status?: string;
+      titulo?: string;
+      descricao?: string;
+      dataHora?: string;
+      responsavelId?: string;
+    }) => apiPatch<CrmTask>(`/crm/tasks/${id}`, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["crm", "tasks"] }),
+  });
+}
+
+export function useDeleteTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiDelete<{ status: "ok" }>(`/crm/tasks/${id}`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["crm", "tasks"] }),
   });
 }

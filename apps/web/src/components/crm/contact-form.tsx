@@ -129,11 +129,6 @@ export function ContactForm({ contact, onDone }: { contact?: Contact; onDone: ()
       )}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label={t("crm.contacts.name")} required value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
-        <Field
-          label={t("crm.contacts.surname")}
-          value={form.sobrenome}
-          onChange={(e) => setForm({ ...form, sobrenome: e.target.value })}
-        />
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-ink">{t("crm.contacts.origin")}</label>
           <select

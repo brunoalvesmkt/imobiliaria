@@ -129,6 +129,55 @@ export class ContactsService {
   }
 
   /**
+   * Feed de tempo de ciclo das oportunidades do contato (ficha do contato,
+   * módulo CRM) — para cada oportunidade, quanto tempo ficou em cada etapa
+   * (data/hora de entrada e saída) e o tempo total até a etapa atual e até
+   * ganha/perdida. Mesma base de dados (`OpportunityStageHistory`) dos
+   * relatórios de tempo médio de ciclo do funil.
+   */
+  async getOpportunitiesTimeline(contactId: string) {
+    const tenantId = requireCurrentTenantId();
+    const contact = await this.prisma.contact.findFirst({ where: { id: contactId, tenantId, deletedAt: null } });
+    if (!contact) {
+      throw new NotFoundException("Contato não encontrado.");
+    }
+
+    const HOUR_MS = 60 * 60 * 1000;
+    const round1 = (ms: number) => Math.round((ms / HOUR_MS) * 10) / 10;
+
+    const opportunities = await this.prisma.opportunity.findMany({
+      where: { contactId, tenantId, deletedAt: null },
+      orderBy: { createdAt: "desc" },
+      include: {
+        funnel: { select: { nome: true } },
+        stage: { select: { nome: true } },
+        stageHistory: { orderBy: { enteredAt: "asc" }, include: { stage: { select: { nome: true } } } },
+      },
+    });
+
+    return opportunities.map((o) => ({
+      id: o.id,
+      funnelName: o.funnel.nome,
+      currentStageName: o.stage.nome,
+      status: o.status,
+      valor: o.valor ? Number(o.valor) : null,
+      createdAt: o.createdAt,
+      wonAt: o.wonAt,
+      lostAt: o.lostAt,
+      totalTimeHours: round1((o.wonAt ?? o.lostAt ?? new Date()).getTime() - o.createdAt.getTime()),
+      timeToWonHours: o.wonAt ? round1(o.wonAt.getTime() - o.createdAt.getTime()) : null,
+      timeToLostHours: o.lostAt ? round1(o.lostAt.getTime() - o.createdAt.getTime()) : null,
+      stages: o.stageHistory.map((h) => ({
+        stageId: h.stageId,
+        stageName: h.stage.nome,
+        enteredAt: h.enteredAt,
+        exitedAt: h.exitedAt,
+        durationHours: h.exitedAt ? round1(h.exitedAt.getTime() - h.enteredAt.getTime()) : null,
+      })),
+    }));
+  }
+
+  /**
    * Deduplicação por WhatsApp/telefone/e-mail/CPF/CNPJ, conforme as regras
    * ativas do tenant (`DeduplicationRule`) — se nenhuma regra estiver
    * configurada, verifica todos os campos por padrão (ver DATABASE_DESIGN.md

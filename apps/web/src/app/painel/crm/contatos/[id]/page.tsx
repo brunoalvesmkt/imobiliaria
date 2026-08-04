@@ -13,6 +13,7 @@ import {
   useDeleteContact,
   useMergeContacts,
   useCustomFieldDefinitions,
+  useContactOpportunitiesTimeline,
 } from "@/lib/crm";
 import { LeadScoreBadge } from "@/components/crm/lead-score-badge";
 import { ContactForm } from "@/components/crm/contact-form";
@@ -25,7 +26,7 @@ import { ContactTasks } from "@/components/crm/contact-tasks";
 import { useI18n } from "@/lib/i18n";
 
 export default function ContactDetailPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const isAdmin = useIsAdmin();
@@ -38,6 +39,7 @@ export default function ContactDetailPage() {
   const deleteContact = useDeleteContact();
   const mergeContacts = useMergeContacts(params.id);
   const customFieldDefinitions = useCustomFieldDefinitions();
+  const opportunitiesTimeline = useContactOpportunitiesTimeline(params.id);
   const [editing, setEditing] = useState(false);
   const [confirmingAnonymize, setConfirmingAnonymize] = useState(false);
   const [blockReason, setBlockReason] = useState("");
@@ -369,6 +371,64 @@ export default function ContactDetailPage() {
         )}
       </section>
 
+      <section className="rounded-lg border border-line bg-surface p-5">
+        <h2 className="mb-1 text-sm font-semibold text-ink">{t("crm.contacts.timeline.title")}</h2>
+        <p className="mb-4 text-sm text-ink-dim">{t("crm.contacts.timeline.subtitle")}</p>
+
+        {opportunitiesTimeline.isLoading ? (
+          <p className="text-sm text-ink-faint">{t("common.loading")}</p>
+        ) : (opportunitiesTimeline.data?.length ?? 0) === 0 ? (
+          <p className="text-sm text-ink-faint">{t("crm.contacts.timeline.empty")}</p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {opportunitiesTimeline.data!.map((opp) => (
+              <div key={opp.id} className="rounded-md border border-line p-4">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <span className="text-sm font-medium text-ink">{opp.funnelName}</span>
+                    <span className="ml-2 text-xs text-ink-faint">
+                      {opp.status === "open"
+                        ? t("crm.contacts.timeline.statusOpen").replace("{stage}", opp.currentStageName)
+                        : opp.status === "won"
+                          ? t("crm.contacts.timeline.statusWon")
+                          : t("crm.contacts.timeline.statusLost")}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-3 text-xs text-ink-dim">
+                    <span>
+                      {t("crm.contacts.timeline.totalTime")}: <strong className="text-ink">{formatHoursDuration(opp.totalTimeHours)}</strong>
+                    </span>
+                    {opp.timeToWonHours !== null && (
+                      <span>
+                        {t("crm.contacts.timeline.timeToWon")}: <strong className="text-ink">{formatHoursDuration(opp.timeToWonHours)}</strong>
+                      </span>
+                    )}
+                    {opp.timeToLostHours !== null && (
+                      <span>
+                        {t("crm.contacts.timeline.timeToLost")}: <strong className="text-ink">{formatHoursDuration(opp.timeToLostHours)}</strong>
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <ul className="flex flex-col gap-2">
+                  {opp.stages.map((stage, index) => (
+                    <li key={`${stage.stageId}-${index}`} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                      <span className="text-ink">{stage.stageName}</span>
+                      <span className="text-xs text-ink-dim">
+                        {new Date(stage.enteredAt).toLocaleString(locale)}
+                        {" → "}
+                        {stage.exitedAt ? new Date(stage.exitedAt).toLocaleString(locale) : t("crm.contacts.timeline.stillHere")}
+                        {stage.durationHours !== null && ` · ${formatHoursDuration(stage.durationHours)}`}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
       <ContactTasks contactId={params.id} />
     </div>
   );
@@ -414,6 +474,17 @@ function WhatsAppLink({ number, label }: { number: string; label: string }) {
       </svg>
     </a>
   );
+}
+
+/** Mesmo formato "Xd Yh" usado em Relatórios > CRM (ver report-shell.tsx) — duplicado aqui para não acoplar esta ficha a uma página de rota. */
+function formatHoursDuration(hours: number): string {
+  if (!hours || hours <= 0) return "—";
+  const totalHours = Math.round(hours);
+  const days = Math.floor(totalHours / 24);
+  const remainingHours = totalHours % 24;
+  if (days === 0) return `${remainingHours}h`;
+  if (remainingHours === 0) return `${days}d`;
+  return `${days}d ${remainingHours}h`;
 }
 
 function phoneTypeLabel(t: ReturnType<typeof useI18n>["t"], tipo: string): string {

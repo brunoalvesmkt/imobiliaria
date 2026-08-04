@@ -187,6 +187,37 @@ export function useContact(id: string) {
   });
 }
 
+export interface OpportunityStageTimelineEntry {
+  stageId: string;
+  stageName: string;
+  enteredAt: string;
+  exitedAt: string | null;
+  durationHours: number | null;
+}
+
+export interface OpportunityTimeline {
+  id: string;
+  funnelName: string;
+  currentStageName: string;
+  status: "open" | "won" | "lost";
+  valor: number | null;
+  createdAt: string;
+  wonAt: string | null;
+  lostAt: string | null;
+  totalTimeHours: number;
+  timeToWonHours: number | null;
+  timeToLostHours: number | null;
+  stages: OpportunityStageTimelineEntry[];
+}
+
+export function useContactOpportunitiesTimeline(contactId: string) {
+  return useQuery({
+    queryKey: ["crm", "contacts", contactId, "opportunities-timeline"],
+    queryFn: () => apiGet<OpportunityTimeline[]>(`/crm/contacts/${contactId}/opportunities-timeline`),
+    enabled: !!contactId,
+  });
+}
+
 export function useCreateContact() {
   const queryClient = useQueryClient();
   return useMutation({

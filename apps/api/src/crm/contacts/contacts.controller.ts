@@ -69,6 +69,12 @@ export class ContactsController {
     return this.service.reactivate(id, user.id);
   }
 
+  @Get(":id/opportunities-timeline")
+  @RequirePermission("crm", "view")
+  opportunitiesTimeline(@Param("id") id: string) {
+    return this.service.getOpportunitiesTimeline(id);
+  }
+
   @Get(":id/lgpd/export")
   @RequirePermission("crm", "administer")
   exportPersonalData(@Param("id") id: string) {

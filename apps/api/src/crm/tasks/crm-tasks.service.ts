@@ -49,7 +49,11 @@ export class CrmTasksService {
       }
       case "atrasadas":
         where.dataHora = { lt: now };
-        where.status = status ?? "pending";
+        // Tarefas vencidas viram status "overdue" via CrmTasksOverdueScheduler (roda de hora em
+        // hora) — sem isso aqui, a view "Atrasadas" ficava restrita a "pending" e escondia toda
+        // tarefa que o scheduler já tinha marcado como vencida. Só força quando o usuário não
+        // escolheu um status explícito no Filtro (linha 39 acima já teria aplicado `where.status`).
+        if (!status) where.status = { not: "done" };
         break;
       case "futuras":
         where.dataHora = { gt: now };

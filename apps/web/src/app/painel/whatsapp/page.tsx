@@ -382,9 +382,12 @@ function FlowLinkRow({ numberId, link }: { numberId: string; link: NumberFlowLin
               <Field label={t("whatsapp.chatbotFlows.priority")} type="number" value={prioridade} onChange={(e) => setPrioridade(e.target.value)} />
             </>
           )}
-          <div>
+          <div className="flex gap-2">
             <Button loading={update.isPending} onClick={onSave}>
               {t("common.save")}
+            </Button>
+            <Button variant="ghost" onClick={() => setEditing(false)}>
+              {t("common.cancel")}
             </Button>
           </div>
         </div>

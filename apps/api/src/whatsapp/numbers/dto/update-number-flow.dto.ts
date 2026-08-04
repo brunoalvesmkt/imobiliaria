@@ -19,4 +19,8 @@ export class UpdateNumberFlowDto {
   @IsOptional()
   @IsBoolean()
   ativo?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  prioritized?: boolean;
 }

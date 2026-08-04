@@ -52,6 +52,7 @@ export class NumberFlowsService {
         regraAtivacao: dto.regraAtivacao,
         termos,
         prioridade: dto.prioridade ?? 0,
+        prioritized: dto.regraAtivacao === "any" ? (dto.prioritized ?? false) : false,
       },
     });
 
@@ -96,6 +97,7 @@ export class NumberFlowsService {
         ...(dto.termos !== undefined ? { termos: nextTermos } : {}),
         ...(dto.prioridade !== undefined ? { prioridade: dto.prioridade } : {}),
         ...(dto.ativo !== undefined ? { ativo: dto.ativo } : {}),
+        ...(dto.prioritized !== undefined ? { prioritized: dto.prioritized } : {}),
       },
     });
 

@@ -25,6 +25,8 @@ export interface NumberFlowLink {
   regraAtivacao: FlowActivationRule;
   termos: string[];
   prioridade: number;
+  /** Só tem efeito em regraAtivacao === "any" — quando true, vence toda mensagem nova sem checar palavra/frase específica. */
+  prioritized: boolean;
   createdAt: string;
   updatedAt: string;
   chatbotFlow: { id: string; nome: string; status: string; versaoAtual: number; updatedAt: string };
@@ -84,6 +86,7 @@ export function useUpdateNumberFlow(numberId: string) {
       termos?: string[];
       prioridade?: number;
       ativo?: boolean;
+      prioritized?: boolean;
     }) => apiPatch<NumberFlowLink>(`/whatsapp/numbers/${numberId}/flows/${id}`, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["whatsapp", "numbers", numberId, "flows"] }),
   });

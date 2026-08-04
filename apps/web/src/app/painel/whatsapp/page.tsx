@@ -370,21 +370,24 @@ function FlowLinkRow({ numberId, link }: { numberId: string; link: NumberFlowLin
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {link.regraAtivacao === "any" && !link.ativo && (
-            <button
-              type="button"
-              onClick={() => activateAsAny.mutate(link.id)}
-              className="text-xs font-medium text-brand-700 hover:underline"
-            >
-              {t("whatsapp.chatbotFlows.useAsDefault")}
-            </button>
-          )}
           <button type="button" onClick={() => setEditing((v) => !v)} className="text-xs font-medium text-brand-700 hover:underline">
             {t("common.edit")}
           </button>
           <button
             type="button"
-            onClick={() => update.mutate({ id: link.id, ativo: !link.ativo })}
+            onClick={() => {
+              if (link.ativo) {
+                update.mutate({ id: link.id, ativo: false });
+                return;
+              }
+              if (link.regraAtivacao === "any") {
+                if (window.confirm(t("whatsapp.chatbotFlows.confirmActivateAny"))) {
+                  activateAsAny.mutate(link.id);
+                }
+                return;
+              }
+              update.mutate({ id: link.id, ativo: true });
+            }}
             className="text-xs font-medium text-ink-dim hover:underline"
           >
             {link.ativo ? t("whatsapp.chatbotFlows.deactivate") : t("whatsapp.chatbotFlows.activate")}
@@ -394,6 +397,22 @@ function FlowLinkRow({ numberId, link }: { numberId: string; link: NumberFlowLin
           </button>
         </div>
       </div>
+
+      {link.regraAtivacao === "any" && (
+        <div className="mt-2 border-t border-line pt-2">
+          <label className="flex items-center gap-2 text-xs font-medium text-ink">
+            <input
+              type="checkbox"
+              checked={link.prioritized}
+              onChange={(e) => update.mutate({ id: link.id, prioritized: e.target.checked })}
+            />
+            {t("whatsapp.chatbotFlows.prioritize")}
+          </label>
+          <p className="mt-0.5 text-xs text-ink-faint">
+            {link.prioritized ? t("whatsapp.chatbotFlows.prioritizeOnHint") : t("whatsapp.chatbotFlows.prioritizeOffHint")}
+          </p>
+        </div>
+      )}
 
       {editing && (
         <div className="mt-3 flex flex-col gap-2 border-t border-line pt-3">

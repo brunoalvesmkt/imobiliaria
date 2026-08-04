@@ -748,6 +748,11 @@ model WhatsAppNumberFlow {
   // Menor valor = maior prioridade (1 = primeiro a ser checado) — desempate quando mais de um
   // fluxo específico corresponde à mesma mensagem.
   prioridade       Int      @default(0)
+  // Só tem efeito em regraAtivacao === "any": quando true, este fluxo é escolhido para TODA
+  // mensagem nova (nenhuma regra "keyword" é sequer checada) — os fluxos de palavra/frase
+  // específica só ficam acessíveis a partir de um card "Subfluxo" dentro deste. Quando false
+  // (padrão), mantém o comportamento normal: "keyword" é checado primeiro, "any" é o fallback.
+  prioritized      Boolean  @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

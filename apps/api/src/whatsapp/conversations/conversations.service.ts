@@ -202,9 +202,12 @@ export class ConversationsService {
    * ACCEPTANCE_CRITERIA.md — "Ativação dos fluxos do chatbot"): uma conexão
    * pode ter vários fluxos vinculados (WhatsAppNumberFlow), cada um com sua
    * própria regra — palavra/frase específica ou "qualquer mensagem"
-   * (fallback). Prioridade: 1) fluxos específicos (menor `prioridade` =
-   * checado primeiro, primeiro que bater na mensagem vence), 2) o fluxo
-   * "qualquer mensagem" (no máximo um ativo por conexão), 3) nada.
+   * (fallback, no máximo um ativo por conexão). Prioridade padrão: 1)
+   * fluxos específicos (menor `prioridade` = checado primeiro, primeiro que
+   * bater na mensagem vence), 2) o fluxo "qualquer mensagem", 3) nada — a
+   * menos que o "qualquer mensagem" ativo esteja marcado "priorizado", caso
+   * em que ele vence direto, sem checar as palavras/frases específicas (ver
+   * matchChatbotFlow).
    *
    * Se já existe uma execução em andamento nesta conversa, ela sempre
    * recebe a resposta normalmente — um fluxo em andamento nunca é
@@ -246,7 +249,11 @@ export class ConversationsService {
     await this.startMatchedFlow(conversationId, whatsAppNumberId, match, null);
   }
 
-  /** Palavras/frases específicas sempre têm prioridade sobre o fluxo "qualquer mensagem" — ver ACCEPTANCE_CRITERIA.md. */
+  /**
+   * Palavras/frases específicas normalmente têm prioridade sobre o fluxo "qualquer mensagem" —
+   * ver ACCEPTANCE_CRITERIA.md — EXCETO quando o "qualquer mensagem" ativo está marcado como
+   * "priorizado" (`WhatsAppNumberFlow.prioritized`), caso em que ele vence toda mensagem nova.
+   */
   private async matchChatbotFlow(whatsAppNumberId: string, incomingText: string): Promise<ChatbotFlowMatch | null> {
     const rules = await this.prisma.whatsAppNumberFlow.findMany({
       where: { whatsAppNumberId, ativo: true, chatbotFlow: { status: "published", deletedAt: null } },
@@ -254,6 +261,14 @@ export class ConversationsService {
     });
 
     const normalizedMessage = normalizeTriggerText(incomingText);
+    const anyRule = rules.find((r) => r.regraAtivacao === "any");
+
+    // "Qualquer mensagem" priorizado: vence toda mensagem nova, sem checar palavra/frase
+    // específica alguma — essas só ficam acessíveis por um card "Subfluxo" dentro deste fluxo.
+    if (anyRule?.prioritized) {
+      return { chatbotFlowId: anyRule.chatbotFlowId, regraAtivacao: anyRule.regraAtivacao, prioridade: anyRule.prioridade, termo: null };
+    }
+
     const keywordRules = rules.filter((r) => r.regraAtivacao === "keyword");
     for (const rule of keywordRules) {
       const termo = rule.termos.find((t) => normalizedMessage.includes(normalizeTriggerText(t)));
@@ -262,7 +277,6 @@ export class ConversationsService {
       }
     }
 
-    const anyRule = rules.find((r) => r.regraAtivacao === "any");
     if (anyRule) {
       return { chatbotFlowId: anyRule.chatbotFlowId, regraAtivacao: anyRule.regraAtivacao, prioridade: anyRule.prioridade, termo: null };
     }

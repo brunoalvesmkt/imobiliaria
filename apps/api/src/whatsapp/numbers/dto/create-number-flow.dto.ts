@@ -1,4 +1,4 @@
-import { ArrayMaxSize, IsArray, IsIn, IsInt, IsOptional, IsString, IsUUID, MinLength } from "class-validator";
+import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, IsUUID, MinLength } from "class-validator";
 
 export class CreateNumberFlowDto {
   @IsUUID()
@@ -17,4 +17,8 @@ export class CreateNumberFlowDto {
   @IsOptional()
   @IsInt()
   prioridade?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  prioritized?: boolean;
 }

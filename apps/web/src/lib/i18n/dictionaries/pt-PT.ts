@@ -1360,6 +1360,68 @@ const dictionary: Record<DictionaryKey, string> = {
   "master.users.deactivate": "Desativar",
   "master.users.activate": "Ativar",
   "master.users.errorGeneric": "Não foi possível concluir a ação.",
+
+  "dashboard.retry": "Tentar novamente",
+  "dashboard.refresh": "Atualizar",
+  "dashboard.chart.empty": "Sem dados para apresentar neste período.",
+
+  "dashboard.preset.hoje": "Hoje",
+  "dashboard.preset.ontem": "Ontem",
+  "dashboard.preset.7dias": "7 dias",
+  "dashboard.preset.30dias": "30 dias",
+  "dashboard.preset.esteMes": "Este mês",
+  "dashboard.preset.esteAno": "Este ano",
+  "dashboard.preset.vitalicio": "Vitalício",
+  "dashboard.preset.personalizado": "Personalizado",
+
+  "dashboard.compare.label": "Comparar com",
+  "dashboard.compare.vs": "vs.",
+  "dashboard.compare.nenhum": "Nenhum",
+  "dashboard.compare.periodoAnterior": "Período anterior",
+  "dashboard.compare.ontem": "Ontem",
+  "dashboard.compare.7diasAnteriores": "Últimos 7 dias anteriores",
+  "dashboard.compare.30diasAnteriores": "Últimos 30 dias anteriores",
+  "dashboard.compare.mesAnterior": "Mês anterior",
+  "dashboard.compare.anoAnterior": "Mesmo período do ano anterior",
+  "dashboard.compare.personalizado": "Período personalizado",
+  "dashboard.compare.noBaseline": "Sem base de comparação",
+
+  "dashboard.periodo.selecionado": "Período selecionado",
+
+  "dashboard.acoes.title": "Ações que precisam de atenção",
+  "dashboard.acoes.empty": "Nenhuma ação pendente neste momento. Tudo em dia!",
+  "dashboard.acoes.ver": "Ver",
+  "dashboard.acoes.dispensar": "Dispensar",
+
+  "dashboard.operacional.title": "Visão operacional agora",
+  "dashboard.operacional.nota": "Estes números são em tempo real e não mudam com o filtro de período.",
+  "dashboard.operacional.atendentesOnline": "Atendentes online",
+  "dashboard.operacional.atendentesOffline": "Atendentes offline",
+  "dashboard.operacional.conversasAguardando": "Conversas à espera",
+  "dashboard.operacional.filasAbertas": "Filas abertas",
+  "dashboard.operacional.oportunidadesSemResponsavel": "Oportunidades sem responsável",
+  "dashboard.operacional.tarefasVencidas": "Tarefas vencidas",
+
+  "dashboard.crm.novosContatos": "Novos contactos",
+  "dashboard.crm.oportunidadesGanhas": "Oportunidades ganhas",
+  "dashboard.crm.valorGanho": "Valor ganho",
+  "dashboard.crm.taxaConversao": "Taxa de conversão",
+  "dashboard.crm.porEtapa": "Oportunidades por etapa",
+
+  "dashboard.atendimento.totalConversas": "Conversas no período",
+  "dashboard.atendimento.fechadas": "Conversas fechadas",
+  "dashboard.atendimento.porStatus": "Conversas por estado",
+  "dashboard.atendimento.status.open": "Abertas",
+  "dashboard.atendimento.status.pending": "Pendentes",
+  "dashboard.atendimento.status.closed": "Fechadas",
+
+  "dashboard.alertConfig.title": "Alertas do Dashboard",
+  "dashboard.alertConfig.subtitle": "Defina os limiares usados no bloco \"Ações que precisam de atenção\" do Início.",
+  "dashboard.alertConfig.errorGeneric": "Não foi possível guardar. Tente novamente.",
+  "dashboard.alertConfig.queueWaitMinutes": "Alertar quando uma conversa esperar mais de (minutos)",
+  "dashboard.alertConfig.opportunityStagnantDays": "Alertar quando uma oportunidade ficar sem movimentação durante (dias)",
+  "dashboard.alertConfig.proposalNoResponseDays": "Alertar quando uma proposta ficar sem resposta durante (dias)",
+  "dashboard.alertConfig.taskOverdueEnabled": "Alertar sobre tarefas vencidas",
 };
 
 export default dictionary;

@@ -19,6 +19,12 @@ interface ViewerInfo {
   userName: string;
 }
 
+interface PresenceInfo {
+  userName: string;
+  socketIds: Set<string>;
+  lastSeen: Date;
+}
+
 function tenantRoom(tenantId: string): string {
   return `tenant:${tenantId}`;
 }
@@ -67,6 +73,15 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
    */
   private readonly viewers = new Map<string, Map<string, ViewerInfo>>();
 
+  /**
+   * Presença online por tenant, usada no bloco "Visão operacional agora" do
+   * Dashboard (atendentes online/offline) — mesmo raciocínio do `viewers`
+   * acima: só em memória, some sozinha se o processo reiniciar. Um usuário
+   * pode ter mais de um socket (múltiplas abas), por isso `socketIds` é um
+   * Set — só sai da presença quando o último socket desconecta.
+   */
+  private readonly presence = new Map<string, Map<string, PresenceInfo>>();
+
   constructor(
     private readonly tokenService: TokenService,
     private readonly prisma: PrismaService,
@@ -91,6 +106,19 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       const user = await this.prisma.tenantUser.findUnique({ where: { id: payload.sub }, select: { nome: true } });
       client.data.userName = user?.nome ?? "Agente";
       void client.join(tenantRoom(payload.tenantId));
+
+      let tenantPresence = this.presence.get(payload.tenantId);
+      if (!tenantPresence) {
+        tenantPresence = new Map();
+        this.presence.set(payload.tenantId, tenantPresence);
+      }
+      const existing = tenantPresence.get(payload.sub);
+      if (existing) {
+        existing.socketIds.add(client.id);
+        existing.lastSeen = new Date();
+      } else {
+        tenantPresence.set(payload.sub, { userName: client.data.userName as string, socketIds: new Set([client.id]), lastSeen: new Date() });
+      }
     } catch {
       client.disconnect(true);
     }
@@ -103,6 +131,24 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
         this.broadcastViewers(client.data.tenantId as string, conversationId);
       }
     }
+
+    const tenantId = client.data.tenantId as string | undefined;
+    const userId = client.data.userId as string | undefined;
+    if (!tenantId || !userId) return;
+    const tenantPresence = this.presence.get(tenantId);
+    const entry = tenantPresence?.get(userId);
+    if (!entry) return;
+    entry.socketIds.delete(client.id);
+    if (entry.socketIds.size === 0) {
+      tenantPresence!.delete(userId);
+    }
+  }
+
+  /** Usuários com pelo menos um socket ativo agora, para o tenant informado. */
+  getOnlineUsers(tenantId: string): { userId: string; userName: string; lastSeen: Date }[] {
+    const tenantPresence = this.presence.get(tenantId);
+    if (!tenantPresence) return [];
+    return [...tenantPresence.entries()].map(([userId, info]) => ({ userId, userName: info.userName, lastSeen: info.lastSeen }));
   }
 
   emitToTenant(tenantId: string, event: string, payload: unknown): void {

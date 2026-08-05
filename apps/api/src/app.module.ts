@@ -29,6 +29,7 @@ import { BillingModule } from "./billing/billing.module";
 import { AffiliatesModule } from "./affiliates/affiliates.module";
 import { PublicCatalogModule } from "./public-catalog/public-catalog.module";
 import { ReportsModule } from "./reports/reports.module";
+import { DashboardModule } from "./dashboard/dashboard.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { AuditLogModule } from "./audit-log/audit-log.module";
 
@@ -63,6 +64,7 @@ import { AuditLogModule } from "./audit-log/audit-log.module";
     PublicCatalogModule,
     BillingModule,
     ReportsModule,
+    DashboardModule,
     NotificationsModule,
     AuditLogModule,
   ],

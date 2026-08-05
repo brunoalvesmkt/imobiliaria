@@ -1360,6 +1360,68 @@ const dictionary: Record<DictionaryKey, string> = {
   "master.users.deactivate": "Deactivate",
   "master.users.activate": "Activate",
   "master.users.errorGeneric": "Could not complete the action.",
+
+  "dashboard.retry": "Try again",
+  "dashboard.refresh": "Refresh",
+  "dashboard.chart.empty": "No data to show for this period.",
+
+  "dashboard.preset.hoje": "Today",
+  "dashboard.preset.ontem": "Yesterday",
+  "dashboard.preset.7dias": "7 days",
+  "dashboard.preset.30dias": "30 days",
+  "dashboard.preset.esteMes": "This month",
+  "dashboard.preset.esteAno": "This year",
+  "dashboard.preset.vitalicio": "Lifetime",
+  "dashboard.preset.personalizado": "Custom",
+
+  "dashboard.compare.label": "Compare with",
+  "dashboard.compare.vs": "vs.",
+  "dashboard.compare.nenhum": "None",
+  "dashboard.compare.periodoAnterior": "Previous period",
+  "dashboard.compare.ontem": "Yesterday",
+  "dashboard.compare.7diasAnteriores": "Previous 7 days",
+  "dashboard.compare.30diasAnteriores": "Previous 30 days",
+  "dashboard.compare.mesAnterior": "Previous month",
+  "dashboard.compare.anoAnterior": "Same period last year",
+  "dashboard.compare.personalizado": "Custom period",
+  "dashboard.compare.noBaseline": "No baseline to compare",
+
+  "dashboard.periodo.selecionado": "Selected period",
+
+  "dashboard.acoes.title": "Actions that need attention",
+  "dashboard.acoes.empty": "No pending actions right now. All caught up!",
+  "dashboard.acoes.ver": "View",
+  "dashboard.acoes.dispensar": "Dismiss",
+
+  "dashboard.operacional.title": "Operational view right now",
+  "dashboard.operacional.nota": "These numbers are real-time and are not affected by the period filter.",
+  "dashboard.operacional.atendentesOnline": "Agents online",
+  "dashboard.operacional.atendentesOffline": "Agents offline",
+  "dashboard.operacional.conversasAguardando": "Conversations waiting",
+  "dashboard.operacional.filasAbertas": "Open queues",
+  "dashboard.operacional.oportunidadesSemResponsavel": "Opportunities without owner",
+  "dashboard.operacional.tarefasVencidas": "Overdue tasks",
+
+  "dashboard.crm.novosContatos": "New contacts",
+  "dashboard.crm.oportunidadesGanhas": "Opportunities won",
+  "dashboard.crm.valorGanho": "Value won",
+  "dashboard.crm.taxaConversao": "Conversion rate",
+  "dashboard.crm.porEtapa": "Opportunities by stage",
+
+  "dashboard.atendimento.totalConversas": "Conversations in period",
+  "dashboard.atendimento.fechadas": "Closed conversations",
+  "dashboard.atendimento.porStatus": "Conversations by status",
+  "dashboard.atendimento.status.open": "Open",
+  "dashboard.atendimento.status.pending": "Pending",
+  "dashboard.atendimento.status.closed": "Closed",
+
+  "dashboard.alertConfig.title": "Dashboard alerts",
+  "dashboard.alertConfig.subtitle": "Set the thresholds used in the \"Actions that need attention\" block on the home page.",
+  "dashboard.alertConfig.errorGeneric": "Could not save. Try again.",
+  "dashboard.alertConfig.queueWaitMinutes": "Alert when a conversation waits more than (minutes)",
+  "dashboard.alertConfig.opportunityStagnantDays": "Alert when an opportunity has no activity for (days)",
+  "dashboard.alertConfig.proposalNoResponseDays": "Alert when a proposal gets no response for (days)",
+  "dashboard.alertConfig.taskOverdueEnabled": "Alert about overdue tasks",
 };
 
 export default dictionary;

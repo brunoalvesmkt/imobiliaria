@@ -101,6 +101,7 @@ model Tenant {
   conversationEvaluations ConversationEvaluation[]
   quickMessages           QuickMessage[]
   customFieldDefinitions  CustomFieldDefinition[]
+  dashboardAlertConfig    DashboardAlertConfig?
 
   @@map("tenants")
 }
@@ -395,6 +396,23 @@ model FeatureFlag {
   @@unique([tenantId, module])
   @@index([tenantId])
   @@map("feature_flags")
+}
+
+/// Limiares de "ações que precisam de atenção" do Dashboard (Início) —
+/// configuráveis por tenant, ver módulo apps/api/src/dashboard.
+model DashboardAlertConfig {
+  id                       String   @id @default(uuid())
+  tenantId                 String   @unique
+  queueWaitMinutes         Int      @default(10)
+  opportunityStagnantDays  Int      @default(5)
+  proposalNoResponseDays   Int      @default(3)
+  taskOverdueEnabled       Boolean  @default(true)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("dashboard_alert_configs")
 }
 
 // ---------------------------------------------------------------------------

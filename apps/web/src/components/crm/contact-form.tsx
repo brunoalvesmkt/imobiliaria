@@ -92,6 +92,10 @@ export function ContactForm({ contact, onDone }: { contact?: Contact; onDone: ()
       setClientError(t("crm.contacts.errorGeneric"));
       return;
     }
+    if (!isEditing && !form.origemId) {
+      setClientError(t("crm.contacts.errorOriginRequired"));
+      return;
+    }
     const validPhones = phones.filter((p) => p.numero.trim());
     const validEmails = emails.map((e) => e.trim()).filter(Boolean);
 
@@ -130,13 +134,19 @@ export function ContactForm({ contact, onDone }: { contact?: Contact; onDone: ()
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label={t("crm.contacts.name")} required value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-ink">{t("crm.contacts.origin")}</label>
+          <label className="text-sm font-medium text-ink">
+            {t("crm.contacts.origin")}
+            {!isEditing && <span className="text-red-600"> *</span>}
+          </label>
           <select
             value={form.origemId}
             onChange={(e) => setForm({ ...form, origemId: e.target.value })}
+            required={!isEditing}
             className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
           >
-            <option value="">{t("common.none")}</option>
+            <option value="" disabled={!isEditing}>
+              {isEditing ? t("common.none") : t("crm.contacts.originPlaceholder")}
+            </option>
             {origins.data?.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.nome}

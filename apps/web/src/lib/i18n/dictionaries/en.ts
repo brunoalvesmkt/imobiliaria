@@ -314,6 +314,8 @@ const dictionary: Record<DictionaryKey, string> = {
   "crm.contacts.phone": "Phone",
   "crm.contacts.email": "Email",
   "crm.contacts.origin": "Source",
+  "crm.contacts.originPlaceholder": "Select the source",
+  "crm.contacts.errorOriginRequired": "Select the contact's source.",
   "crm.contacts.cpf": "CPF",
   "crm.contacts.cnpj": "CNPJ",
   "crm.contacts.block.badge": "Blocked",

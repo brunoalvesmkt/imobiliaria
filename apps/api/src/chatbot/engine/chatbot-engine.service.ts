@@ -407,7 +407,12 @@ export class ChatbotEngineService {
     const nextContext: ExecutionContext = { ...context, timeoutAttempts };
     const limit = data.timeoutMaxTentativas ?? DEFAULT_TIMEOUT_MAX_TENTATIVAS;
 
-    if (attempts > limit) {
+    // "N tentativas" = N esperas no total, cada uma seguida de uma checagem — a última checagem
+    // (a N-ésima) já é a que esgota o limite. Com N=1, isso significa considerar o limite atingido
+    // logo na primeira falta de resposta, sem exigir nenhuma reativação intermediária via "Não
+    // respondeu" (que pode legitimamente ficar sem conexão quando o autor do fluxo só quer agir
+    // uma vez ao esgotar). `>=` em vez de `>` evita reativar uma vez a mais do que o configurado.
+    if (attempts >= limit) {
       // Uma conexão "Limite atingido" desenhada no canvas é intenção explícita do autor do fluxo
       // — sempre é seguida, com ou sem "avançar só com resposta real" marcado. Esse toggle só
       // muda o que acontece quando NÃO há conexão: em vez de abandonar a execução (padrão), o

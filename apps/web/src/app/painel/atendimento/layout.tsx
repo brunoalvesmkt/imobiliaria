@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { DropdownMenu } from "@/components/ui/dropdown-menu";
+import { useIsAtendimentoAdmin } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 
@@ -19,17 +20,20 @@ export default function AtendimentoLayout({ children }: { children: React.ReactN
   const pathname = usePathname();
   const router = useRouter();
   const { t } = useI18n();
+  const isAdmin = useIsAtendimentoAdmin();
 
   return (
     <div className="flex h-full flex-col gap-4">
       <div>
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-semibold text-ink">{t("atendimento.title")}</h1>
-          <DropdownMenu
-            label={t("atendimento.settings")}
-            items={SETTINGS_ITEMS.map((item) => ({ label: t(item.labelKey), onClick: () => router.push(item.href) }))}
-            align="right"
-          />
+          {isAdmin && (
+            <DropdownMenu
+              label={t("atendimento.settings")}
+              items={SETTINGS_ITEMS.map((item) => ({ label: t(item.labelKey), onClick: () => router.push(item.href) }))}
+              align="right"
+            />
+          )}
         </div>
         <nav className="mt-3 flex gap-1 border-b border-line">
           {TABS.map((tab) => {

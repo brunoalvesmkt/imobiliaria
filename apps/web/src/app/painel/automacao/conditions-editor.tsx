@@ -1,19 +1,30 @@
 "use client";
 
-import type { AutomationCondition, ConditionOperator } from "@/lib/automation";
+import {
+  ID_FIELD_KIND,
+  TRIGGER_FIELDS,
+  type AutomationCondition,
+  type ConditionOperator,
+  type DomainEventName,
+} from "@/lib/automation";
+import { useFlows } from "@/lib/chatbot";
 import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
+import { FunnelStagePicker } from "./funnel-stage-picker";
 
 const OPERATORS: ConditionOperator[] = ["equals", "contains", "exists", "not_exists"];
 
 export function ConditionsEditor({
+  gatilhoTipo,
   conditions,
   onChange,
 }: {
+  gatilhoTipo: DomainEventName;
   conditions: AutomationCondition[];
   onChange: (conditions: AutomationCondition[]) => void;
 }) {
   const { t } = useI18n();
+  const fields = TRIGGER_FIELDS[gatilhoTipo] ?? [];
 
   function update(index: number, condition: AutomationCondition) {
     onChange(conditions.map((c, i) => (i === index ? condition : c)));
@@ -22,7 +33,7 @@ export function ConditionsEditor({
     onChange(conditions.filter((_, i) => i !== index));
   }
   function add() {
-    onChange([...conditions, { campo: "", operador: "equals" }]);
+    onChange([...conditions, { campo: fields[0] ?? "", operador: "equals" }]);
   }
 
   const showValue = (operador: ConditionOperator) => operador === "equals" || operador === "contains";
@@ -32,12 +43,18 @@ export function ConditionsEditor({
       <label className="text-sm font-medium text-ink">{t("automation.conditions.title")}</label>
       {conditions.map((condition, i) => (
         <div key={i} className="flex items-center gap-2">
-          <input
+          <select
             value={condition.campo}
-            onChange={(e) => update(i, { ...condition, campo: e.target.value })}
-            placeholder={t("automation.conditions.field")}
+            onChange={(e) => update(i, { campo: e.target.value, operador: condition.operador })}
             className="flex-1 rounded-md border border-line bg-surface px-2 py-1.5 text-sm"
-          />
+          >
+            <option value="" />
+            {fields.map((campo) => (
+              <option key={campo} value={campo}>
+                {t(`automation.conditions.fieldOption.${campo}` as DictionaryKey)}
+              </option>
+            ))}
+          </select>
           <select
             value={condition.operador}
             onChange={(e) => update(i, { ...condition, operador: e.target.value as ConditionOperator })}
@@ -50,12 +67,7 @@ export function ConditionsEditor({
             ))}
           </select>
           {showValue(condition.operador) && (
-            <input
-              value={condition.valor ?? ""}
-              onChange={(e) => update(i, { ...condition, valor: e.target.value })}
-              placeholder={t("automation.conditions.value")}
-              className="flex-1 rounded-md border border-line bg-surface px-2 py-1.5 text-sm"
-            />
+            <ConditionValueField condition={condition} onChange={(valor) => update(i, { ...condition, valor })} />
           )}
           <button type="button" onClick={() => remove(i)} aria-label={t("common.remove")} className="text-xs text-red-600">
             ×
@@ -68,3 +80,45 @@ export function ConditionsEditor({
     </div>
   );
 }
+
+/** Campo "Valor" da condição — vira um seletor por nome quando o campo escolhido é um ID de etapa/fluxo (ver ID_FIELD_KIND), texto livre nos demais casos. */
+function ConditionValueField({
+  condition,
+  onChange,
+}: {
+  condition: AutomationCondition;
+  onChange: (valor: string) => void;
+}) {
+  const { t } = useI18n();
+  const kind = ID_FIELD_KIND[condition.campo];
+
+  if (kind === "flow") {
+    return <FlowValuePicker value={condition.valor ?? ""} onChange={onChange} />;
+  }
+  if (kind === "stage") {
+    return <FunnelStagePicker value={condition.valor ?? ""} onChange={onChange} />;
+  }
+  return (
+    <input
+      value={condition.valor ?? ""}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={t("automation.conditions.value")}
+      className="flex-1 rounded-md border border-line bg-surface px-2 py-1.5 text-sm"
+    />
+  );
+}
+
+function FlowValuePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const flows = useFlows();
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)} className="flex-1 rounded-md border border-line bg-surface px-2 py-1.5 text-sm">
+      <option value="" />
+      {flows.data?.map((flow) => (
+        <option key={flow.id} value={flow.id}>
+          {flow.nome}
+        </option>
+      ))}
+    </select>
+  );
+}
+

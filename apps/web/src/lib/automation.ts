@@ -34,6 +34,35 @@ export const DOMAIN_EVENTS: DomainEventName[] = [
   "subscription.cancelled",
 ];
 
+/**
+ * Campos disponíveis em `data` para cada gatilho (ver domainEvents.emit correspondente no
+ * backend) — a Automação só sabe filtrar por esses nomes técnicos exatos, nunca por frases
+ * livres. Usado para popular o seletor de "Campo" da condição, escopado ao gatilho escolhido, em
+ * vez de deixar o usuário adivinhar/digitar um nome que não existe (e a condição nunca bater).
+ */
+export const TRIGGER_FIELDS: Record<DomainEventName, string[]> = {
+  "conversation.created": ["conversationId", "origem", "contatoNumero"],
+  "message.received": ["conversationId", "conteudo", "direction"],
+  "opportunity.stage_changed": ["opportunityId", "stageId", "stageIdAnterior"],
+  "opportunity.won": ["opportunityId", "motivo", "valor"],
+  "opportunity.lost": ["opportunityId", "motivo", "valor"],
+  "crm_task.created": ["taskId", "tipo", "titulo"],
+  "chatbot.flow.completed": ["chatbotExecutionId", "chatbotFlowId"],
+  "chatbot.flow.abandoned": ["chatbotExecutionId", "chatbotFlowId"],
+  "chatbot.flow.transferred": ["chatbotExecutionId", "chatbotFlowId"],
+  "invoice.paid": ["invoiceId", "subscriptionId", "planId", "valor"],
+  "invoice.overdue": ["invoiceId", "subscriptionId"],
+  "subscription.activated": ["subscriptionId", "planId"],
+  "subscription.cancelled": ["subscriptionId", "motivo"],
+};
+
+/** Campos cujo valor é o ID de uma entidade com nome — a condição mostra um seletor por nome em vez de um campo de texto para o "Valor" (ver ConditionsEditor). */
+export const ID_FIELD_KIND: Record<string, "stage" | "flow"> = {
+  stageId: "stage",
+  stageIdAnterior: "stage",
+  chatbotFlowId: "flow",
+};
+
 export type ConditionOperator = "equals" | "contains" | "exists" | "not_exists";
 
 export interface AutomationCondition {

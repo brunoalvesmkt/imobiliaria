@@ -5,6 +5,7 @@ import { useFlows } from "@/lib/chatbot";
 import { Field } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
+import { FunnelStagePicker } from "./funnel-stage-picker";
 
 export function ActionsEditor({
   actions,
@@ -119,13 +120,7 @@ function ActionTypeFields({ action, onChange }: { action: AutomationAction; onCh
         </div>
       );
     case "move_opportunity_stage":
-      return (
-        <Field
-          label={t("automation.actions.field.stageId")}
-          value={action.stageId ?? ""}
-          onChange={(e) => onChange({ ...action, stageId: e.target.value })}
-        />
-      );
+      return <MoveStageFields action={action} onChange={onChange} />;
     case "start_chatbot":
       return (
         <div className="flex flex-col gap-1.5">
@@ -175,4 +170,9 @@ function ActionTypeFields({ action, onChange }: { action: AutomationAction; onCh
     default:
       return null;
   }
+}
+
+/** A ação só grava `stageId` — o seletor de Funil + Etapa (por nome) evita precisar saber o ID de cor. */
+function MoveStageFields({ action, onChange }: { action: AutomationAction; onChange: (a: AutomationAction) => void }) {
+  return <FunnelStagePicker value={action.stageId ?? ""} onChange={(stageId) => onChange({ ...action, stageId })} />;
 }

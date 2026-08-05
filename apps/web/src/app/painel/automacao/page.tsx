@@ -178,7 +178,10 @@ function NewAutomationForm({ onDone }: { onDone: () => void }) {
         <label className="text-sm font-medium text-ink">{t("automation.trigger")}</label>
         <select
           value={gatilhoTipo}
-          onChange={(e) => setGatilhoTipo(e.target.value as DomainEventName)}
+          onChange={(e) => {
+            setGatilhoTipo(e.target.value as DomainEventName);
+            setCondicoes([]);
+          }}
           className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
         >
           {DOMAIN_EVENTS.map((event) => (
@@ -188,7 +191,7 @@ function NewAutomationForm({ onDone }: { onDone: () => void }) {
           ))}
         </select>
       </div>
-      <ConditionsEditor conditions={condicoes} onChange={setCondicoes} />
+      <ConditionsEditor gatilhoTipo={gatilhoTipo} conditions={condicoes} onChange={setCondicoes} />
       <ActionsEditor actions={acoes} onChange={setAcoes} />
       <div>
         <Button type="submit" loading={createAutomation.isPending}>

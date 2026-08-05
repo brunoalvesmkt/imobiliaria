@@ -190,7 +190,7 @@ export default function FlowBuilderPage() {
     setDirty(true);
   }
 
-  function addConnectedNode(sourceId: string, type: FlowNodeType, presetTipo?: MessageMediaType) {
+  function addConnectedNode(sourceId: string, type: FlowNodeType, presetTipo?: MessageMediaType, sourceHandle?: string) {
     pushHistory();
     const source = nodes.find((n) => n.id === sourceId);
     const position = source ? { x: source.position.x, y: source.position.y + 160 } : { x: 120, y: 120 };
@@ -202,7 +202,12 @@ export default function FlowBuilderPage() {
       data: { flowNodeType: type, payload: defaultDataFor(type, presetTipo) },
     };
     setNodes((nds) => [...nds, newNode]);
-    setEdges((eds) => addEdge({ source: sourceId, target: nodeId, id: `e-${sourceId}-out-${nodeId}` }, eds));
+    setEdges((eds) =>
+      addEdge(
+        { source: sourceId, sourceHandle: sourceHandle ?? null, target: nodeId, id: `e-${sourceId}-out-${nodeId}-${sourceHandle ?? "default"}` },
+        eds,
+      ),
+    );
     setSelectedNodeId(nodeId);
     setDirty(true);
   }

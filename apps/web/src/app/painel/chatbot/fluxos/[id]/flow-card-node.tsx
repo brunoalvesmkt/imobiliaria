@@ -24,7 +24,7 @@ export interface FlowCardData extends Record<string, unknown> {
   selected?: boolean;
   readOnly?: boolean;
   onDeleteNode?: (id: string) => void;
-  onAddConnectedNode?: (id: string, type: FlowNodeType, presetTipo?: MessageMediaType) => void;
+  onAddConnectedNode?: (id: string, type: FlowNodeType, presetTipo?: MessageMediaType, sourceHandle?: string) => void;
 }
 
 const TERMINAL_TYPES: FlowNodeType[] = ["end", "transfer"];
@@ -75,11 +75,15 @@ export function FlowCardNode({ data, id }: NodeProps) {
   const timeoutEnabled =
     (flowNodeType === "question" || flowNodeType === "menu") &&
     Boolean((payload as unknown as QuestionNodeData | MenuNodeData).timeoutEnabled);
-  // Só cards com uma única saída simples (handle inferior) ganham o atalho "+" —
-  // "menu"/"condition" têm múltiplas saídas nomeadas (e "question"/"menu" com reativação ativada
-  // ganham as saídas extras "Não respondeu"/"Limite atingido") e exigem escolher o ramo manualmente.
-  const canAddConnected =
-    !isTerminal && flowNodeType !== "menu" && flowNodeType !== "condition" && !timeoutEnabled && !cardData.readOnly;
+  // Cards com saída única (handle inferior) ganham o "+" no canto — inclusive Pergunta com
+  // reativação ativada, que também tem esse handle principal (a resposta válida sempre segue por
+  // ali). "menu"/"condition" não têm handle único: cada saída nomeada (opção do menu, true/false,
+  // "Não respondeu"/"Limite atingido") ganha seu próprio "+" ao lado, dentro de MenuHandles/
+  // ConditionHandles/TimeoutHandles. Só "Fim"/"Transferir" ficam sem nenhum "+" — são o
+  // encerramento do fluxo, não existe "próximo card" possível.
+  const canAddConnected = !isTerminal && flowNodeType !== "menu" && flowNodeType !== "condition" && !cardData.readOnly;
+  const addNode = (type: FlowNodeType, presetTipo?: MessageMediaType, sourceHandle?: string) =>
+    cardData.onAddConnectedNode?.(id, type, presetTipo, sourceHandle);
 
   return (
     <div
@@ -108,8 +112,10 @@ export function FlowCardNode({ data, id }: NodeProps) {
       </div>
       <div className="px-2.5 py-2 text-xs text-ink-dim break-words">{summaryFor(flowNodeType, payload) || <span className="italic text-ink-faint">{id}</span>}</div>
 
-      {flowNodeType === "menu" && <MenuHandles color={color} opcoes={(payload as unknown as MenuNodeData).opcoes ?? []} />}
-      {flowNodeType === "condition" && <ConditionHandles color={color} />}
+      {flowNodeType === "menu" && (
+        <MenuHandles color={color} opcoes={(payload as unknown as MenuNodeData).opcoes ?? []} onAdd={addNode} readOnly={cardData.readOnly} />
+      )}
+      {flowNodeType === "condition" && <ConditionHandles color={color} onAdd={addNode} readOnly={cardData.readOnly} />}
       {!isTerminal && flowNodeType !== "menu" && flowNodeType !== "condition" && (
         <Handle type="source" position={Position.Bottom} style={{ background: color }} />
       )}
@@ -118,17 +124,23 @@ export function FlowCardNode({ data, id }: NodeProps) {
           color={color}
           steps={(payload as unknown as QuestionNodeData | MenuNodeData).timeoutSteps}
           maxTentativas={(payload as unknown as QuestionNodeData | MenuNodeData).timeoutMaxTentativas}
+          onAdd={addNode}
+          readOnly={cardData.readOnly}
         />
       )}
 
-      {canAddConnected && (
-        <AddConnectedButton onAdd={(type, presetTipo) => cardData.onAddConnectedNode?.(id, type, presetTipo)} />
-      )}
+      {canAddConnected && <AddConnectedButton onAdd={addNode} />}
     </div>
   );
 }
 
-function AddConnectedButton({ onAdd }: { onAdd: (type: FlowNodeType, presetTipo?: MessageMediaType) => void }) {
+function AddConnectedButton({
+  onAdd,
+  className,
+}: {
+  onAdd: (type: FlowNodeType, presetTipo?: MessageMediaType, sourceHandle?: string) => void;
+  className?: string;
+}) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
@@ -161,13 +173,13 @@ function AddConnectedButton({ onAdd }: { onAdd: (type: FlowNodeType, presetTipo?
   }
 
   return (
-    <div className="absolute -bottom-2 -right-2 z-10">
+    <div className={className ?? "absolute -bottom-2 -right-2 z-10"}>
       <button
         ref={buttonRef}
         type="button"
         title={t("chatbot.builder.addNode")}
         onClick={toggleOpen}
-        className="grid h-5 w-5 place-items-center rounded-full bg-brand-600 text-white shadow hover:bg-brand-700"
+        className="grid h-4 w-4 flex-none place-items-center rounded-full bg-brand-600 text-white shadow hover:bg-brand-700"
       >
         <span className="relative block h-2.5 w-2.5">
           <span className="absolute left-1/2 top-0 h-full w-[2px] -translate-x-1/2 rounded-full bg-white" />
@@ -203,19 +215,34 @@ function AddConnectedButton({ onAdd }: { onAdd: (type: FlowNodeType, presetTipo?
   );
 }
 
-function MenuHandles({ color, opcoes }: { color: string; opcoes: MenuNodeData["opcoes"] }) {
+type AddHandler = (type: FlowNodeType, presetTipo?: MessageMediaType, sourceHandle?: string) => void;
+
+function MenuHandles({
+  color,
+  opcoes,
+  onAdd,
+  readOnly,
+}: {
+  color: string;
+  opcoes: MenuNodeData["opcoes"];
+  onAdd: AddHandler;
+  readOnly?: boolean | undefined;
+}) {
   if (opcoes.length === 0) return null;
   return (
     <div className="flex flex-col gap-1 border-t border-line px-2.5 py-1.5">
       {opcoes.map((opt) => (
-        <div key={opt.chave} className="relative flex items-center justify-between text-[11px] text-ink-faint">
+        <div key={opt.chave} className="relative flex items-center justify-between gap-1.5 text-[11px] text-ink-faint">
           <span>{opt.chave}</span>
-          <Handle
-            type="source"
-            position={Position.Right}
-            id={opt.chave}
-            style={{ background: color, position: "relative", right: -8, top: 0, transform: "none" }}
-          />
+          <div className="flex items-center gap-1">
+            {!readOnly && <AddConnectedButton onAdd={(type, presetTipo) => onAdd(type, presetTipo, opt.chave)} className="relative z-10" />}
+            <Handle
+              type="source"
+              position={Position.Right}
+              id={opt.chave}
+              style={{ background: color, position: "relative", right: -8, top: 0, transform: "none" }}
+            />
+          </div>
         </div>
       ))}
     </div>
@@ -227,10 +254,14 @@ function TimeoutHandles({
   color,
   steps,
   maxTentativas,
+  onAdd,
+  readOnly,
 }: {
   color: string;
   steps?: TimeoutStep[] | undefined;
   maxTentativas?: number | undefined;
+  onAdd: AddHandler;
+  readOnly?: boolean | undefined;
 }) {
   const { t } = useI18n();
   const summary = (steps ?? [])
@@ -244,37 +275,49 @@ function TimeoutHandles({
           ⏱ {summary} · {t("chatbot.builder.field.timeoutMaxTentativas")}: {maxTentativas ?? 1}
         </p>
       )}
-      <div className="relative flex items-center justify-between text-[11px] text-ink-faint">
+      <div className="relative flex items-center justify-between gap-1.5 text-[11px] text-ink-faint">
         <span>{t("chatbot.builder.field.timeoutNoResponse")}</span>
-        <Handle
-          type="source"
-          position={Position.Right}
-          id={TIMEOUT_HANDLE}
-          style={{ background: color, position: "relative", right: -8, top: 0, transform: "none" }}
-        />
+        <div className="flex items-center gap-1">
+          {!readOnly && (
+            <AddConnectedButton onAdd={(type, presetTipo) => onAdd(type, presetTipo, TIMEOUT_HANDLE)} className="relative z-10" />
+          )}
+          <Handle
+            type="source"
+            position={Position.Right}
+            id={TIMEOUT_HANDLE}
+            style={{ background: color, position: "relative", right: -8, top: 0, transform: "none" }}
+          />
+        </div>
       </div>
-      <div className="relative flex items-center justify-between text-[11px] text-ink-faint">
+      <div className="relative flex items-center justify-between gap-1.5 text-[11px] text-ink-faint">
         <span>{t("chatbot.builder.field.timeoutLimitReached")}</span>
-        <Handle
-          type="source"
-          position={Position.Right}
-          id={TIMEOUT_LIMIT_HANDLE}
-          style={{ background: color, position: "relative", right: -8, top: 0, transform: "none" }}
-        />
+        <div className="flex items-center gap-1">
+          {!readOnly && (
+            <AddConnectedButton onAdd={(type, presetTipo) => onAdd(type, presetTipo, TIMEOUT_LIMIT_HANDLE)} className="relative z-10" />
+          )}
+          <Handle
+            type="source"
+            position={Position.Right}
+            id={TIMEOUT_LIMIT_HANDLE}
+            style={{ background: color, position: "relative", right: -8, top: 0, transform: "none" }}
+          />
+        </div>
       </div>
     </div>
   );
 }
 
-function ConditionHandles({ color }: { color: string }) {
+function ConditionHandles({ color, onAdd, readOnly }: { color: string; onAdd: AddHandler; readOnly?: boolean | undefined }) {
   return (
     <div className="flex justify-between border-t border-line px-2.5 py-1.5 text-[11px] text-ink-faint">
       <div className="relative flex items-center gap-1">
         <span>true</span>
+        {!readOnly && <AddConnectedButton onAdd={(type, presetTipo) => onAdd(type, presetTipo, "true")} className="relative z-10" />}
         <Handle type="source" position={Position.Bottom} id="true" style={{ background: color, position: "relative", transform: "none" }} />
       </div>
       <div className="relative flex items-center gap-1">
         <span>false</span>
+        {!readOnly && <AddConnectedButton onAdd={(type, presetTipo) => onAdd(type, presetTipo, "false")} className="relative z-10" />}
         <Handle type="source" position={Position.Bottom} id="false" style={{ background: color, position: "relative", transform: "none" }} />
       </div>
     </div>

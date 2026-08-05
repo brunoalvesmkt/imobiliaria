@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useOpportunity, useUpdateOpportunity, useTransferOpportunityResponsavel, useResponsavelOptions, useFunnels, useTransferOpportunity } from "@/lib/crm";
+import { useOpportunity, useUpdateOpportunity, useTransferOpportunityResponsavel, useResponsavelOptions, useFunnels, useTransferOpportunity, useCloseOpportunity } from "@/lib/crm";
 import { ContactTasks } from "@/components/crm/contact-tasks";
 import { Field } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ export default function OpportunityDetailPage() {
   const responsavelOptions = useResponsavelOptions();
   const funnels = useFunnels();
   const transferFunnel = useTransferOpportunity();
+  const closeOpportunity = useCloseOpportunity();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ valor: "", produto: "", servico: "", previsaoFechamento: "", observacoes: "" });
   const [transferring, setTransferring] = useState(false);
@@ -76,9 +77,31 @@ export default function OpportunityDetailPage() {
         <button type="button" onClick={() => router.back()} className="mb-2 text-xs font-medium text-brand-700 hover:underline">
           {t("crm.opportunityDetail.back")}
         </button>
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-lg font-semibold text-ink">{data.contact.nome}</h1>
-          <StatusBadge status={data.status} t={t} />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-lg font-semibold text-ink">{data.contact.nome}</h1>
+            <StatusBadge status={data.status} t={t} />
+          </div>
+          {data.status === "open" && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => closeOpportunity.mutate({ id: data.id, resultado: "won" })}
+                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+              >
+                <ThumbIcon direction="up" />
+                {t("crm.funnel.win")}
+              </button>
+              <button
+                type="button"
+                onClick={() => closeOpportunity.mutate({ id: data.id, resultado: "lost" })}
+                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
+              >
+                <ThumbIcon direction="down" />
+                {t("crm.funnel.lose")}
+              </button>
+            </div>
+          )}
         </div>
         <p className="text-sm text-ink-dim">
           {data.funnel.nome} · {data.stage.nome}
@@ -286,6 +309,20 @@ export default function OpportunityDetailPage() {
         </ul>
       </section>
     </div>
+  );
+}
+
+/** Ganhar/Perder — mesmo ícone de joinha do card do Kanban, "Perder" só gira 180° e muda de cor. */
+function ThumbIcon({ direction }: { direction: "up" | "down" }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={`h-4 w-4 ${direction === "down" ? "rotate-180" : ""}`}
+      aria-hidden="true"
+    >
+      <path d="M2 21h2a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1H2v11ZM22 11.5a2 2 0 0 0-2-2h-5.42l.72-3.6a2 2 0 0 0-.49-1.74A2 2 0 0 0 13.28 3.4h-.09a1 1 0 0 0-.9.56L8.5 10H7v11h11.06a2 2 0 0 0 1.92-1.42l1.83-6.15a2 2 0 0 0 .19-.84v-1.09Z" />
+    </svg>
   );
 }
 

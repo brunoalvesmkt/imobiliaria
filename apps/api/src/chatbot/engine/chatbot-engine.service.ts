@@ -829,6 +829,11 @@ export class ChatbotEngineService {
       (await this.prisma.contact.create({
         data: { tenantId, nome: conversation.contatoNumero, whatsapp: conversation.contatoNumero, origem: "chatbot" },
       }));
+    if (!existing) {
+      await this.prisma.contactPhone.create({
+        data: { contactId: contact.id, numero: stripDddiBrasil(conversation.contatoNumero), tipo: "whatsapp", principal: true },
+      });
+    }
     await this.tenantPrisma.conversation.update({ where: { id: conversation.id }, data: { contactId: contact.id } });
     return contact.id;
   }
@@ -939,6 +944,15 @@ export class ChatbotEngineService {
       await this.prisma.opportunityStageHistory.update({ where: { id: open.id }, data: { exitedAt: new Date() } });
     }
   }
+}
+
+/** Remove o DDI do Brasil ("55") de um número de WhatsApp (ex.: "5511969382469" → "11969382469"). Só atua quando o número começa com "55" e tem o comprimento típico de um nº BR com DDD (12 ou 13 dígitos) — em qualquer outro formato, devolve os dígitos como vieram, sem tentar adivinhar outro DDI. */
+function stripDddiBrasil(numero: string): string {
+  const digits = numero.replace(/\D/g, "");
+  if (digits.startsWith("55") && (digits.length === 12 || digits.length === 13)) {
+    return digits.slice(2);
+  }
+  return digits;
 }
 
 function cosineSimilarity(a: number[], b: number[]): number {

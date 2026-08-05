@@ -8,6 +8,7 @@ import { ProviderRegistryService } from "../whatsapp/providers/provider-registry
 import { RealtimeGateway } from "../realtime/realtime.gateway";
 import { ChatbotEngineService } from "../chatbot/engine/chatbot-engine.service";
 import { FollowUpsService } from "./followups.service";
+import { stripDddiBrasil } from "../crm/contacts/phone.util";
 import type { AutomationAction } from "./automation-definition.types";
 
 interface RunExecutionJobData {
@@ -313,8 +314,13 @@ export class AutomationProcessor extends WorkerHost {
     const contact =
       existing ??
       (await this.prisma.contact.create({
-        data: { tenantId, nome: conversation.contatoNumero, whatsapp: conversation.contatoNumero, origem: "automacao" },
+        data: { tenantId, nome: "Sem Identificação", whatsapp: conversation.contatoNumero, origem: "automacao" },
       }));
+    if (!existing) {
+      await this.prisma.contactPhone.create({
+        data: { contactId: contact.id, numero: stripDddiBrasil(conversation.contatoNumero), tipo: "whatsapp", principal: true },
+      });
+    }
     await this.prisma.conversation.update({ where: { id: conversation.id }, data: { contactId: contact.id } });
     return contact.id;
   }

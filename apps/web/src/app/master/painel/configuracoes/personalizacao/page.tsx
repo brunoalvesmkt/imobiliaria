@@ -79,7 +79,6 @@ export default function MasterOwnSettingsPersonalizacaoPage() {
           onChange={(e) => setBrowserTitle(e.target.value)}
           onBlur={saveBrowserTitle}
           maxLength={70}
-          placeholder="Chatbot SaaS Platform"
         />
 
         <LogoUploadField

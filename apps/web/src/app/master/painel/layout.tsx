@@ -26,6 +26,15 @@ const NAV_ITEMS: { labelKey: DictionaryKey; href: string; roles?: ("super_admin"
 ];
 
 /**
+ * `pathname?.startsWith(item.href)` sozinho ativava "Configurações" junto com "Configurações
+ * para Empresas" — "/master/painel/configuracoes" é prefixo de string de
+ * "/master/painel/configuracoes-empresas/...". Só conta como ativo em match exato ou seguido de "/".
+ */
+function isNavItemActive(pathname: string | null, href: string): boolean {
+  return pathname === href || (pathname?.startsWith(`${href}/`) ?? false);
+}
+
+/**
  * Guard client-side, mesmo padrão do painel do tenant (`app/painel/layout.tsx`)
  * — os cookies `master_access_token`/`master_refresh_token` são distintos dos
  * cookies do tenant, então as duas sessões coexistem no mesmo navegador sem
@@ -113,7 +122,7 @@ export default function MasterPainelLayout({ children }: { children: React.React
           </div>
           <div className="flex flex-1 items-center justify-center gap-1">
             {visibleItems.map((item) => {
-              const isActive = pathname?.startsWith(item.href);
+              const isActive = isNavItemActive(pathname, item.href);
               return (
                 <Link
                   key={item.href}

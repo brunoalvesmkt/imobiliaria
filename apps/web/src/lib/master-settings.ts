@@ -36,6 +36,12 @@ export interface PlatformSettings {
   masterLoginLogoSizePercent: number;
   browserTitle: string | null;
   faviconUrl: string | null;
+  announcementEnabled: boolean;
+  announcementText: string | null;
+  announcementLinkUrl: string | null;
+  announcementLinkText: string | null;
+  announcementBgColor: string | null;
+  announcementTextColor: string | null;
   updatedAt: string;
 }
 

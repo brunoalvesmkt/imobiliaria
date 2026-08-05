@@ -28,12 +28,31 @@ export class BrandingService {
     });
   }
 
-  async getTenantBranding(): Promise<BrandingConfig> {
+  async getTenantBranding(): Promise<
+    BrandingConfig & {
+      announcement: {
+        enabled: boolean;
+        text: string | null;
+        linkUrl: string | null;
+        linkText: string | null;
+        bgColor: string | null;
+        textColor: string | null;
+      };
+    }
+  > {
     const settings = await this.getSettings();
     return {
       logoLightUrl: settings.tenantLogoLightUrl,
       logoDarkUrl: settings.tenantLogoDarkUrl,
       sizePercent: settings.tenantLogoSizePercent,
+      announcement: {
+        enabled: settings.announcementEnabled,
+        text: settings.announcementText,
+        linkUrl: settings.announcementLinkUrl,
+        linkText: settings.announcementLinkText,
+        bgColor: settings.announcementBgColor,
+        textColor: settings.announcementTextColor,
+      },
     };
   }
 

@@ -8,10 +8,19 @@ export interface BrandingConfig {
   sizePercent: number;
 }
 
+export interface AnnouncementConfig {
+  enabled: boolean;
+  text: string | null;
+  linkUrl: string | null;
+  linkText: string | null;
+  bgColor: string | null;
+  textColor: string | null;
+}
+
 export function useTenantBranding(enabled = true) {
   return useQuery({
     queryKey: ["branding", "tenant"],
-    queryFn: () => apiGet<BrandingConfig>("/branding/tenant"),
+    queryFn: () => apiGet<BrandingConfig & { announcement: AnnouncementConfig }>("/branding/tenant"),
     enabled,
     staleTime: 5 * 60 * 1000,
   });

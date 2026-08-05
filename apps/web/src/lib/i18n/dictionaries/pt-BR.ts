@@ -118,6 +118,7 @@ const dictionary = {
   "layout.menuLayout": "Layout do menu",
   "layout.sidebar": "Menu lateral",
   "layout.topbar": "Menu no topo",
+  "layout.announcement.close": "Fechar aviso",
   "topbar.closeMenu": "Fechar menu",
 
   "auth.brandTitle": "C",
@@ -1200,6 +1201,16 @@ const dictionary = {
   "master.settings.riskTerm.publish": "Publicar nova versão",
   "master.settings.modules.title": "Ordem dos módulos",
   "master.settings.modules.subtitle": "Defina a ordem em que os módulos aparecem no menu do painel das empresas.",
+
+  "master.settings.announcement.title": "Aviso",
+  "master.settings.announcement.subtitle": "Banner exibido no topo do painel das empresas. Ative quando quiser comunicar algo e desative quando não precisar mais.",
+  "master.settings.announcement.enabled": "Exibir aviso no painel das empresas",
+  "master.settings.announcement.text": "Texto do aviso",
+  "master.settings.announcement.linkUrl": "Link (opcional)",
+  "master.settings.announcement.linkText": "Texto do link (opcional)",
+  "master.settings.announcement.bgColor": "Cor de fundo",
+  "master.settings.announcement.textColor": "Cor do texto",
+  "master.settings.announcement.preview": "Pré-visualização",
 
   "branding.title": "Personalização",
   "branding.tenantSubtitle": "Logotipo exibido no menu do painel das empresas (lateral e horizontal).",

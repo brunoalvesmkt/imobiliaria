@@ -6,6 +6,7 @@ import { NAV_ITEMS, applyModuleOrder } from "./nav-items";
 import { useI18n } from "@/lib/i18n";
 import { useTenantBranding } from "@/lib/branding";
 import { LogoImage } from "./logo-image";
+import { TopbarActions } from "./topbar-actions";
 
 /** Mesmo NAV_ITEMS/lógica de ativo-desabilitado do Sidebar, só que como barra horizontal — layout alternativo ao menu lateral (documento de alterações: preferência de layout do menu). */
 export function HorizontalNav({ activeModules, moduleOrder }: { activeModules: Set<string>; moduleOrder?: string[] | undefined }) {
@@ -60,6 +61,8 @@ export function HorizontalNav({ activeModules, moduleOrder }: { activeModules: S
             );
           })}
       </div>
+
+      <TopbarActions />
     </nav>
   );
 }

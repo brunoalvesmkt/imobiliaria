@@ -120,6 +120,7 @@ const dictionary: Record<DictionaryKey, string> = {
   "layout.menuLayout": "Menu layout",
   "layout.sidebar": "Sidebar menu",
   "layout.topbar": "Top menu",
+  "layout.announcement.close": "Close announcement",
   "topbar.closeMenu": "Close menu",
 
   "auth.brandTitle": "C",
@@ -1202,6 +1203,16 @@ const dictionary: Record<DictionaryKey, string> = {
   "master.settings.riskTerm.publish": "Publish new version",
   "master.settings.modules.title": "Module order",
   "master.settings.modules.subtitle": "Set the order in which modules appear in the tenant panel's menu.",
+
+  "master.settings.announcement.title": "Announcement",
+  "master.settings.announcement.subtitle": "Banner shown at the top of the tenant panel. Turn it on whenever you need to communicate something and off when you don't.",
+  "master.settings.announcement.enabled": "Show announcement in the tenant panel",
+  "master.settings.announcement.text": "Announcement text",
+  "master.settings.announcement.linkUrl": "Link (optional)",
+  "master.settings.announcement.linkText": "Link text (optional)",
+  "master.settings.announcement.bgColor": "Background color",
+  "master.settings.announcement.textColor": "Text color",
+  "master.settings.announcement.preview": "Preview",
 
   "branding.title": "Branding",
   "branding.tenantSubtitle": "Logo shown in the tenant panel's menu (sidebar and top bar).",

@@ -12,6 +12,7 @@ const TABS: { href: string; labelKey: DictionaryKey }[] = [
   { href: "/master/painel/configuracoes-empresas/termo-risco", labelKey: "master.settings.riskTerm.title" },
   { href: "/master/painel/configuracoes-empresas/modulos", labelKey: "master.settings.modules.title" },
   { href: "/master/painel/configuracoes-empresas/personalizacao", labelKey: "branding.title" },
+  { href: "/master/painel/configuracoes-empresas/aviso", labelKey: "master.settings.announcement.title" },
 ];
 
 export default function MasterConfiguracoesEmpresasLayout({ children }: { children: React.ReactNode }) {

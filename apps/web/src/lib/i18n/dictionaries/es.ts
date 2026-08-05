@@ -120,6 +120,7 @@ const dictionary: Record<DictionaryKey, string> = {
   "layout.menuLayout": "Diseño del menú",
   "layout.sidebar": "Menú lateral",
   "layout.topbar": "Menú en la parte superior",
+  "layout.announcement.close": "Cerrar aviso",
   "topbar.closeMenu": "Cerrar menú",
 
   "auth.brandTitle": "C",
@@ -1202,6 +1203,16 @@ const dictionary: Record<DictionaryKey, string> = {
   "master.settings.riskTerm.publish": "Publicar nueva versión",
   "master.settings.modules.title": "Orden de los módulos",
   "master.settings.modules.subtitle": "Defina el orden en que los módulos aparecen en el menú del panel de las empresas.",
+
+  "master.settings.announcement.title": "Aviso",
+  "master.settings.announcement.subtitle": "Banner mostrado en la parte superior del panel de las empresas. Actívelo cuando quiera comunicar algo y desactívelo cuando ya no lo necesite.",
+  "master.settings.announcement.enabled": "Mostrar aviso en el panel de las empresas",
+  "master.settings.announcement.text": "Texto del aviso",
+  "master.settings.announcement.linkUrl": "Enlace (opcional)",
+  "master.settings.announcement.linkText": "Texto del enlace (opcional)",
+  "master.settings.announcement.bgColor": "Color de fondo",
+  "master.settings.announcement.textColor": "Color del texto",
+  "master.settings.announcement.preview": "Vista previa",
 
   "branding.title": "Personalización",
   "branding.tenantSubtitle": "Logotipo mostrado en el menú del panel de las empresas (lateral y horizontal).",

@@ -150,4 +150,33 @@ export class UpdatePlatformSettingsDto {
   @Matches(/^data:image\/png;base64,/)
   @MaxLength(MAX_LOGO_DATA_URI_LENGTH)
   faviconUrl?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  announcementEnabled?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  announcementText?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  announcementLinkUrl?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  announcementLinkText?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^#[0-9a-fA-F]{6}$/)
+  announcementBgColor?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^#[0-9a-fA-F]{6}$/)
+  announcementTextColor?: string | null;
 }

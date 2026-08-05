@@ -1263,6 +1263,17 @@ model PlatformSettings {
   browserTitle String? @db.Text
   faviconUrl   String? @db.Text
 
+  // Aviso/banner configurável pelo Master, exibido no topo do painel das
+  // empresas (não no login) — ligado/desligado e editado a qualquer momento
+  // pelo Master, sem precisar de deploy. Lido via GET /branding/tenant
+  // (já autenticado com TenantAuthGuard).
+  announcementEnabled   Boolean  @default(false)
+  announcementText      String?  @db.Text
+  announcementLinkUrl   String?  @db.Text
+  announcementLinkText  String?  @db.Text
+  announcementBgColor   String?
+  announcementTextColor String?
+
   updatedAt DateTime @updatedAt
 
   @@map("platform_settings")

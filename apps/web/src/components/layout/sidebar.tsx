@@ -6,6 +6,7 @@ import { NAV_ITEMS, applyModuleOrder } from "./nav-items";
 import { useI18n } from "@/lib/i18n";
 import { useTenantBranding } from "@/lib/branding";
 import { LogoImage } from "./logo-image";
+import { TopbarActions } from "./topbar-actions";
 
 export function Sidebar({
   activeModules,
@@ -73,6 +74,10 @@ export function Sidebar({
             </Link>
           );
         })}
+
+        <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-line pt-3">
+          <TopbarActions />
+        </div>
       </nav>
     </>
   );

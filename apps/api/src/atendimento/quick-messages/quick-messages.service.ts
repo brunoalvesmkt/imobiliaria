@@ -20,10 +20,15 @@ export class QuickMessagesService {
     private readonly audit: AuditService,
   ) {}
 
-  /** `teamId` do agente (se dado) filtra para mensagens da empresa toda (teamId null) + as da própria equipe. */
-  list(teamId?: string) {
+  /**
+   * `teamId` do agente (se dado) filtra para mensagens da empresa toda (teamId null) + as da
+   * própria equipe. `includeInactive` existe só para a tela de Configurações (administrador
+   * gerenciando as mensagens, precisa ver as desativadas para poder reativá-las) — o composer do
+   * Inbox nunca deve oferecer uma mensagem desativada para inserir.
+   */
+  list(teamId?: string, includeInactive?: boolean) {
     return this.tenantPrisma.quickMessage.findMany({
-      where: { ativo: true, ...(teamId ? { OR: [{ teamId: null }, { teamId }] } : {}) },
+      where: { ...(includeInactive ? {} : { ativo: true }), ...(teamId ? { OR: [{ teamId: null }, { teamId }] } : {}) },
       orderBy: [{ categoria: "asc" }, { titulo: "asc" }],
     });
   }
@@ -81,6 +86,22 @@ export class QuickMessagesService {
     });
 
     return updated;
+  }
+
+  async remove(id: string, actorId: string) {
+    const item = await this.get(id);
+    await this.tenantPrisma.quickMessage.delete({ where: { id } });
+
+    await this.audit.record({
+      actorId,
+      actorType: "tenant_user",
+      action: "quick_message.delete",
+      entity: "QuickMessage",
+      entityId: id,
+      previousData: { titulo: item.titulo },
+    });
+
+    return { status: "ok" as const };
   }
 
   /**

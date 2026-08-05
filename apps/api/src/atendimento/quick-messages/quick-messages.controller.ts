@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { TenantAuthGuard } from "../../auth/guards/tenant-auth.guard";
 import { ModuleActiveGuard } from "../../common/modules/module-active.guard";
 import { PermissionsGuard } from "../../common/permissions/permissions.guard";
@@ -18,8 +18,8 @@ export class QuickMessagesController {
 
   @Get()
   @RequirePermission("atendimento", "view")
-  list(@Query("teamId") teamId?: string) {
-    return this.service.list(teamId);
+  list(@Query("teamId") teamId?: string, @Query("includeInactive") includeInactive?: string) {
+    return this.service.list(teamId, includeInactive === "true");
   }
 
   @Post()
@@ -32,6 +32,12 @@ export class QuickMessagesController {
   @RequirePermission("atendimento", "administer")
   update(@Param("id") id: string, @Body() dto: UpdateQuickMessageDto, @CurrentUser() user: AuthenticatedRequestUser) {
     return this.service.update(id, dto, user.id);
+  }
+
+  @Delete(":id")
+  @RequirePermission("atendimento", "administer")
+  remove(@Param("id") id: string, @CurrentUser() user: AuthenticatedRequestUser) {
+    return this.service.remove(id, user.id);
   }
 
   @Post(":id/render")

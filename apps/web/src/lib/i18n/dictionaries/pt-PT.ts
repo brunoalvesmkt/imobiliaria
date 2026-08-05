@@ -88,6 +88,8 @@ const dictionary: Record<DictionaryKey, string> = {
   "atendimento.quickMessages.empty": "Nenhuma mensagem rápida ainda.",
   "atendimento.quickMessages.error": "Não foi possível criar a mensagem rápida.",
   "atendimento.quickMessages.insert": "Mensagens rápidas",
+  "atendimento.quickMessages.delete": "Excluir",
+  "atendimento.quickMessages.deleteConfirmYes": "Confirmar exclusão",
   "notifications.whatsappSettings.title": "Notificações por WhatsApp",
   "notifications.whatsappSettings.subtitle": "Canal opcional: eventos críticos também chegam a um número de WhatsApp administrativo, além do in-app e do e-mail.",
   "notifications.whatsappSettings.sourceNumber": "Número de WhatsApp remetente",

@@ -564,6 +564,8 @@ export class TenantScopedPrismaService {
 
       update: (args: { where: { id: string }; data: Prisma.QuickMessageUncheckedUpdateInput }) =>
         this.prisma.quickMessage.update({ where: { id: args.where.id, tenantId }, data: args.data }),
+
+      delete: (args: { where: { id: string } }) => this.prisma.quickMessage.delete({ where: { id: args.where.id, tenantId } }),
     };
   }
 

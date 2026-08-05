@@ -194,7 +194,14 @@ export class BaileysConnectionManagerService implements OnApplicationBootstrap {
 
   private handleMessagesUpsert(
     number: ProviderNumberContext,
-    payload: { type: string; messages: Array<{ key: { fromMe?: boolean; id?: string; remoteJid?: string }; messageTimestamp?: number | { toNumber(): number }; message?: { conversation?: string; extendedTextMessage?: { text?: string } } }> },
+    payload: {
+      type: string;
+      messages: Array<{
+        key: { fromMe?: boolean; id?: string; remoteJid?: string; senderPn?: string };
+        messageTimestamp?: number | { toNumber(): number };
+        message?: { conversation?: string; extendedTextMessage?: { text?: string } };
+      }>;
+    },
   ): void {
     if (payload.type !== "notify") return;
 
@@ -204,10 +211,15 @@ export class BaileysConnectionManagerService implements OnApplicationBootstrap {
       const texto = msg.message?.conversation ?? msg.message?.extendedTextMessage?.text;
       if (texto === undefined) continue; // mídia (imagem/áudio/documento) sem legenda/transcrição fica para uma próxima fase, não finge processar.
 
+      // Contatos com a proteção "ocultar número" do WhatsApp chegam com `remoteJid` no formato LID
+      // (ex.: "108379724877916@lid"), um identificador interno sem relação com o telefone real —
+      // vira um número "estranho" na tela. `key.senderPn` traz o JID com o número de telefone de
+      // verdade nesse caso; cai para `remoteJid` normalmente (contatos sem essa proteção).
+      const jid = msg.key.senderPn ?? msg.key.remoteJid;
       const timestamp = typeof msg.messageTimestamp === "number" ? msg.messageTimestamp : msg.messageTimestamp?.toNumber();
       const parsed: ParsedIncomingMessage = {
         externalId: msg.key.id,
-        fromNumero: msg.key.remoteJid.split("@")[0] ?? msg.key.remoteJid,
+        fromNumero: jid.split("@")[0] ?? jid,
         toIdentifier: number.id,
         tipo: "text",
         conteudo: texto,

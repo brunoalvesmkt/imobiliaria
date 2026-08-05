@@ -16,7 +16,7 @@ export interface MasterPlan {
   updatedAt: string;
 }
 
-export const AVAILABLE_MODULES = ["crm", "whatsapp", "atendimento", "chatbot", "automacao"];
+export const AVAILABLE_MODULES = ["crm", "whatsapp", "atendimento", "chatbot", "automacao", "qualidade_ia", "ia"];
 
 export function useMasterPlans() {
   return useQuery({ queryKey: ["master-plans"], queryFn: () => apiGet<MasterPlan[]>("/master/plans") });

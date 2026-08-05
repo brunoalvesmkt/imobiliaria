@@ -14,7 +14,6 @@ import {
   useOpportunities,
   useRemoveStage,
   useReorderOpportunities,
-  useTransferOpportunity,
   useUpdateFunnel,
   useUpdateStage,
   type Funnel,
@@ -90,7 +89,6 @@ export default function FunilPage() {
       ) : (
         <Board
           funnel={funnel}
-          otherFunnels={funnels.data.filter((f) => f.id !== funnel.id)}
           showNewOpportunity={showNewOpportunity}
           onCloseNewOpportunity={() => setShowNewOpportunity(false)}
           onOpenNewContact={() => setShowNewContact(true)}
@@ -572,6 +570,20 @@ function NewStageForm({ funnel }: { funnel: Funnel }) {
   );
 }
 
+/** Ganhar/Perder no card do Kanban — mesmo ícone de joinha, "Perder" só gira 180° (fica de ponta-cabeça) e muda de cor. */
+function ThumbIcon({ direction }: { direction: "up" | "down" }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={`h-4 w-4 ${direction === "down" ? "rotate-180" : ""}`}
+      aria-hidden="true"
+    >
+      <path d="M2 21h2a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1H2v11ZM22 11.5a2 2 0 0 0-2-2h-5.42l.72-3.6a2 2 0 0 0-.49-1.74A2 2 0 0 0 13.28 3.4h-.09a1 1 0 0 0-.9.56L8.5 10H7v11h11.06a2 2 0 0 0 1.92-1.42l1.83-6.15a2 2 0 0 0 .19-.84v-1.09Z" />
+    </svg>
+  );
+}
+
 /** "3d 4h" / "45min" a partir de um timestamp ISO até agora — usado nos cards do Kanban. */
 function formatElapsed(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
@@ -586,13 +598,11 @@ function formatElapsed(iso: string): string {
 
 function Board({
   funnel,
-  otherFunnels,
   showNewOpportunity,
   onCloseNewOpportunity,
   onOpenNewContact,
 }: {
   funnel: Funnel;
-  otherFunnels: Funnel[];
   showNewOpportunity: boolean;
   onCloseNewOpportunity: () => void;
   onOpenNewContact: () => void;
@@ -603,7 +613,6 @@ function Board({
   const moveStage = useMoveOpportunityStage();
   const reorderOpportunities = useReorderOpportunities();
   const closeOpportunity = useCloseOpportunity();
-  const transferOpportunity = useTransferOpportunity();
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
 
@@ -755,46 +764,31 @@ function Board({
                             {t("crm.funnel.nextStage")}
                           </button>
                         </div>
-                        <div className="flex gap-1">
+                        <div className="flex items-center gap-1">
                           <button
                             type="button"
+                            title={t("crm.funnel.win")}
                             onClick={(e) => {
                               e.stopPropagation();
                               closeOpportunity.mutate({ id: opportunity.id, resultado: "won" });
                             }}
-                            className="rounded px-1.5 py-0.5 text-xs font-medium text-brand-700 hover:bg-brand-50"
+                            className="rounded p-1 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
                           >
-                            {t("crm.funnel.win")}
+                            <ThumbIcon direction="up" />
                           </button>
                           <button
                             type="button"
+                            title={t("crm.funnel.lose")}
                             onClick={(e) => {
                               e.stopPropagation();
                               closeOpportunity.mutate({ id: opportunity.id, resultado: "lost" });
                             }}
-                            className="rounded px-1.5 py-0.5 text-xs font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
+                            className="rounded p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
                           >
-                            {t("crm.funnel.lose")}
+                            <ThumbIcon direction="down" />
                           </button>
                         </div>
                       </div>
-                      {otherFunnels.length > 0 && (
-                        <select
-                          value=""
-                          onChange={(e) => {
-                            if (e.target.value) transferOpportunity.mutate({ opportunityId: opportunity.id, targetFunnelId: e.target.value });
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                          className="mt-2 w-full rounded border border-line bg-surface px-1.5 py-1 text-xs text-ink-dim"
-                        >
-                          <option value="">{t("crm.funnel.transferTo")}</option>
-                          {otherFunnels.map((f) => (
-                            <option key={f.id} value={f.id}>
-                              {f.nome}
-                            </option>
-                          ))}
-                        </select>
-                      )}
                     </div>
                   );
                 })}

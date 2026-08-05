@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useOpportunity, useUpdateOpportunity, useTransferOpportunityResponsavel, useResponsavelOptions } from "@/lib/crm";
+import { useOpportunity, useUpdateOpportunity, useTransferOpportunityResponsavel, useResponsavelOptions, useFunnels, useTransferOpportunity } from "@/lib/crm";
 import { ContactTasks } from "@/components/crm/contact-tasks";
 import { Field } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -18,16 +18,21 @@ export default function OpportunityDetailPage() {
   const updateOpportunity = useUpdateOpportunity(params.id);
   const transferResponsavel = useTransferOpportunityResponsavel(params.id);
   const responsavelOptions = useResponsavelOptions();
+  const funnels = useFunnels();
+  const transferFunnel = useTransferOpportunity();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ valor: "", produto: "", servico: "", previsaoFechamento: "", observacoes: "" });
   const [transferring, setTransferring] = useState(false);
   const [transferTarget, setTransferTarget] = useState("");
+  const [transferringFunnel, setTransferringFunnel] = useState(false);
+  const [funnelTarget, setFunnelTarget] = useState("");
 
   if (opportunity.isLoading) return <p className="text-sm text-ink-faint">{t("common.loading")}</p>;
   if (opportunity.isError || !opportunity.data) return <Alert tone="error">{t("crm.opportunityDetail.notFound")}</Alert>;
 
   const data = opportunity.data;
   const responsavelUsers = responsavelOptions.data ?? [];
+  const otherFunnels = (funnels.data ?? []).filter((f) => f.id !== data.funnelId);
 
   function startEditing() {
     setForm({
@@ -56,6 +61,13 @@ export default function OpportunityDetailPage() {
     await transferResponsavel.mutateAsync(transferTarget);
     setTransferring(false);
     setTransferTarget("");
+  }
+
+  async function onConfirmTransferFunnel() {
+    if (!funnelTarget) return;
+    await transferFunnel.mutateAsync({ opportunityId: data.id, targetFunnelId: funnelTarget });
+    setTransferringFunnel(false);
+    setFunnelTarget("");
   }
 
   return (
@@ -201,6 +213,46 @@ export default function OpportunityDetailPage() {
             >
               {t("crm.opportunityDetail.transfer")}
             </Button>
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-line bg-surface p-5">
+        <h2 className="mb-4 text-sm font-semibold text-ink">{t("crm.opportunityDetail.funnelSection")}</h2>
+        {transferringFunnel ? (
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-ink">{t("crm.opportunityDetail.funnelLabel")}</label>
+              <select
+                value={funnelTarget}
+                onChange={(e) => setFunnelTarget(e.target.value)}
+                className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
+              >
+                <option value="">{t("crm.funnel.chooseFunnel")}</option>
+                {otherFunnels.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-2">
+              <Button loading={transferFunnel.isPending} disabled={!funnelTarget} onClick={onConfirmTransferFunnel}>
+                {t("crm.opportunityDetail.transferConfirm")}
+              </Button>
+              <Button variant="ghost" onClick={() => setTransferringFunnel(false)}>
+                {t("common.cancel")}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-ink">{data.funnel.nome}</p>
+            {otherFunnels.length > 0 && (
+              <Button variant="secondary" onClick={() => setTransferringFunnel(true)}>
+                {t("crm.opportunityDetail.transfer")}
+              </Button>
+            )}
           </div>
         )}
       </section>

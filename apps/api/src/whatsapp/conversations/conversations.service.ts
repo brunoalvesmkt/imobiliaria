@@ -56,6 +56,15 @@ export class ConversationsService {
     if (!conversation) {
       throw new NotFoundException("Conversa não encontrada.");
     }
+
+    // Abrir a conversa marca como lida — sem isso, o contador de não lidas (badge verde no
+    // Inbox) só crescia, nunca zerava, mesmo depois de o atendente ler tudo.
+    if (conversation.unreadCount > 0) {
+      await this.tenantPrisma.conversation.update({ where: { id }, data: { unreadCount: 0 } });
+      conversation.unreadCount = 0;
+      this.realtime.emitToTenant(requireCurrentTenantId(), "conversation:updated", { conversationId: id });
+    }
+
     return conversation;
   }
 

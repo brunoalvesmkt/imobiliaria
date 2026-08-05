@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 /**
  * Rolagem horizontal é inerente a certas metáforas visuais (grade de colunas
@@ -14,11 +14,13 @@ export function HorizontalScroller({
   children,
   className = "",
   contentClassName = "",
+  contentStyle,
   snap = true,
 }: {
   children: ReactNode;
   className?: string;
   contentClassName?: string;
+  contentStyle?: CSSProperties;
   snap?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -49,6 +51,7 @@ export function HorizontalScroller({
     <div className={`relative ${className}`}>
       <div
         ref={ref}
+        style={contentStyle}
         className={`overflow-x-auto [-webkit-overflow-scrolling:touch] ${snap ? "snap-x snap-proximity scroll-smooth" : ""} ${contentClassName}`}
       >
         {children}

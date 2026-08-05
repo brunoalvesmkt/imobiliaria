@@ -622,6 +622,12 @@ function Board({
     return open.filter((o) => o.stageId === stageId);
   }
 
+  // Todo card na mesma posição (1º, 2º, ...) em qualquer etapa fica com a altura do maior deles
+  // nessa posição, independente da quantidade de informação em cada um — via CSS Grid: as colunas
+  // do funil formam uma única grade (não pilhas independentes), e cada linha da grade naturalmente
+  // assume a altura do maior item colocado nela. `maxCards` define quantas linhas a grade precisa.
+  const maxCards = Math.max(1, ...funnel.stages.map((s) => opportunitiesForStage(s.id).length));
+
   function moveTo(opportunity: Opportunity, direction: "prev" | "next") {
     const stages = funnel.stages;
     const currentIndex = stages.findIndex((s) => s.id === opportunity.stageId);
@@ -664,7 +670,15 @@ function Board({
         <p className="px-1 text-xs text-ink-faint sm:hidden">{t("crm.funnel.swipeHint")}</p>
       )}
 
-      <HorizontalScroller contentClassName="flex gap-4 pb-2">
+      <HorizontalScroller
+        contentClassName="grid pb-2"
+        contentStyle={{
+          gridTemplateColumns: `repeat(${funnel.stages.length}, 18rem)`,
+          gridTemplateRows: `auto repeat(${maxCards}, auto)`,
+          columnGap: "1rem",
+          rowGap: "0.5rem",
+        }}
+      >
         {funnel.stages.map((stage) => {
           const stageOpportunities = opportunitiesForStage(stage.id);
           return (
@@ -682,20 +696,21 @@ function Board({
                 if (opportunityId) moveToStageId(opportunityId, stage.id);
                 setDraggedId(null);
               }}
-              className={`flex w-72 flex-none snap-start flex-col gap-2 rounded-lg bg-surface-muted p-3 transition-colors ${
+              style={{ gridTemplateRows: "subgrid", gridRow: `span ${maxCards + 1}`, rowGap: "0.5rem" }}
+              className={`grid w-72 flex-none snap-start rounded-lg bg-surface-muted p-3 transition-colors ${
                 dragOverStageId === stage.id ? "ring-2 ring-brand-500" : ""
               }`}
             >
-              <div className="flex items-center justify-between px-1">
+              <div className="flex items-center justify-between px-1" style={{ gridRow: 1 }}>
                 <h3 className="text-sm font-semibold text-ink">{stage.nome}</h3>
                 <span className="text-xs text-ink-faint">{stageOpportunities.length}</span>
               </div>
-              <div className="flex flex-col gap-2">
-                {stageOpportunities.map((opportunity) => {
+              {stageOpportunities.map((opportunity, cardIndex) => {
                   const stageIndex = funnel.stages.findIndex((s) => s.id === stage.id);
                   return (
                     <div
                       key={opportunity.id}
+                      style={{ gridRow: cardIndex + 2 }}
                       draggable
                       onDragStart={(e) => {
                         e.dataTransfer.setData("text/plain", opportunity.id);
@@ -791,9 +806,12 @@ function Board({
                       </div>
                     </div>
                   );
-                })}
-                {stageOpportunities.length === 0 && <p className="px-1 text-xs text-ink-faint">{t("crm.funnel.noOpportunities")}</p>}
-              </div>
+              })}
+              {stageOpportunities.length === 0 && (
+                <p className="px-1 text-xs text-ink-faint" style={{ gridRow: 2 }}>
+                  {t("crm.funnel.noOpportunities")}
+                </p>
+              )}
             </div>
           );
         })}

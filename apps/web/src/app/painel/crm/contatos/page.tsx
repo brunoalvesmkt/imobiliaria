@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useContacts, useContactOrigins, useImportContacts, type ContactPhoneType } from "@/lib/crm";
 import { LeadScoreBadge } from "@/components/crm/lead-score-badge";
 import { ContactForm } from "@/components/crm/contact-form";
@@ -32,6 +32,7 @@ function readFileAsBase64(file: File): Promise<string> {
 export default function ContatosPage() {
   const { t } = useI18n();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const isAdmin = useIsAdmin();
   const [search, setSearch] = useState("");
   const [origemId, setOrigemId] = useState("");
@@ -41,7 +42,9 @@ export default function ContatosPage() {
   const [exportAllPhones, setExportAllPhones] = useState(false);
   const [exportAllEmails, setExportAllEmails] = useState(false);
   const origins = useContactOrigins();
-  const contacts = useContacts(search, origemId || undefined, phoneType || undefined);
+  const periodDesde = searchParams.get("desde") ?? undefined;
+  const periodAte = searchParams.get("ate") ?? undefined;
+  const contacts = useContacts(search, origemId || undefined, phoneType || undefined, periodDesde, periodAte);
   const importContacts = useImportContacts();
   const csvInputRef = useRef<HTMLInputElement>(null);
   const xlsxInputRef = useRef<HTMLInputElement>(null);
@@ -133,6 +136,15 @@ export default function ContatosPage() {
           <Button onClick={() => setShowForm((v) => !v)}>{showForm ? t("common.cancel") : t("crm.contacts.newContact")}</Button>
         </div>
       </div>
+
+      {(periodDesde || periodAte) && (
+        <Alert tone="info">
+          {t("crm.contacts.periodFilterActive")}{" "}
+          <Link href="/painel/crm/contatos" className="font-medium underline">
+            {t("crm.contacts.periodFilterClear")}
+          </Link>
+        </Alert>
+      )}
 
       {importResult && (
         <Alert tone={importResult.errors.length > 0 ? "error" : "success"}>

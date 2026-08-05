@@ -82,11 +82,25 @@ export class ContactsService {
     return { ...contact, cpf: maskDocument(contact.cpf), cnpj: maskDocument(contact.cnpj) };
   }
 
-  async list(search?: string, roleId?: string, origemId?: string, responsavelId?: string, phoneType?: string) {
+  async list(
+    search?: string,
+    roleId?: string,
+    origemId?: string,
+    responsavelId?: string,
+    phoneType?: string,
+    from?: string,
+    to?: string,
+  ) {
     const where: Prisma.ContactWhereInput = { deletedAt: null };
     if (origemId) where.origemId = origemId;
     if (responsavelId) where.responsavelId = responsavelId;
     if (phoneType) where.phones = { some: { tipo: phoneType } };
+    if (from || to) {
+      where.createdAt = {
+        ...(from ? { gte: new Date(from) } : {}),
+        ...(to ? { lte: new Date(to) } : {}),
+      };
+    }
     if (search) {
       where.OR = [
         { nome: { contains: search, mode: "insensitive" } },

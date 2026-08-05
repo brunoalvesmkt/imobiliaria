@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
@@ -120,6 +121,7 @@ export function KpiCard({
   invert = false,
   comparisonLabel,
   href,
+  tooltip,
 }: {
   label: string;
   value: string | number;
@@ -128,11 +130,15 @@ export function KpiCard({
   invert?: boolean;
   comparisonLabel?: string | null | undefined;
   href?: string;
+  tooltip?: string;
 }) {
   const { t } = useI18n();
 
   const content = (
-    <div className={`flex flex-col gap-1.5 rounded-lg border border-line bg-surface p-4 ${href ? "cursor-pointer transition-colors hover:border-brand-300 hover:bg-surface-alt" : ""}`}>
+    <div
+      title={tooltip}
+      className={`flex flex-col gap-1.5 rounded-lg border border-line bg-surface p-4 ${href ? "cursor-pointer transition-colors hover:border-brand-300 hover:bg-surface-alt" : ""}`}
+    >
       <p className="text-xs font-medium uppercase tracking-wide text-ink-faint">{label}</p>
       <p className="text-2xl font-semibold tabular-nums text-ink">{value}</p>
       {delta !== undefined && delta !== null && (
@@ -228,13 +234,23 @@ export function ActionsBlock({ actions, dismissed, onDismiss }: { actions: Dashb
 
 export function OperationalGrid({ operacional }: { operacional: Record<string, number | undefined> }) {
   const { t } = useI18n();
-  const items: { key: string; label: DictionaryKey }[] = [
-    { key: "atendentesOnline", label: "dashboard.operacional.atendentesOnline" },
-    { key: "atendentesOffline", label: "dashboard.operacional.atendentesOffline" },
-    { key: "conversasAguardando", label: "dashboard.operacional.conversasAguardando" },
-    { key: "filasAbertas", label: "dashboard.operacional.filasAbertas" },
-    { key: "oportunidadesSemResponsavel", label: "dashboard.operacional.oportunidadesSemResponsavel" },
-    { key: "tarefasVencidas", label: "dashboard.operacional.tarefasVencidas" },
+  const items: { key: string; label: DictionaryKey; tooltip: DictionaryKey; href?: string }[] = [
+    { key: "atendentesOnline", label: "dashboard.operacional.atendentesOnline", tooltip: "dashboard.operacional.atendentesOnline.tooltip" },
+    { key: "atendentesOffline", label: "dashboard.operacional.atendentesOffline", tooltip: "dashboard.operacional.atendentesOffline.tooltip" },
+    {
+      key: "conversasAguardando",
+      label: "dashboard.operacional.conversasAguardando",
+      tooltip: "dashboard.operacional.conversasAguardando.tooltip",
+      href: "/painel/atendimento/inbox?status=open",
+    },
+    { key: "filasAbertas", label: "dashboard.operacional.filasAbertas", tooltip: "dashboard.operacional.filasAbertas.tooltip", href: "/painel/atendimento/equipes" },
+    {
+      key: "oportunidadesSemResponsavel",
+      label: "dashboard.operacional.oportunidadesSemResponsavel",
+      tooltip: "dashboard.operacional.oportunidadesSemResponsavel.tooltip",
+      href: "/painel/crm/funil?semResponsavel=1",
+    },
+    { key: "tarefasVencidas", label: "dashboard.operacional.tarefasVencidas", tooltip: "dashboard.operacional.tarefasVencidas.tooltip", href: "/painel/crm/tarefas" },
   ];
   const visible = items.filter((i) => operacional[i.key] !== undefined);
 
@@ -242,14 +258,43 @@ export function OperationalGrid({ operacional }: { operacional: Record<string, n
     <div className="flex flex-col gap-2">
       <p className="text-xs text-ink-faint">{t("dashboard.operacional.nota")}</p>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        {visible.map((item) => (
-          <div key={item.key} className="rounded-lg border border-line bg-surface p-3">
-            <p className="text-xl font-semibold tabular-nums text-ink">{operacional[item.key]}</p>
-            <p className="mt-1 text-xs text-ink-faint">{t(item.label)}</p>
-          </div>
-        ))}
+        {visible.map((item) => {
+          const card = (
+            <div
+              title={t(item.tooltip)}
+              className={`rounded-lg border border-line bg-surface p-3 ${item.href ? "cursor-pointer transition-colors hover:border-brand-300 hover:bg-surface-alt" : ""}`}
+            >
+              <p className="text-xl font-semibold tabular-nums text-ink">{operacional[item.key]}</p>
+              <p className="mt-1 text-xs text-ink-faint">{t(item.label)}</p>
+            </div>
+          );
+          return (
+            <div key={item.key}>
+              {item.href ? <Link href={item.href}>{card}</Link> : card}
+            </div>
+          );
+        })}
       </div>
     </div>
+  );
+}
+
+export function UpdatedAgo({ dataUpdatedAt }: { dataUpdatedAt: number }) {
+  const { t } = useI18n();
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => setTick((n) => n + 1), 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const seconds = Math.max(0, Math.round((Date.now() - dataUpdatedAt) / 1000));
+  const text = seconds < 60 ? `${seconds}s` : `${Math.round(seconds / 60)}min`;
+
+  return (
+    <p className="text-xs text-ink-faint">
+      {t("dashboard.updatedAgo")} {text}
+    </p>
   );
 }
 

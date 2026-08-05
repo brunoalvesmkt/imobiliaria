@@ -5,8 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { AuthLink } from "@/components/auth/auth-card";
+import { LogoImage } from "@/components/layout/logo-image";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
+import { useSiteBranding } from "@/lib/branding";
 import { usePublicPlans, usePublicSettings, planFeatureList, type PublicPlan } from "@/lib/public-catalog";
 
 /**
@@ -29,6 +31,7 @@ function PlanosContent() {
   const affiliateLinkCode = searchParams.get("ref") ?? undefined;
   const plans = usePublicPlans();
   const settings = usePublicSettings();
+  const branding = useSiteBranding();
   const [periodicidade, setPeriodicidade] = useState<"mensal" | "anual">("mensal");
 
   const allowMonthly = settings.data?.allowMonthly !== false;
@@ -53,8 +56,14 @@ function PlanosContent() {
     <div className="min-h-screen bg-surface-alt">
       <header className="flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-md bg-brand-500 text-sm font-bold text-white">C</span>
-          <span className="text-sm font-semibold text-ink">{t("nav.brand")}</span>
+          <LogoImage
+            lightUrl={branding.data?.tenantLoginLogo.logoLightUrl}
+            darkUrl={branding.data?.tenantLoginLogo.logoDarkUrl}
+            sizePercent={branding.data?.tenantLoginLogo.sizePercent}
+            fallbackLetter="C"
+            fallbackClassName="flex h-8 w-8 items-center justify-center rounded-md bg-brand-500 text-sm font-bold text-white"
+          />
+          <span className="text-sm font-semibold text-ink">{branding.data?.browserTitle || t("nav.brand")}</span>
         </div>
         <div className="flex items-center gap-3">
           <LanguageSwitcher />

@@ -108,6 +108,8 @@ export function useDashboardSummary(filter: PeriodFilterState, enabled: boolean)
     queryKey: ["dashboard", "summary", filter],
     queryFn: () => apiGet<DashboardSummary>(`/dashboard/summary?${buildQuery(filter)}`),
     enabled,
+    // Bloco operacional é tempo real — atualiza sozinho em segundo plano sem exigir F5.
+    refetchInterval: 60_000,
   });
 }
 

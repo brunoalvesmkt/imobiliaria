@@ -1422,6 +1422,26 @@ const dictionary: Record<DictionaryKey, string> = {
   "dashboard.alertConfig.opportunityStagnantDays": "Alert when an opportunity has no activity for (days)",
   "dashboard.alertConfig.proposalNoResponseDays": "Alert when a proposal gets no response for (days)",
   "dashboard.alertConfig.taskOverdueEnabled": "Alert about overdue tasks",
+
+  "dashboard.updatedAgo": "Updated",
+  "dashboard.operacional.atendentesOnline.tooltip": "Agents with an active session in the panel right now.",
+  "dashboard.operacional.atendentesOffline.tooltip": "Active agents in the company who are not connected right now.",
+  "dashboard.operacional.conversasAguardando.tooltip": "Conversations in the queue, unassigned, waiting for service.",
+  "dashboard.operacional.filasAbertas.tooltip": "Service queues currently active.",
+  "dashboard.operacional.oportunidadesSemResponsavel.tooltip": "Open opportunities with no agent assigned.",
+  "dashboard.operacional.tarefasVencidas.tooltip": "Tasks with a deadline already passed.",
+  "dashboard.visaoGeral.title": "Period overview",
+  "dashboard.tooltip.novosContatos": "Contacts created in the selected period.",
+  "dashboard.tooltip.oportunidadesGanhas": "Opportunities marked as won in the selected period.",
+  "dashboard.tooltip.valorGanho": "Sum of the value of opportunities won in the selected period.",
+  "dashboard.tooltip.taxaConversao": "Percentage of opportunities won out of won + lost in the period.",
+  "dashboard.tooltip.totalConversas": "Conversations started in the selected period.",
+  "dashboard.tooltip.fechadas": "Conversations closed in the selected period.",
+
+  "crm.contacts.periodFilterActive": "Showing only contacts created in the selected period.",
+  "crm.contacts.periodFilterClear": "Clear filter",
+  "crm.funnel.semResponsavelFilterActive": "Showing only opportunities without an owner.",
+  "crm.funnel.semResponsavelFilterClear": "Clear filter",
 };
 
 export default dictionary;

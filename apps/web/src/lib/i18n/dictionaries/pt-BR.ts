@@ -1420,6 +1420,26 @@ const dictionary = {
   "dashboard.alertConfig.opportunityStagnantDays": "Alertar quando uma oportunidade ficar sem movimentação por (dias)",
   "dashboard.alertConfig.proposalNoResponseDays": "Alertar quando uma proposta ficar sem retorno por (dias)",
   "dashboard.alertConfig.taskOverdueEnabled": "Alertar sobre tarefas vencidas",
+
+  "dashboard.updatedAgo": "Atualizado há",
+  "dashboard.operacional.atendentesOnline.tooltip": "Atendentes com sessão ativa no painel agora.",
+  "dashboard.operacional.atendentesOffline.tooltip": "Atendentes ativos na empresa que não estão conectados agora.",
+  "dashboard.operacional.conversasAguardando.tooltip": "Conversas na fila, sem atendente atribuído, aguardando atendimento.",
+  "dashboard.operacional.filasAbertas.tooltip": "Filas de atendimento ativas no momento.",
+  "dashboard.operacional.oportunidadesSemResponsavel.tooltip": "Oportunidades abertas sem nenhum atendente responsável.",
+  "dashboard.operacional.tarefasVencidas.tooltip": "Tarefas com prazo já ultrapassado.",
+  "dashboard.visaoGeral.title": "Visão geral do período",
+  "dashboard.tooltip.novosContatos": "Contatos criados no período selecionado.",
+  "dashboard.tooltip.oportunidadesGanhas": "Oportunidades marcadas como ganhas no período selecionado.",
+  "dashboard.tooltip.valorGanho": "Soma do valor das oportunidades ganhas no período selecionado.",
+  "dashboard.tooltip.taxaConversao": "Percentual de oportunidades ganhas sobre o total de ganhas + perdidas no período.",
+  "dashboard.tooltip.totalConversas": "Conversas iniciadas no período selecionado.",
+  "dashboard.tooltip.fechadas": "Conversas encerradas no período selecionado.",
+
+  "crm.contacts.periodFilterActive": "Mostrando apenas contatos criados no período selecionado.",
+  "crm.contacts.periodFilterClear": "Limpar filtro",
+  "crm.funnel.semResponsavelFilterActive": "Mostrando apenas oportunidades sem responsável.",
+  "crm.funnel.semResponsavelFilterClear": "Limpar filtro",
 } as const;
 
 export default dictionary;

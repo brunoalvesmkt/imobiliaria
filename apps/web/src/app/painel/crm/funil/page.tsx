@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   useAddStage,
   useCloseOpportunity,
@@ -609,6 +610,8 @@ function Board({
 }) {
   const { t, locale } = useI18n();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const onlySemResponsavel = searchParams.get("semResponsavel") === "1";
   const opportunities = useOpportunities(funnel.id);
   const moveStage = useMoveOpportunityStage();
   const reorderOpportunities = useReorderOpportunities();
@@ -616,7 +619,9 @@ function Board({
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
 
-  const open = (opportunities.data ?? []).filter((o) => o.status === "open");
+  const open = (opportunities.data ?? []).filter(
+    (o) => o.status === "open" && (!onlySemResponsavel || !o.responsavelId),
+  );
 
   function opportunitiesForStage(stageId: string): Opportunity[] {
     return open.filter((o) => o.stageId === stageId);
@@ -662,6 +667,15 @@ function Board({
 
   return (
     <div className="flex flex-col gap-3">
+      {onlySemResponsavel && (
+        <div className="flex items-center gap-2 rounded-md border border-line bg-surface-muted px-3 py-2 text-sm text-ink-dim">
+          {t("crm.funnel.semResponsavelFilterActive")}
+          <Link href="/painel/crm/funil" className="font-medium text-brand-700 underline">
+            {t("crm.funnel.semResponsavelFilterClear")}
+          </Link>
+        </div>
+      )}
+
       {showNewOpportunity && (
         <NewOpportunityForm funnel={funnel} onDone={onCloseNewOpportunity} onOpenNewContact={onOpenNewContact} />
       )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useAssignQueue,
@@ -36,9 +37,13 @@ const STATUS_TABS: { labelKey: DictionaryKey; value: string }[] = [
   { labelKey: "atendimento.inbox.filter.closed", value: "closed" },
 ];
 
+const VALID_STATUSES = new Set(STATUS_TABS.map((tab) => tab.value));
+
 export default function InboxPage() {
   const { t } = useI18n();
-  const [status, setStatus] = useState("open");
+  const searchParams = useSearchParams();
+  const initialStatus = searchParams.get("status");
+  const [status, setStatus] = useState(initialStatus && VALID_STATUSES.has(initialStatus) ? initialStatus : "open");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const inbox = useInbox(status);
   const queryClient = useQueryClient();

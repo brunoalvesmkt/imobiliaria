@@ -1422,6 +1422,26 @@ const dictionary: Record<DictionaryKey, string> = {
   "dashboard.alertConfig.opportunityStagnantDays": "Alertar cuando una oportunidad no tenga movimiento durante (días)",
   "dashboard.alertConfig.proposalNoResponseDays": "Alertar cuando una propuesta no tenga respuesta durante (días)",
   "dashboard.alertConfig.taskOverdueEnabled": "Alertar sobre tareas vencidas",
+
+  "dashboard.updatedAgo": "Actualizado hace",
+  "dashboard.operacional.atendentesOnline.tooltip": "Agentes con sesión activa en el panel ahora mismo.",
+  "dashboard.operacional.atendentesOffline.tooltip": "Agentes activos de la empresa que no están conectados ahora.",
+  "dashboard.operacional.conversasAguardando.tooltip": "Conversaciones en cola, sin agente asignado, esperando atención.",
+  "dashboard.operacional.filasAbertas.tooltip": "Colas de atención activas en este momento.",
+  "dashboard.operacional.oportunidadesSemResponsavel.tooltip": "Oportunidades abiertas sin ningún agente responsable.",
+  "dashboard.operacional.tarefasVencidas.tooltip": "Tareas con plazo ya vencido.",
+  "dashboard.visaoGeral.title": "Visión general del período",
+  "dashboard.tooltip.novosContatos": "Contactos creados en el período seleccionado.",
+  "dashboard.tooltip.oportunidadesGanhas": "Oportunidades marcadas como ganadas en el período seleccionado.",
+  "dashboard.tooltip.valorGanho": "Suma del valor de las oportunidades ganadas en el período seleccionado.",
+  "dashboard.tooltip.taxaConversao": "Porcentaje de oportunidades ganadas sobre el total de ganadas + perdidas en el período.",
+  "dashboard.tooltip.totalConversas": "Conversaciones iniciadas en el período seleccionado.",
+  "dashboard.tooltip.fechadas": "Conversaciones cerradas en el período seleccionado.",
+
+  "crm.contacts.periodFilterActive": "Mostrando solo contactos creados en el período seleccionado.",
+  "crm.contacts.periodFilterClear": "Quitar filtro",
+  "crm.funnel.semResponsavelFilterActive": "Mostrando solo oportunidades sin responsable.",
+  "crm.funnel.semResponsavelFilterClear": "Quitar filtro",
 };
 
 export default dictionary;

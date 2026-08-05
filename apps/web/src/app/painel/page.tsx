@@ -7,7 +7,7 @@ import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useDashboardSummary } from "@/lib/dashboard";
-import { ActionsBlock, KpiCard, OperationalGrid, PeriodLabel, PeriodPresetFilter, defaultPeriodFilter } from "./dashboard-widgets";
+import { ActionsBlock, KpiCard, OperationalGrid, PeriodLabel, PeriodPresetFilter, UpdatedAgo, defaultPeriodFilter } from "./dashboard-widgets";
 
 const CHART_COLOR = "#16a34a";
 
@@ -60,9 +60,12 @@ export default function DashboardPage() {
           <h1 className="text-lg font-semibold text-ink">{t("dashboard.title")}</h1>
           <p className="text-sm text-ink-dim">{t("dashboard.subtitle")}</p>
         </div>
-        <Button variant="secondary" onClick={() => dashboard.refetch()}>
-          {t("dashboard.refresh")}
-        </Button>
+        <div className="flex items-center gap-3">
+          {dashboard.dataUpdatedAt > 0 && <UpdatedAgo dataUpdatedAt={dashboard.dataUpdatedAt} />}
+          <Button variant="secondary" onClick={() => dashboard.refetch()}>
+            {t("dashboard.refresh")}
+          </Button>
+        </div>
       </div>
 
       {data.modulosAtivos.length === 0 && <Alert tone="info">{t("dashboard.noModules")}</Alert>}
@@ -71,6 +74,50 @@ export default function DashboardPage() {
         <PeriodPresetFilter filter={filter} onChange={setFilter} />
         <PeriodLabel label={data.periodo.label} />
       </div>
+
+      {(data.crm || data.atendimento) && (
+        <section className="flex flex-col gap-2">
+          <h2 className="text-sm font-semibold text-ink">{t("dashboard.visaoGeral.title")}</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {data.crm && (
+              <>
+                <KpiCard
+                  label={t("dashboard.crm.novosContatos")}
+                  value={data.crm.atual.contactsCreated}
+                  delta={data.crm.deltas.contactsCreated}
+                  comparisonLabel={comparisonLabel}
+                  href={`/painel/crm/contatos?desde=${data.periodo.from}&ate=${data.periodo.to}`}
+                  tooltip={t("dashboard.crm.novosContatos")}
+                />
+                <KpiCard
+                  label={t("dashboard.crm.valorGanho")}
+                  value={formatCurrency(data.crm.atual.opportunitiesWonValue)}
+                  delta={data.crm.deltas.opportunitiesWonValue}
+                  comparisonLabel={comparisonLabel}
+                  href="/painel/crm/funil"
+                  tooltip={t("dashboard.crm.valorGanho")}
+                />
+              </>
+            )}
+            {data.atendimento && (
+              <KpiCard
+                label={t("dashboard.atendimento.totalConversas")}
+                value={data.atendimento.atual.conversationsByStatus.reduce((sum, g) => sum + g.count, 0)}
+                delta={data.atendimento.deltas.total}
+                comparisonLabel={comparisonLabel}
+                href="/painel/atendimento/inbox"
+                tooltip={t("dashboard.atendimento.totalConversas")}
+              />
+            )}
+            <KpiCard
+              label={t("dashboard.operacional.conversasAguardando")}
+              value={data.operacional.conversasAguardando ?? 0}
+              href="/painel/atendimento/inbox?status=open"
+              tooltip={t("dashboard.operacional.conversasAguardando.tooltip")}
+            />
+          </div>
+        </section>
+      )}
 
       <section className="flex flex-col gap-2">
         <h2 className="text-sm font-semibold text-ink">{t("dashboard.acoes.title")}</h2>
@@ -91,7 +138,8 @@ export default function DashboardPage() {
               value={data.crm.atual.contactsCreated}
               delta={data.crm.deltas.contactsCreated}
               comparisonLabel={comparisonLabel}
-              href="/painel/crm/contatos"
+              href={`/painel/crm/contatos?desde=${data.periodo.from}&ate=${data.periodo.to}`}
+              tooltip={t("dashboard.tooltip.novosContatos")}
             />
             <KpiCard
               label={t("dashboard.crm.oportunidadesGanhas")}
@@ -99,6 +147,7 @@ export default function DashboardPage() {
               delta={data.crm.deltas.opportunitiesWon}
               comparisonLabel={comparisonLabel}
               href="/painel/crm/funil"
+              tooltip={t("dashboard.tooltip.oportunidadesGanhas")}
             />
             <KpiCard
               label={t("dashboard.crm.valorGanho")}
@@ -106,12 +155,14 @@ export default function DashboardPage() {
               delta={data.crm.deltas.opportunitiesWonValue}
               comparisonLabel={comparisonLabel}
               href="/painel/crm/funil"
+              tooltip={t("dashboard.tooltip.valorGanho")}
             />
             <KpiCard
               label={t("dashboard.crm.taxaConversao")}
               value={formatPercent01(data.crm.atual.conversionRate)}
               delta={data.crm.deltas.conversionRate}
               comparisonLabel={comparisonLabel}
+              tooltip={t("dashboard.tooltip.taxaConversao")}
             />
           </div>
 
@@ -138,14 +189,16 @@ export default function DashboardPage() {
               value={data.atendimento.atual.conversationsByStatus.reduce((sum, g) => sum + g.count, 0)}
               delta={data.atendimento.deltas.total}
               comparisonLabel={comparisonLabel}
-              href="/painel/atendimento"
+              href="/painel/atendimento/inbox"
+              tooltip={t("dashboard.tooltip.totalConversas")}
             />
             <KpiCard
               label={t("dashboard.atendimento.fechadas")}
               value={data.atendimento.atual.conversationsByStatus.find((g) => g.status === "closed")?.count ?? 0}
               delta={data.atendimento.deltas.fechadas}
               comparisonLabel={comparisonLabel}
-              href="/painel/atendimento"
+              href="/painel/atendimento/inbox?status=closed"
+              tooltip={t("dashboard.tooltip.fechadas")}
             />
           </div>
 

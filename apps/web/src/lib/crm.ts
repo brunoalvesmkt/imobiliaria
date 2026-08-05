@@ -167,14 +167,16 @@ export interface CreateContactInput {
   observacoes?: string;
 }
 
-export function useContacts(search: string, origemId?: string, phoneType?: ContactPhoneType) {
+export function useContacts(search: string, origemId?: string, phoneType?: ContactPhoneType, from?: string, to?: string) {
   const params = new URLSearchParams();
   if (search) params.set("search", search);
   if (origemId) params.set("origemId", origemId);
   if (phoneType) params.set("phoneType", phoneType);
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
   const qs = params.toString();
   return useQuery({
-    queryKey: ["crm", "contacts", search, origemId ?? "", phoneType ?? ""],
+    queryKey: ["crm", "contacts", search, origemId ?? "", phoneType ?? "", from ?? "", to ?? ""],
     queryFn: () => apiGet<Contact[]>(`/crm/contacts${qs ? `?${qs}` : ""}`),
   });
 }
@@ -472,6 +474,7 @@ export interface Opportunity {
   valor: string | null;
   status: "open" | "won" | "lost";
   probabilidade: number | null;
+  responsavelId: string | null;
   createdAt: string;
   stageEnteredAt: string;
   contact: { id: string; nome: string; whatsapp: string | null };

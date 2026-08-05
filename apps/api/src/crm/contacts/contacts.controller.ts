@@ -28,9 +28,11 @@ export class ContactsController {
     @Query("origemId") origemId: string | undefined,
     @Query("responsavelId") responsavelId: string | undefined,
     @Query("phoneType") phoneType: string | undefined,
+    @Query("from") from: string | undefined,
+    @Query("to") to: string | undefined,
     @CurrentUser() user: AuthenticatedRequestUser,
   ) {
-    return this.service.list(search, user.roleId, origemId, responsavelId, phoneType);
+    return this.service.list(search, user.roleId, origemId, responsavelId, phoneType, from, to);
   }
 
   @Get(":id")

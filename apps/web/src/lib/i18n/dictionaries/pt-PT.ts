@@ -1422,6 +1422,26 @@ const dictionary: Record<DictionaryKey, string> = {
   "dashboard.alertConfig.opportunityStagnantDays": "Alertar quando uma oportunidade ficar sem movimentação durante (dias)",
   "dashboard.alertConfig.proposalNoResponseDays": "Alertar quando uma proposta ficar sem resposta durante (dias)",
   "dashboard.alertConfig.taskOverdueEnabled": "Alertar sobre tarefas vencidas",
+
+  "dashboard.updatedAgo": "Atualizado há",
+  "dashboard.operacional.atendentesOnline.tooltip": "Atendentes com sessão ativa no painel agora.",
+  "dashboard.operacional.atendentesOffline.tooltip": "Atendentes ativos na empresa que não estão ligados agora.",
+  "dashboard.operacional.conversasAguardando.tooltip": "Conversas na fila, sem atendente atribuído, à espera de atendimento.",
+  "dashboard.operacional.filasAbertas.tooltip": "Filas de atendimento ativas neste momento.",
+  "dashboard.operacional.oportunidadesSemResponsavel.tooltip": "Oportunidades abertas sem nenhum atendente responsável.",
+  "dashboard.operacional.tarefasVencidas.tooltip": "Tarefas com prazo já ultrapassado.",
+  "dashboard.visaoGeral.title": "Visão geral do período",
+  "dashboard.tooltip.novosContatos": "Contactos criados no período selecionado.",
+  "dashboard.tooltip.oportunidadesGanhas": "Oportunidades marcadas como ganhas no período selecionado.",
+  "dashboard.tooltip.valorGanho": "Soma do valor das oportunidades ganhas no período selecionado.",
+  "dashboard.tooltip.taxaConversao": "Percentagem de oportunidades ganhas sobre o total de ganhas + perdidas no período.",
+  "dashboard.tooltip.totalConversas": "Conversas iniciadas no período selecionado.",
+  "dashboard.tooltip.fechadas": "Conversas encerradas no período selecionado.",
+
+  "crm.contacts.periodFilterActive": "A mostrar apenas contactos criados no período selecionado.",
+  "crm.contacts.periodFilterClear": "Limpar filtro",
+  "crm.funnel.semResponsavelFilterActive": "A mostrar apenas oportunidades sem responsável.",
+  "crm.funnel.semResponsavelFilterClear": "Limpar filtro",
 };
 
 export default dictionary;

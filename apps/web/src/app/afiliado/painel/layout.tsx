@@ -7,6 +7,8 @@ import { keepSessionAlive } from "@/lib/api-client";
 import { useI18n } from "@/lib/i18n";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
+import { LogoImage } from "@/components/layout/logo-image";
+import { useSiteBranding } from "@/lib/branding";
 
 /**
  * Shell mínimo do painel de autoatendimento do afiliado (Fase 32, ver
@@ -19,6 +21,7 @@ export default function AfiliadoPainelLayout({ children }: { children: React.Rea
   const { t } = useI18n();
   const currentAffiliate = useCurrentAffiliate();
   const logout = useAffiliateLogout();
+  const branding = useSiteBranding();
 
   useEffect(() => {
     if (currentAffiliate.isError) {
@@ -49,7 +52,16 @@ export default function AfiliadoPainelLayout({ children }: { children: React.Rea
   return (
     <div className="flex min-h-screen flex-col bg-surface-alt">
       <header className="flex h-14 flex-none items-center justify-between border-b border-line bg-surface px-4 sm:px-6">
-        <span className="truncate text-sm font-medium text-ink">{t("affiliate.panel.brand")}</span>
+        <div className="flex min-w-0 items-center gap-2">
+          <LogoImage
+            lightUrl={branding.data?.tenantLoginLogo.logoLightUrl}
+            darkUrl={branding.data?.tenantLoginLogo.logoDarkUrl}
+            sizePercent={branding.data?.tenantLoginLogo.sizePercent}
+            fallbackLetter="C"
+            fallbackClassName="flex h-8 w-8 flex-none items-center justify-center rounded-md bg-brand-500 text-sm font-bold text-white"
+          />
+          <span className="truncate text-sm font-medium text-ink">{t("affiliate.panel.brand")}</span>
+        </div>
         <div className="flex items-center gap-2">
           <LanguageSwitcher />
           <ThemeToggle />

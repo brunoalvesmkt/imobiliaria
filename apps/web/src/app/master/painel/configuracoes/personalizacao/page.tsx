@@ -50,6 +50,25 @@ export default function MasterOwnSettingsPersonalizacaoPage() {
         />
       </Section>
 
+      <Section title={t("branding.loginTitle")}>
+        <p className="text-xs text-ink-faint">{t("branding.masterLoginSubtitle")}</p>
+
+        <LogoUploadField
+          label={t("branding.logoLight")}
+          value={settings.data.masterLoginLogoLightUrl}
+          onChange={(dataUri) => update.mutate({ masterLoginLogoLightUrl: dataUri })}
+        />
+        <LogoUploadField
+          label={t("branding.logoDark")}
+          value={settings.data.masterLoginLogoDarkUrl}
+          onChange={(dataUri) => update.mutate({ masterLoginLogoDarkUrl: dataUri })}
+        />
+        <LogoSizeField
+          value={settings.data.masterLoginLogoSizePercent}
+          onChange={(value) => update.mutate({ masterLoginLogoSizePercent: value })}
+        />
+      </Section>
+
       <Section title={t("branding.tabTitle")}>
         <p className="text-xs text-ink-faint">{t("branding.tabSubtitle")}</p>
 

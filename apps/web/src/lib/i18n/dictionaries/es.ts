@@ -1217,6 +1217,9 @@ const dictionary: Record<DictionaryKey, string> = {
   "branding.tabSubtitle": "Título y favicon mostrados en la pestaña del navegador, en toda la plataforma (panel de empresa y panel Master).",
   "branding.tabTitleLabel": "Título de la pestaña",
   "branding.favicon": "Favicon",
+  "branding.loginTitle": "Logotipo de la pantalla de inicio de sesión",
+  "branding.tenantLoginSubtitle": "Logotipo mostrado en la pantalla de inicio de sesión de las empresas (/login), distinto del logotipo del menú lateral.",
+  "branding.masterLoginSubtitle": "Logotipo mostrado en la pantalla de inicio de sesión del Master (/master/login), distinto del logotipo del menú lateral.",
 
   "master.tenants.title": "Empresas",
   "master.tenants.columnName": "Empresa",

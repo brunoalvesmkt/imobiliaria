@@ -46,9 +46,30 @@ export class BrandingService {
     };
   }
 
-  /** Sem guard (ver BrandingController) — título e favicon aparecem inclusive na tela de login, antes de qualquer autenticação. */
-  async getSiteBranding(): Promise<{ browserTitle: string | null; faviconUrl: string | null }> {
+  /**
+   * Sem guard (ver BrandingController) — título, favicon e os logotipos das telas de login
+   * precisam aparecer antes de qualquer autenticação (a própria tela de login é a página).
+   */
+  async getSiteBranding(): Promise<{
+    browserTitle: string | null;
+    faviconUrl: string | null;
+    tenantLoginLogo: BrandingConfig;
+    masterLoginLogo: BrandingConfig;
+  }> {
     const settings = await this.getSettings();
-    return { browserTitle: settings.browserTitle, faviconUrl: settings.faviconUrl };
+    return {
+      browserTitle: settings.browserTitle,
+      faviconUrl: settings.faviconUrl,
+      tenantLoginLogo: {
+        logoLightUrl: settings.tenantLoginLogoLightUrl,
+        logoDarkUrl: settings.tenantLoginLogoDarkUrl,
+        sizePercent: settings.tenantLoginLogoSizePercent,
+      },
+      masterLoginLogo: {
+        logoLightUrl: settings.masterLoginLogoLightUrl,
+        logoDarkUrl: settings.masterLoginLogoDarkUrl,
+        sizePercent: settings.masterLoginLogoSizePercent,
+      },
+    };
   }
 }

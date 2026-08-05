@@ -26,10 +26,12 @@ export function useMasterBranding(enabled = true) {
   });
 }
 
-/** `GET /branding/site` — sem autenticação, título da aba e favicon aparecem inclusive na tela de login. */
+/** `GET /branding/site` — sem autenticação, título da aba/favicon/logos das telas de login aparecem antes de qualquer login. */
 export interface SiteBranding {
   browserTitle: string | null;
   faviconUrl: string | null;
+  tenantLoginLogo: BrandingConfig;
+  masterLoginLogo: BrandingConfig;
 }
 
 export function useSiteBranding() {

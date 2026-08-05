@@ -1227,6 +1227,16 @@ model PlatformSettings {
   masterLogoDarkUrl     String? @db.Text
   masterLogoSizePercent Int     @default(100)
 
+  // Logotipo exibido na tela de login (distinto do logotipo do menu lateral acima) — a empresa
+  // faz login em /login (fallback: badge "C"), o Master em /master/login (fallback: badge "M").
+  // Lido publicamente via GET /branding/site (sem autenticação, a tela de login é a própria página).
+  tenantLoginLogoLightUrl String? @db.Text
+  tenantLoginLogoDarkUrl  String? @db.Text
+  tenantLoginLogoSizePercent Int  @default(100)
+  masterLoginLogoLightUrl String? @db.Text
+  masterLoginLogoDarkUrl  String? @db.Text
+  masterLoginLogoSizePercent Int  @default(100)
+
   // Título da aba do navegador e favicon — únicos para toda a plataforma
   // (painel de empresa e painel Master compartilham a mesma aba/janela do
   // navegador), lidos publicamente via GET /branding/site (sem autenticação,

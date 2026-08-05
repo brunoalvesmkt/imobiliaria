@@ -28,6 +28,12 @@ export interface PlatformSettings {
   masterLogoLightUrl: string | null;
   masterLogoDarkUrl: string | null;
   masterLogoSizePercent: number;
+  tenantLoginLogoLightUrl: string | null;
+  tenantLoginLogoDarkUrl: string | null;
+  tenantLoginLogoSizePercent: number;
+  masterLoginLogoLightUrl: string | null;
+  masterLoginLogoDarkUrl: string | null;
+  masterLoginLogoSizePercent: number;
   browserTitle: string | null;
   faviconUrl: string | null;
   updatedAt: string;

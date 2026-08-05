@@ -1215,6 +1215,9 @@ const dictionary = {
   "branding.tabSubtitle": "Título e favicon exibidos na aba do navegador, em toda a plataforma (painel de empresa e painel Master).",
   "branding.tabTitleLabel": "Título da aba",
   "branding.favicon": "Favicon",
+  "branding.loginTitle": "Logotipo da tela de login",
+  "branding.tenantLoginSubtitle": "Logotipo exibido na tela de login das empresas (/login), diferente do logotipo do menu lateral.",
+  "branding.masterLoginSubtitle": "Logotipo exibido na tela de login do Master (/master/login), diferente do logotipo do menu lateral.",
 
   "master.tenants.title": "Empresas",
   "master.tenants.columnName": "Empresa",

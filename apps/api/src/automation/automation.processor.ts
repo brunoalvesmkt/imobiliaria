@@ -65,9 +65,14 @@ export class AutomationProcessor extends WorkerHost {
     const acoes = automation.acoes as unknown as AutomationAction[];
     const executed: unknown[] = [];
 
+    // Resolvido uma única vez por execução (mesmo quando o gatilho não tinha contactId — ex.:
+    // "Mensagem recebida" na primeira conversa de um número novo, contactId só existe depois que
+    // algo vincula o contato) e reaproveitado por todas as ações desta automação que precisam dele.
+    const contactId = await this.resolveContactId(automation.tenantId, execution);
+
     try {
       for (const acao of acoes) {
-        const result = await this.executeAction(automation.tenantId, execution, acao, automation.webhookSecret);
+        const result = await this.executeAction(automation.tenantId, execution, acao, automation.webhookSecret, contactId);
         executed.push({ tipo: acao.tipo, result });
       }
 
@@ -119,6 +124,7 @@ export class AutomationProcessor extends WorkerHost {
     execution: AutomationExecution,
     acao: AutomationAction,
     webhookSecret: string | null,
+    contactId: string | null,
   ): Promise<unknown> {
     switch (acao.tipo) {
       case "send_message": {
@@ -127,12 +133,12 @@ export class AutomationProcessor extends WorkerHost {
       }
 
       case "create_task": {
-        if (!execution.contactId) return { skipped: "sem contactId" };
+        if (!contactId) return { skipped: "sem contato vinculável (sem conversationId nem contactId)" };
         const dataHora = new Date(Date.now() + (acao.horasParaVencer ?? 24) * 3_600_000);
         const task = await this.prisma.crmTask.create({
           data: {
             tenantId,
-            contactId: execution.contactId,
+            contactId,
             tipo: acao.tipoTarefa,
             titulo: acao.titulo,
             dataHora,
@@ -144,8 +150,8 @@ export class AutomationProcessor extends WorkerHost {
 
       case "apply_tag":
       case "remove_tag": {
-        if (!execution.contactId) return { skipped: "sem contactId" };
-        const contact = await this.prisma.contact.findUniqueOrThrow({ where: { id: execution.contactId } });
+        if (!contactId) return { skipped: "sem contato vinculável (sem conversationId nem contactId)" };
+        const contact = await this.prisma.contact.findUniqueOrThrow({ where: { id: contactId } });
         const tags =
           acao.tipo === "apply_tag"
             ? Array.from(new Set([...contact.tags, acao.tag]))
@@ -155,22 +161,43 @@ export class AutomationProcessor extends WorkerHost {
       }
 
       case "update_field": {
-        if (!execution.contactId) return { skipped: "sem contactId" };
-        const contact = await this.prisma.contact.findUniqueOrThrow({ where: { id: execution.contactId } });
+        if (!contactId) return { skipped: "sem contato vinculável (sem conversationId nem contactId)" };
+        const contact = await this.prisma.contact.findUniqueOrThrow({ where: { id: contactId } });
         const customFields = { ...((contact.customFields as Record<string, unknown> | null) ?? {}), [acao.campo]: acao.valor };
         await this.prisma.contact.update({ where: { id: contact.id }, data: { customFields: customFields as Prisma.InputJsonValue } });
         return { campo: acao.campo };
       }
 
       case "move_opportunity_stage": {
-        if (!execution.contactId) return { skipped: "sem contactId" };
-        const opportunity = await this.prisma.opportunity.findFirst({
-          where: { contactId: execution.contactId, status: "open" },
-          orderBy: { createdAt: "desc" },
+        if (!contactId) return { skipped: "sem contato vinculável (sem conversationId nem contactId)" };
+        const crmFlag = await this.prisma.featureFlag.findUnique({ where: { tenantId_module: { tenantId, module: "crm" } } });
+        if (!crmFlag?.enabled) return { skipped: "módulo CRM não habilitado" };
+
+        const stage = await this.prisma.funnelStage.findFirst({ where: { id: acao.stageId, funnel: { tenantId } } });
+        if (!stage) return { skipped: "etapa não encontrada" };
+
+        // Mesma regra do card "Etapa do funil" do chatbot (ChatbotEngineService.addToCrmStage):
+        // reaproveita a oportunidade aberta no mesmo funil se existir, senão cria uma nova — "mover
+        // etapa" nunca deveria depender de o lead já ter uma oportunidade criada por outro caminho.
+        const existing = await this.prisma.opportunity.findFirst({
+          where: { tenantId, contactId, funnelId: stage.funnelId, status: "open", deletedAt: null },
         });
-        if (!opportunity) return { skipped: "sem oportunidade aberta" };
-        await this.prisma.opportunity.update({ where: { id: opportunity.id }, data: { stageId: acao.stageId } });
-        return { opportunityId: opportunity.id };
+        if (existing) {
+          if (existing.stageId === acao.stageId) return { opportunityId: existing.id };
+          await this.prisma.opportunity.update({
+            where: { id: existing.id },
+            data: { stageId: acao.stageId, probabilidade: stage.probabilidade },
+          });
+          await this.closeOpenStageHistory(existing.id);
+          await this.prisma.opportunityStageHistory.create({ data: { tenantId, opportunityId: existing.id, stageId: acao.stageId } });
+          return { opportunityId: existing.id };
+        }
+
+        const opportunity = await this.prisma.opportunity.create({
+          data: { tenantId, contactId, funnelId: stage.funnelId, stageId: acao.stageId, probabilidade: stage.probabilidade, origem: "automacao" },
+        });
+        await this.prisma.opportunityStageHistory.create({ data: { tenantId, opportunityId: opportunity.id, stageId: acao.stageId } });
+        return { opportunityId: opportunity.id, created: true };
       }
 
       case "start_chatbot": {
@@ -203,7 +230,7 @@ export class AutomationProcessor extends WorkerHost {
         const followUp = await this.followUps.schedule({
           tenantId,
           automationId: execution.automationId,
-          contactId: execution.contactId,
+          contactId,
           conversationId: execution.conversationId,
           delayMinutes: acao.delayMinutes,
           texto: acao.texto,
@@ -264,5 +291,42 @@ export class AutomationProcessor extends WorkerHost {
     this.realtime.emitToTenant(tenantId, "conversation:message", { conversationId, message });
 
     return { messageId: message.id };
+  }
+
+  /**
+   * O gatilho "Mensagem recebida" (e outros baseados em conversa) não garante `contactId` — uma
+   * conversa nova só ganha `Contact` vinculado quando algo cria esse vínculo explicitamente (ver
+   * ChatbotEngineService.resolveContactId, mesmo princípio replicado aqui por não valer a pena
+   * importar o módulo do Chatbot só por isto). Sem isso, ações como "Mover etapa da oportunidade"
+   * ou "Criar tarefa" ficavam sempre puladas silenciosamente na primeira mensagem de um número novo.
+   */
+  private async resolveContactId(tenantId: string, execution: AutomationExecution): Promise<string | null> {
+    if (execution.contactId) return execution.contactId;
+    if (!execution.conversationId) return null;
+
+    const conversation = await this.prisma.conversation.findUniqueOrThrow({ where: { id: execution.conversationId } });
+    if (conversation.contactId) return conversation.contactId;
+
+    const existing = await this.prisma.contact.findFirst({
+      where: { tenantId, whatsapp: conversation.contatoNumero, deletedAt: null },
+    });
+    const contact =
+      existing ??
+      (await this.prisma.contact.create({
+        data: { tenantId, nome: conversation.contatoNumero, whatsapp: conversation.contatoNumero, origem: "automacao" },
+      }));
+    await this.prisma.conversation.update({ where: { id: conversation.id }, data: { contactId: contact.id } });
+    return contact.id;
+  }
+
+  /** Fecha a linha de histórico "aberta" (sem exitedAt) da etapa atual — mesma lógica de OpportunitiesService/ChatbotEngineService, duplicada aqui pelo mesmo motivo do comentário acima. */
+  private async closeOpenStageHistory(opportunityId: string): Promise<void> {
+    const open = await this.prisma.opportunityStageHistory.findFirst({
+      where: { opportunityId, exitedAt: null },
+      orderBy: { enteredAt: "desc" },
+    });
+    if (open) {
+      await this.prisma.opportunityStageHistory.update({ where: { id: open.id }, data: { exitedAt: new Date() } });
+    }
   }
 }

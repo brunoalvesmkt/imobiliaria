@@ -2,8 +2,26 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
+import { LogoImage } from "@/components/layout/logo-image";
+import { useSiteBranding } from "@/lib/branding";
 
-export function AuthCard({ title, subtitle, children, footer }: { title: string; subtitle: string; children: ReactNode; footer?: ReactNode }) {
+export function AuthCard({
+  title,
+  subtitle,
+  children,
+  footer,
+  logoVariant = "tenant",
+}: {
+  title: string;
+  subtitle: string;
+  children: ReactNode;
+  footer?: ReactNode;
+  /** Qual logotipo de login mostrar — "tenant" (padrão, /login) ou "master" (/master/login). */
+  logoVariant?: "tenant" | "master";
+}) {
+  const branding = useSiteBranding();
+  const logo = logoVariant === "master" ? branding.data?.masterLoginLogo : branding.data?.tenantLoginLogo;
+
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-surface-alt px-4 py-12">
       <div className="absolute right-4 top-4 flex items-center gap-2">
@@ -12,7 +30,13 @@ export function AuthCard({ title, subtitle, children, footer }: { title: string;
       </div>
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-2 text-center">
-          <span className="flex h-10 w-10 items-center justify-center rounded-md bg-brand-500 text-lg font-bold text-white">C</span>
+          <LogoImage
+            lightUrl={logo?.logoLightUrl}
+            darkUrl={logo?.logoDarkUrl}
+            sizePercent={logo?.sizePercent}
+            fallbackLetter={logoVariant === "master" ? "M" : "C"}
+            fallbackClassName="flex h-10 w-10 items-center justify-center rounded-md bg-brand-500 text-lg font-bold text-white"
+          />
           <h1 className="text-xl font-semibold text-ink">{title}</h1>
           <p className="text-sm text-ink-dim">{subtitle}</p>
         </div>

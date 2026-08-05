@@ -33,7 +33,7 @@ export default function MasterLoginPage() {
   }
 
   return (
-    <AuthCard title={t("master.login.title")} subtitle={t("master.login.subtitle")}>
+    <AuthCard title={t("master.login.title")} subtitle={t("master.login.subtitle")} logoVariant="master">
       <form className="flex flex-col gap-4" onSubmit={onSubmit}>
         {login.error && <Alert tone="error">{errorMessage(login.error)}</Alert>}
 

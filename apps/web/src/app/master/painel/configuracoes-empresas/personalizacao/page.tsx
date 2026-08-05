@@ -36,6 +36,25 @@ export default function MasterSettingsPersonalizacaoPage() {
           onChange={(value) => update.mutate({ tenantLogoSizePercent: value })}
         />
       </Section>
+
+      <Section title={t("branding.loginTitle")}>
+        <p className="text-xs text-ink-faint">{t("branding.tenantLoginSubtitle")}</p>
+
+        <LogoUploadField
+          label={t("branding.logoLight")}
+          value={settings.data.tenantLoginLogoLightUrl}
+          onChange={(dataUri) => update.mutate({ tenantLoginLogoLightUrl: dataUri })}
+        />
+        <LogoUploadField
+          label={t("branding.logoDark")}
+          value={settings.data.tenantLoginLogoDarkUrl}
+          onChange={(dataUri) => update.mutate({ tenantLoginLogoDarkUrl: dataUri })}
+        />
+        <LogoSizeField
+          value={settings.data.tenantLoginLogoSizePercent}
+          onChange={(value) => update.mutate({ tenantLoginLogoSizePercent: value })}
+        />
+      </Section>
     </div>
   );
 }

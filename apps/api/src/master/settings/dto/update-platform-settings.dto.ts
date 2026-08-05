@@ -106,6 +106,42 @@ export class UpdatePlatformSettingsDto {
 
   @IsOptional()
   @IsString()
+  @Matches(/^data:image\/png;base64,/)
+  @MaxLength(MAX_LOGO_DATA_URI_LENGTH)
+  tenantLoginLogoLightUrl?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^data:image\/png;base64,/)
+  @MaxLength(MAX_LOGO_DATA_URI_LENGTH)
+  tenantLoginLogoDarkUrl?: string | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(50)
+  @Max(200)
+  tenantLoginLogoSizePercent?: number;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^data:image\/png;base64,/)
+  @MaxLength(MAX_LOGO_DATA_URI_LENGTH)
+  masterLoginLogoLightUrl?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^data:image\/png;base64,/)
+  @MaxLength(MAX_LOGO_DATA_URI_LENGTH)
+  masterLoginLogoDarkUrl?: string | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(50)
+  @Max(200)
+  masterLoginLogoSizePercent?: number;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(70)
   browserTitle?: string | null;
 

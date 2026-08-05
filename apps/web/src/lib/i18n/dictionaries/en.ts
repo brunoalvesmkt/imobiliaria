@@ -1217,6 +1217,9 @@ const dictionary: Record<DictionaryKey, string> = {
   "branding.tabSubtitle": "Title and favicon shown in the browser tab, across the whole platform (tenant panel and Master panel).",
   "branding.tabTitleLabel": "Tab title",
   "branding.favicon": "Favicon",
+  "branding.loginTitle": "Login screen logo",
+  "branding.tenantLoginSubtitle": "Logo shown on the tenant login screen (/login), different from the sidebar logo.",
+  "branding.masterLoginSubtitle": "Logo shown on the Master login screen (/master/login), different from the sidebar logo.",
 
   "master.tenants.title": "Companies",
   "master.tenants.columnName": "Company",

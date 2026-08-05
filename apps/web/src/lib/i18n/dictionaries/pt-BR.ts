@@ -611,6 +611,10 @@ const dictionary = {
   "crm.opportunityDetail.historyStillHere": "nesta etapa até agora",
   "crm.opportunityDetail.statusWon": "Ganha",
   "crm.opportunityDetail.statusLost": "Perdida",
+  "crm.opportunityDetail.delete": "Excluir",
+  "crm.opportunityDetail.deleteConfirmText": "Tem certeza? Esta ação não pode ser desfeita.",
+  "crm.opportunityDetail.deleteConfirmYes": "Sim, excluir",
+  "crm.opportunityDetail.deleteErrorGeneric": "Não foi possível excluir a oportunidade.",
 
   "whatsapp.title": "WhatsApp",
   "whatsapp.newNumber": "Novo número",

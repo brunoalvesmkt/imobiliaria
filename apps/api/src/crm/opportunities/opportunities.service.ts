@@ -327,6 +327,20 @@ export class OpportunitiesService {
     return updated;
   }
 
+  /** Exclusão (soft delete) — gated por "crm":"delete" no controller, permissão que só o papel Administrador tem por padrão. */
+  async remove(id: string, actorId: string): Promise<void> {
+    await this.get(id);
+    await this.tenantPrisma.opportunity.update({ where: { id }, data: { deletedAt: new Date() } });
+
+    await this.audit.record({
+      actorId,
+      actorType: "tenant_user",
+      action: "opportunity.remove",
+      entity: "Opportunity",
+      entityId: id,
+    });
+  }
+
   /** Fecha a linha de histórico "aberta" (sem exitedAt) da etapa atual — chamado ao mudar de etapa ou encerrar. */
   private async closeOpenStageHistory(opportunityId: string, at: Date = new Date()): Promise<void> {
     const open = await this.tenantPrisma.opportunityStageHistory.findFirst({

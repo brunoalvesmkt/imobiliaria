@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { createOpportunitySchema } from "@chatbot-saas/validation";
 import { ZodValidationPipe } from "../../common/validation/zod-validation.pipe";
 import { TenantAuthGuard } from "../../auth/guards/tenant-auth.guard";
@@ -69,6 +69,12 @@ export class OpportunitiesController {
   @RequirePermission("crm", "edit")
   close(@Param("id") id: string, @Body() dto: CloseOpportunityDto, @CurrentUser() user: AuthenticatedRequestUser) {
     return this.service.close(id, dto, user.id);
+  }
+
+  @Delete(":id")
+  @RequirePermission("crm", "delete")
+  remove(@Param("id") id: string, @CurrentUser() user: AuthenticatedRequestUser) {
+    return this.service.remove(id, user.id);
   }
 
   @Post("reorder")

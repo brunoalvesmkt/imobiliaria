@@ -611,6 +611,15 @@ export function useCloseOpportunity() {
   });
 }
 
+/** Gated no backend por "crm":"delete" — o papel Administrador é o único que ganha essa permissão de fábrica (ver default-permissions.ts). */
+export function useDeleteOpportunity() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiDelete<{ status: "ok" }>(`/crm/opportunities/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["crm", "opportunities"] }),
+  });
+}
+
 export interface CrmTask {
   id: string;
   contactId: string;

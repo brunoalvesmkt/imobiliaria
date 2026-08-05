@@ -3,11 +3,22 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useOpportunity, useUpdateOpportunity, useTransferOpportunityResponsavel, useResponsavelOptions, useFunnels, useTransferOpportunity, useCloseOpportunity } from "@/lib/crm";
+import {
+  useOpportunity,
+  useUpdateOpportunity,
+  useTransferOpportunityResponsavel,
+  useResponsavelOptions,
+  useFunnels,
+  useTransferOpportunity,
+  useCloseOpportunity,
+  useDeleteOpportunity,
+} from "@/lib/crm";
 import { ContactTasks } from "@/components/crm/contact-tasks";
 import { Field } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
+import { ApiError } from "@/lib/api-client";
+import { useIsAdmin } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 
 export default function OpportunityDetailPage() {
@@ -21,12 +32,16 @@ export default function OpportunityDetailPage() {
   const funnels = useFunnels();
   const transferFunnel = useTransferOpportunity();
   const closeOpportunity = useCloseOpportunity();
+  const deleteOpportunity = useDeleteOpportunity();
+  const isAdmin = useIsAdmin();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ valor: "", produto: "", servico: "", previsaoFechamento: "", observacoes: "" });
   const [transferring, setTransferring] = useState(false);
   const [transferTarget, setTransferTarget] = useState("");
   const [transferringFunnel, setTransferringFunnel] = useState(false);
   const [funnelTarget, setFunnelTarget] = useState("");
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   if (opportunity.isLoading) return <p className="text-sm text-ink-faint">{t("common.loading")}</p>;
   if (opportunity.isError || !opportunity.data) return <Alert tone="error">{t("crm.opportunityDetail.notFound")}</Alert>;
@@ -82,27 +97,67 @@ export default function OpportunityDetailPage() {
             <h1 className="text-lg font-semibold text-ink">{data.contact.nome}</h1>
             <StatusBadge status={data.status} t={t} />
           </div>
-          {data.status === "open" && (
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => closeOpportunity.mutate({ id: data.id, resultado: "won" })}
-                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
-              >
-                <ThumbIcon direction="up" />
-                {t("crm.funnel.win")}
-              </button>
-              <button
-                type="button"
-                onClick={() => closeOpportunity.mutate({ id: data.id, resultado: "lost" })}
-                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
-              >
-                <ThumbIcon direction="down" />
-                {t("crm.funnel.lose")}
-              </button>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {data.status === "open" && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => closeOpportunity.mutate({ id: data.id, resultado: "won" })}
+                  className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                >
+                  <ThumbIcon direction="up" />
+                  {t("crm.funnel.win")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => closeOpportunity.mutate({ id: data.id, resultado: "lost" })}
+                  className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
+                >
+                  <ThumbIcon direction="down" />
+                  {t("crm.funnel.lose")}
+                </button>
+              </>
+            )}
+            {isAdmin &&
+              (confirmingDelete ? (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-ink-dim">{t("crm.opportunityDetail.deleteConfirmText")}</span>
+                  <Button
+                    variant="danger"
+                    loading={deleteOpportunity.isPending}
+                    onClick={async () => {
+                      setDeleteError(null);
+                      try {
+                        await deleteOpportunity.mutateAsync(data.id);
+                        router.push("/painel/crm/funil");
+                      } catch (err) {
+                        setDeleteError(err instanceof ApiError ? err.message : t("crm.opportunityDetail.deleteErrorGeneric"));
+                        setConfirmingDelete(false);
+                      }
+                    }}
+                  >
+                    {t("crm.opportunityDetail.deleteConfirmYes")}
+                  </Button>
+                  <Button variant="ghost" onClick={() => setConfirmingDelete(false)}>
+                    {t("common.cancel")}
+                  </Button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmingDelete(true)}
+                  className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
+                >
+                  {t("crm.opportunityDetail.delete")}
+                </button>
+              ))}
+          </div>
         </div>
+        {deleteError && (
+          <div className="mt-2">
+            <Alert tone="error">{deleteError}</Alert>
+          </div>
+        )}
         <p className="text-sm text-ink-dim">
           {data.funnel.nome} · {data.stage.nome}
           {data.valor && <> · R$ {Number(data.valor).toLocaleString(locale)}</>}

@@ -613,6 +613,10 @@ const dictionary: Record<DictionaryKey, string> = {
   "crm.opportunityDetail.historyStillHere": "in this stage so far",
   "crm.opportunityDetail.statusWon": "Won",
   "crm.opportunityDetail.statusLost": "Lost",
+  "crm.opportunityDetail.delete": "Delete",
+  "crm.opportunityDetail.deleteConfirmText": "Are you sure? This action cannot be undone.",
+  "crm.opportunityDetail.deleteConfirmYes": "Yes, delete",
+  "crm.opportunityDetail.deleteErrorGeneric": "Could not delete the opportunity.",
 
   "whatsapp.title": "WhatsApp",
   "whatsapp.newNumber": "New number",

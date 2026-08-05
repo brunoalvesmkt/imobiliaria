@@ -1,4 +1,4 @@
-import { IsArray, IsBoolean, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min } from "class-validator";
+import { IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min } from "class-validator";
 
 /**
  * PNG em base64: ~1.37x o tamanho binário, então 200KB (204800 bytes)
@@ -179,4 +179,21 @@ export class UpdatePlatformSettingsDto {
   @IsString()
   @Matches(/^#[0-9a-fA-F]{6}$/)
   announcementTextColor?: string | null;
+
+  @IsOptional()
+  @IsIn(["left", "center", "right"])
+  announcementAlign?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  announcementBold?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^#[0-9a-fA-F]{6}$/)
+  announcementButtonColor?: string | null;
+
+  @IsOptional()
+  @IsIn(["rounded", "square"])
+  announcementButtonShape?: string;
 }

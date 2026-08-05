@@ -32,7 +32,18 @@ function maskPhone(raw: string): string {
  * backend, não uma cópia — por isso aparece automaticamente na busca de
  * contatos de qualquer uma das duas telas).
  */
-export function ContactForm({ contact, onDone }: { contact?: Contact; onDone: () => void }) {
+export function ContactForm({
+  contact,
+  onDone,
+  initialPhone,
+  initialPhoneType,
+}: {
+  contact?: Contact;
+  onDone: () => void;
+  /** Pré-preenche o primeiro telefone ao criar um contato novo (ex.: número do WhatsApp vindo da Caixa de entrada) — ignorado em edição. */
+  initialPhone?: string;
+  initialPhoneType?: ContactPhoneType;
+}) {
   const { t } = useI18n();
   const isEditing = !!contact;
   const phoneTypeLabels: Record<ContactPhoneType, string> = {
@@ -52,7 +63,7 @@ export function ContactForm({ contact, onDone }: { contact?: Contact; onDone: ()
   const [phones, setPhones] = useState<PhoneRow[]>(
     contact && contact.phones.length > 0
       ? contact.phones.map((p) => ({ numero: maskPhone(p.numero), tipo: p.tipo }))
-      : [{ numero: "", tipo: "whatsapp" }],
+      : [{ numero: initialPhone ? maskPhone(initialPhone) : "", tipo: initialPhoneType ?? "whatsapp" }],
   );
   const [emails, setEmails] = useState<string[]>(
     contact && contact.emails.length > 0 ? contact.emails.map((e) => e.email) : [""],

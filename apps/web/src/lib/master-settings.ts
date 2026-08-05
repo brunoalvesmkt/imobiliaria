@@ -42,6 +42,10 @@ export interface PlatformSettings {
   announcementLinkText: string | null;
   announcementBgColor: string | null;
   announcementTextColor: string | null;
+  announcementAlign: "left" | "center" | "right";
+  announcementBold: boolean;
+  announcementButtonColor: string | null;
+  announcementButtonShape: "rounded" | "square";
   updatedAt: string;
 }
 

@@ -174,7 +174,7 @@ export default function DashboardPage() {
                 <XAxis type="number" allowDecimals={false} />
                 <YAxis type="category" dataKey="nome" width={120} tick={{ fontSize: 12 }} />
                 <Tooltip />
-                <Bar dataKey="count" fill={CHART_COLOR} radius={[0, 4, 4, 0]} />
+                <Bar dataKey="count" name={t("dashboard.chart.quantidade")} fill={CHART_COLOR} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -210,7 +210,7 @@ export default function DashboardPage() {
                 <XAxis dataKey="label" tick={{ fontSize: 12 }} />
                 <YAxis allowDecimals={false} />
                 <Tooltip />
-                <Bar dataKey="count" fill={CHART_COLOR} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="count" name={t("dashboard.chart.quantidade")} fill={CHART_COLOR} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -254,7 +254,7 @@ export default function DashboardPage() {
                 <XAxis dataKey="label" tick={{ fontSize: 12 }} />
                 <YAxis allowDecimals={false} />
                 <Tooltip />
-                <Bar dataKey="count" fill={CHART_COLOR_PURPLE} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="count" name={t("dashboard.chart.quantidade")} fill={CHART_COLOR_PURPLE} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -291,7 +291,7 @@ export default function DashboardPage() {
                 <XAxis dataKey="label" tick={{ fontSize: 12 }} />
                 <YAxis allowDecimals={false} />
                 <Tooltip />
-                <Bar dataKey="count" fill={CHART_COLOR_PURPLE} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="count" name={t("dashboard.chart.quantidade")} fill={CHART_COLOR_PURPLE} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -336,7 +336,7 @@ export default function DashboardPage() {
                 <XAxis dataKey="label" tick={{ fontSize: 12 }} />
                 <YAxis allowDecimals={false} />
                 <Tooltip />
-                <Bar dataKey="count" fill={CHART_COLOR} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="count" name={t("dashboard.chart.quantidade")} fill={CHART_COLOR} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>

@@ -13,6 +13,7 @@ import { AssignPlanDto } from "./dto/assign-plan.dto";
 import { ToggleModuleDto } from "./dto/toggle-module.dto";
 import { ImpersonateDto } from "./dto/impersonate.dto";
 import { CreateManualTenantDto } from "./dto/create-manual-tenant.dto";
+import { UpdateLoginEmailDto } from "./dto/update-login-email.dto";
 
 function actorFrom(user: AuthenticatedRequestUser, req: Request) {
   return { actorId: user.id, ip: req.ip, userAgent: req.get("user-agent") };
@@ -50,6 +51,30 @@ export class MasterTenantsController {
   @Get(":id/consumption")
   consumption(@Param("id") id: string) {
     return this.service.consumption(id);
+  }
+
+  @Get(":id/login-access")
+  @RequireMasterRole("super_admin")
+  getLoginAccess(@Param("id") id: string) {
+    return this.service.getLoginAccess(id);
+  }
+
+  @Patch(":id/login-email")
+  @RequireMasterRole("super_admin")
+  updateLoginEmail(
+    @Param("id") id: string,
+    @Body() dto: UpdateLoginEmailDto,
+    @CurrentUser() user: AuthenticatedRequestUser,
+    @Req() req: Request,
+  ) {
+    return this.service.updateLoginEmail(id, dto, actorFrom(user, req));
+  }
+
+  @Post(":id/password-reset")
+  @HttpCode(HttpStatus.OK)
+  @RequireMasterRole("super_admin")
+  resendPasswordReset(@Param("id") id: string, @CurrentUser() user: AuthenticatedRequestUser, @Req() req: Request) {
+    return this.service.resendPasswordReset(id, actorFrom(user, req));
   }
 
   @Patch(":id/status")

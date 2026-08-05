@@ -95,6 +95,34 @@ export function useImpersonateTenant(id: string) {
   });
 }
 
+export interface TenantLoginAccess {
+  id: string | null;
+  nome: string | null;
+  email: string | null;
+}
+
+export function useTenantLoginAccess(id: string) {
+  return useQuery({
+    queryKey: ["master-tenants", id, "login-access"],
+    queryFn: () => apiGet<TenantLoginAccess>(`/master/tenants/${id}/login-access`),
+    enabled: !!id,
+  });
+}
+
+export function useUpdateTenantLoginEmail(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (email: string) => apiPatch<TenantLoginAccess>(`/master/tenants/${id}/login-email`, { email }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["master-tenants", id, "login-access"] }),
+  });
+}
+
+export function useResendTenantPasswordReset(id: string) {
+  return useMutation({
+    mutationFn: () => apiPost<{ sent: boolean }>(`/master/tenants/${id}/password-reset`, {}),
+  });
+}
+
 export function useUpdateTenantModule(id: string) {
   const invalidate = useInvalidateTenant(id);
   return useMutation({

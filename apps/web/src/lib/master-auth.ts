@@ -7,6 +7,8 @@ export interface CurrentMasterUser {
   type: "master";
   id: string;
   masterRole: MasterRole;
+  nome: string | null;
+  email: string | null;
 }
 
 export function useCurrentMasterUser() {

@@ -27,6 +27,7 @@ import { Alert } from "@/components/ui/alert";
 import { HorizontalScroller } from "@/components/ui/horizontal-scroller";
 import { DropdownMenu, type DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { ContactForm } from "@/components/crm/contact-form";
+import { ModalPanel as SettingsPanel } from "@/components/ui/modal-panel";
 import { useI18n } from "@/lib/i18n";
 import { ApiError } from "@/lib/api-client";
 import { useIsAdmin } from "@/lib/auth";
@@ -200,38 +201,6 @@ function FunnelSettingsMenu({
         </SettingsPanel>
       )}
     </>
-  );
-}
-
-function SettingsPanel({
-  title,
-  onClose,
-  children,
-  maxWidth = "max-w-sm",
-}: {
-  title: string;
-  onClose: () => void;
-  children: React.ReactNode;
-  maxWidth?: string;
-}) {
-  const { t } = useI18n();
-  return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
-        className={`w-full ${maxWidth} rounded-lg border border-line bg-surface p-5 shadow-lg`}
-      >
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-ink">{title}</h2>
-          <button type="button" onClick={onClose} className="text-ink-faint hover:text-ink" aria-label={t("common.close")}>
-            ×
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
   );
 }
 
@@ -618,6 +587,7 @@ function Board({
   const closeOpportunity = useCloseOpportunity();
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(100);
 
   const open = (opportunities.data ?? []).filter(
     (o) => o.status === "open" && (!onlySemResponsavel || !o.responsavelId),
@@ -684,6 +654,34 @@ function Board({
         <p className="px-1 text-xs text-ink-faint sm:hidden">{t("crm.funnel.swipeHint")}</p>
       )}
 
+      <div className="flex items-center justify-end gap-1">
+        <button
+          type="button"
+          onClick={() => setZoom((z) => Math.max(50, z - 10))}
+          disabled={zoom <= 50}
+          aria-label={t("crm.funnel.zoomOut")}
+          className="flex h-7 w-7 items-center justify-center rounded-md border border-line text-ink-dim hover:bg-surface-alt disabled:opacity-40"
+        >
+          −
+        </button>
+        <button
+          type="button"
+          onClick={() => setZoom(100)}
+          className="w-12 rounded-md px-1 text-center text-xs text-ink-faint hover:text-ink"
+        >
+          {zoom}%
+        </button>
+        <button
+          type="button"
+          onClick={() => setZoom((z) => Math.min(150, z + 10))}
+          disabled={zoom >= 150}
+          aria-label={t("crm.funnel.zoomIn")}
+          className="flex h-7 w-7 items-center justify-center rounded-md border border-line text-ink-dim hover:bg-surface-alt disabled:opacity-40"
+        >
+          +
+        </button>
+      </div>
+
       <HorizontalScroller
         contentClassName="grid pb-2"
         contentStyle={{
@@ -691,6 +689,7 @@ function Board({
           gridTemplateRows: `auto repeat(${maxCards}, auto)`,
           columnGap: "1rem",
           rowGap: "0.5rem",
+          zoom: zoom / 100,
         }}
       >
         {funnel.stages.map((stage) => {

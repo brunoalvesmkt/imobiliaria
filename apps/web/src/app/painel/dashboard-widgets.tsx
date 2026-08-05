@@ -137,7 +137,7 @@ export function KpiCard({
   const content = (
     <div
       title={tooltip}
-      className={`flex flex-col gap-1.5 rounded-lg border border-line bg-surface p-4 ${href ? "cursor-pointer transition-colors hover:border-brand-300 hover:bg-surface-alt" : ""}`}
+      className={`flex h-full flex-col gap-1.5 rounded-lg border border-line bg-surface p-4 ${href ? "cursor-pointer transition-colors hover:border-brand-300 hover:bg-surface-alt" : ""}`}
     >
       <p className="text-xs font-medium uppercase tracking-wide text-ink-faint">{label}</p>
       <p className="text-2xl font-semibold tabular-nums text-ink">{value}</p>
@@ -148,7 +148,13 @@ export function KpiCard({
     </div>
   );
 
-  return href ? <Link href={href}>{content}</Link> : content;
+  return href ? (
+    <Link href={href} className="block h-full">
+      {content}
+    </Link>
+  ) : (
+    content
+  );
 }
 
 function DeltaBadge({
@@ -267,15 +273,21 @@ export function OperationalGrid({ operacional }: { operacional: Record<string, n
           const card = (
             <div
               title={t(item.tooltip)}
-              className={`rounded-lg border border-line bg-surface p-3 ${item.href ? "cursor-pointer transition-colors hover:border-brand-300 hover:bg-surface-alt" : ""}`}
+              className={`flex h-full flex-col rounded-lg border border-line bg-surface p-3 ${item.href ? "cursor-pointer transition-colors hover:border-brand-300 hover:bg-surface-alt" : ""}`}
             >
               <p className="text-xl font-semibold tabular-nums text-ink">{operacional[item.key]}</p>
               <p className="mt-1 text-xs text-ink-faint">{t(item.label)}</p>
             </div>
           );
           return (
-            <div key={item.key}>
-              {item.href ? <Link href={item.href}>{card}</Link> : card}
+            <div key={item.key} className="h-full">
+              {item.href ? (
+                <Link href={item.href} className="block h-full">
+                  {card}
+                </Link>
+              ) : (
+                card
+              )}
             </div>
           );
         })}

@@ -1,18 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
   useImpersonateTenant,
   useMasterTenant,
+  useResendTenantPasswordReset,
   useTenantConsumption,
+  useTenantLoginAccess,
+  useUpdateTenantLoginEmail,
   useUpdateTenantModule,
   useUpdateTenantPlan,
   useUpdateTenantStatus,
   type TenantStatus,
 } from "@/lib/master-tenants";
 import { Alert } from "@/components/ui/alert";
+import { Field } from "@/components/ui/input";
 import { useMasterPlans } from "@/lib/master-plans";
 import { useCurrentMasterUser } from "@/lib/master-auth";
 import { useI18n } from "@/lib/i18n";
@@ -40,10 +44,31 @@ export default function MasterTenantDetailPage() {
   const updateModule = useUpdateTenantModule(id);
   const impersonate = useImpersonateTenant(id);
   const [impersonateError, setImpersonateError] = useState<string | null>(null);
+  const loginAccess = useTenantLoginAccess(id);
+  const updateLoginEmail = useUpdateTenantLoginEmail(id);
+  const resendPasswordReset = useResendTenantPasswordReset(id);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [passwordResetSent, setPasswordResetSent] = useState(false);
+
+  useEffect(() => {
+    if (loginAccess.data?.email) setLoginEmail(loginAccess.data.email);
+  }, [loginAccess.data?.email]);
 
   if (tenant.isLoading) return <p className="text-sm text-ink-faint">{t("common.loading")}</p>;
   if (!tenant.data) return null;
   const data = tenant.data;
+
+  function saveLoginEmail() {
+    if (loginEmail.trim() && loginEmail.trim() !== loginAccess.data?.email) {
+      updateLoginEmail.mutate(loginEmail.trim());
+    }
+  }
+
+  async function onResendPasswordReset() {
+    setPasswordResetSent(false);
+    await resendPasswordReset.mutateAsync();
+    setPasswordResetSent(true);
+  }
 
   async function onImpersonate(accessLevel: "read" | "read_write") {
     setImpersonateError(null);
@@ -102,6 +127,57 @@ export default function MasterTenantDetailPage() {
           </dl>
         </div>
       </section>
+
+      {canManage && (
+        <section className="rounded-lg border border-line bg-surface p-4">
+          <h2 className="text-sm font-semibold text-ink">{t("master.tenants.loginAccess.title")}</h2>
+          <p className="mt-1 text-xs text-ink-faint">{t("master.tenants.loginAccess.subtitle")}</p>
+
+          {loginAccess.isLoading && <p className="mt-2 text-sm text-ink-faint">{t("common.loading")}</p>}
+
+          {!loginAccess.isLoading && !loginAccess.data?.id && (
+            <p className="mt-2 text-sm text-ink-faint">{t("master.tenants.loginAccess.notFound")}</p>
+          )}
+
+          {!!loginAccess.data?.id && (
+            <div className="mt-2 flex flex-col gap-3">
+              {updateLoginEmail.isError && <Alert tone="error">{t("master.tenants.loginAccess.emailError")}</Alert>}
+              <div className="flex flex-wrap items-end gap-2">
+                <div className="min-w-[240px] flex-1">
+                  <Field
+                    label={t("master.tenants.loginAccess.email")}
+                    name="loginEmail"
+                    type="email"
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={saveLoginEmail}
+                  disabled={updateLoginEmail.isPending || !loginEmail.trim() || loginEmail.trim() === loginAccess.data?.email}
+                  className="rounded-md bg-brand-500 px-3 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+                >
+                  {t("master.tenants.loginAccess.saveEmail")}
+                </button>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={onResendPasswordReset}
+                  disabled={resendPasswordReset.isPending}
+                  className="rounded-md border border-line px-2.5 py-1.5 text-xs font-medium text-ink-dim hover:bg-surface-alt disabled:opacity-40"
+                >
+                  {t("master.tenants.loginAccess.resendReset")}
+                </button>
+                {passwordResetSent && <span className="text-xs text-emerald-600 dark:text-emerald-400">{t("master.tenants.loginAccess.resendSent")}</span>}
+                {resendPasswordReset.isError && <span className="text-xs text-red-600">{t("master.tenants.loginAccess.resendError")}</span>}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
 
       {canManage && (
         <section className="rounded-lg border border-line bg-surface p-4">

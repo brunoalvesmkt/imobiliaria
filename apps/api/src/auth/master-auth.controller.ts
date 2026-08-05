@@ -63,7 +63,8 @@ export class MasterAuthController {
 
   @Get("me")
   @UseGuards(MasterAuthGuard)
-  me(@CurrentUser() user: AuthenticatedRequestUser): AuthenticatedRequestUser {
-    return user;
+  async me(@CurrentUser() user: AuthenticatedRequestUser) {
+    const profile = await this.masterAuthService.getProfile(user.id);
+    return { ...user, nome: profile?.nome ?? null, email: profile?.email ?? null };
   }
 }

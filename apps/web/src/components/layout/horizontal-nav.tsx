@@ -24,6 +24,7 @@ export function HorizontalNav({ activeModules, moduleOrder }: { activeModules: S
           sizePercent={branding.data?.sizePercent}
           fallbackLetter="C"
           fallbackClassName="flex h-8 w-8 flex-none items-center justify-center rounded-md bg-brand-500 text-sm font-bold text-white"
+          loading={branding.isLoading}
         />
       </div>
       <div className="flex flex-1 items-center justify-center gap-1">

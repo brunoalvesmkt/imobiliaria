@@ -36,6 +36,7 @@ export function AuthCard({
             sizePercent={logo?.sizePercent}
             fallbackLetter={logoVariant === "master" ? "M" : "C"}
             fallbackClassName="flex h-10 w-10 items-center justify-center rounded-md bg-brand-500 text-lg font-bold text-white"
+            loading={branding.isLoading}
           />
           <h1 className="text-xl font-semibold text-ink">{title}</h1>
           <p className="text-sm text-ink-dim">{subtitle}</p>

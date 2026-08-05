@@ -15,6 +15,10 @@ export interface AnnouncementConfig {
   linkText: string | null;
   bgColor: string | null;
   textColor: string | null;
+  align: "left" | "center" | "right";
+  bold: boolean;
+  buttonColor: string | null;
+  buttonShape: "rounded" | "square";
 }
 
 export function useTenantBranding(enabled = true) {
@@ -43,10 +47,11 @@ export interface SiteBranding {
   masterLoginLogo: BrandingConfig;
 }
 
-export function useSiteBranding() {
+export function useSiteBranding(initialData?: SiteBranding) {
   return useQuery({
     queryKey: ["branding", "site"],
     queryFn: () => apiGet<SiteBranding>("/branding/site"),
     staleTime: 5 * 60 * 1000,
+    ...(initialData ? { initialData } : {}),
   });
 }

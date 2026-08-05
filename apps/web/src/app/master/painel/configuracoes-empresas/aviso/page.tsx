@@ -10,6 +10,23 @@ import { Section, Toggle } from "../_shared";
 const DEFAULT_BG_COLOR = "#fef3c7";
 const DEFAULT_TEXT_COLOR = "#78350f";
 
+const ALIGN_OPTIONS: { value: "left" | "center" | "right"; labelKey: "master.settings.announcement.align.left" | "master.settings.announcement.align.center" | "master.settings.announcement.align.right" }[] = [
+  { value: "left", labelKey: "master.settings.announcement.align.left" },
+  { value: "center", labelKey: "master.settings.announcement.align.center" },
+  { value: "right", labelKey: "master.settings.announcement.align.right" },
+];
+
+const SHAPE_OPTIONS: { value: "rounded" | "square"; labelKey: "master.settings.announcement.shape.rounded" | "master.settings.announcement.shape.square" }[] = [
+  { value: "rounded", labelKey: "master.settings.announcement.shape.rounded" },
+  { value: "square", labelKey: "master.settings.announcement.shape.square" },
+];
+
+const JUSTIFY_BY_ALIGN: Record<string, string> = {
+  left: "justify-start",
+  center: "justify-center",
+  right: "justify-end",
+};
+
 export default function MasterSettingsAvisoPage() {
   const { t } = useI18n();
   const settings = useMasterSettings();
@@ -28,6 +45,8 @@ export default function MasterSettingsAvisoPage() {
   if (settings.isLoading) return <p className="text-sm text-ink-dim">{t("common.loading")}</p>;
   if (!settings.data) return null;
   const s = settings.data;
+  const textColor = s.announcementTextColor ?? DEFAULT_TEXT_COLOR;
+  const buttonShapeClass = s.announcementButtonShape === "square" ? "rounded-none" : "rounded-md";
 
   return (
     <div className="flex flex-col gap-6">
@@ -59,6 +78,30 @@ export default function MasterSettingsAvisoPage() {
           />
         </div>
 
+        <Toggle
+          checked={s.announcementBold}
+          onChange={(v) => update.mutate({ announcementBold: v })}
+          label={t("master.settings.announcement.bold")}
+        />
+
+        <div className="flex flex-col gap-1.5 pt-1">
+          <span className="text-sm font-medium text-ink">{t("master.settings.announcement.align.label")}</span>
+          <div className="inline-flex w-fit rounded-md border border-line p-0.5">
+            {ALIGN_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => update.mutate({ announcementAlign: opt.value })}
+                className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
+                  s.announcementAlign === opt.value ? "bg-brand-500 text-white" : "text-ink-dim hover:bg-surface-alt"
+                }`}
+              >
+                {t(opt.labelKey)}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <Field
           label={t("master.settings.announcement.linkUrl")}
           name="announcementLinkUrl"
@@ -82,6 +125,24 @@ export default function MasterSettingsAvisoPage() {
           maxLength={60}
         />
 
+        <div className="flex flex-col gap-1.5 pt-1">
+          <span className="text-sm font-medium text-ink">{t("master.settings.announcement.shape.label")}</span>
+          <div className="inline-flex w-fit rounded-md border border-line p-0.5">
+            {SHAPE_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => update.mutate({ announcementButtonShape: opt.value })}
+                className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
+                  s.announcementButtonShape === opt.value ? "bg-brand-500 text-white" : "text-ink-dim hover:bg-surface-alt"
+                }`}
+              >
+                {t(opt.labelKey)}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="flex flex-wrap gap-6 pt-1">
           <div className="flex flex-col gap-1.5">
             <label htmlFor="announcementBgColor" className="text-sm font-medium text-ink">
@@ -102,8 +163,20 @@ export default function MasterSettingsAvisoPage() {
             <input
               id="announcementTextColor"
               type="color"
-              value={s.announcementTextColor ?? DEFAULT_TEXT_COLOR}
+              value={textColor}
               onChange={(e) => update.mutate({ announcementTextColor: e.target.value })}
+              className="h-9 w-16 cursor-pointer rounded-md border border-line bg-surface"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="announcementButtonColor" className="text-sm font-medium text-ink">
+              {t("master.settings.announcement.buttonColor")}
+            </label>
+            <input
+              id="announcementButtonColor"
+              type="color"
+              value={s.announcementButtonColor ?? textColor}
+              onChange={(e) => update.mutate({ announcementButtonColor: e.target.value })}
               className="h-9 w-16 cursor-pointer rounded-md border border-line bg-surface"
             />
           </div>
@@ -113,15 +186,20 @@ export default function MasterSettingsAvisoPage() {
           <div className="pt-2">
             <p className="mb-1.5 text-xs text-ink-faint">{t("master.settings.announcement.preview")}</p>
             <div
-              className="flex flex-wrap items-center gap-2 rounded-md px-4 py-2.5 text-sm"
+              className={`flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-4 py-2.5 text-sm ${JUSTIFY_BY_ALIGN[s.announcementAlign] ?? "justify-start"}`}
               style={{
                 backgroundColor: s.announcementBgColor ?? DEFAULT_BG_COLOR,
-                color: s.announcementTextColor ?? DEFAULT_TEXT_COLOR,
+                color: textColor,
               }}
             >
-              <span>{text}</span>
+              <span className={s.announcementBold ? "font-bold" : undefined}>{text}</span>
               {linkUrl.trim() && (
-                <span className="font-semibold underline underline-offset-2">{linkText.trim() || linkUrl.trim()}</span>
+                <span
+                  className={`px-3 py-1 text-white ${buttonShapeClass} ${s.announcementBold ? "font-bold" : "font-semibold"}`}
+                  style={{ backgroundColor: s.announcementButtonColor ?? textColor }}
+                >
+                  {linkText.trim() || linkUrl.trim()}
+                </span>
               )}
             </div>
           </div>

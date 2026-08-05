@@ -27,6 +27,6 @@ import { AffiliateJwtStrategy } from "./strategies/affiliate-jwt.strategy";
     MasterJwtStrategy,
     AffiliateJwtStrategy,
   ],
-  exports: [TokenService],
+  exports: [TokenService, AuthService],
 })
 export class AuthModule {}

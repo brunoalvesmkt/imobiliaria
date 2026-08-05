@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  useAssignQueue,
   useAssume,
   useAutoAssign,
   useCloseConversation,
@@ -23,6 +22,8 @@ import {
 import { useQuickMessages, useRenderQuickMessage } from "@/lib/quick-messages";
 import { useTenantUsers } from "@/lib/tenant-users";
 import { useRealtimeEvent, useRealtimeSocket } from "@/lib/realtime";
+import { ContactForm } from "@/components/crm/contact-form";
+import { ModalPanel } from "@/components/ui/modal-panel";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { ApiError } from "@/lib/api-client";
@@ -126,10 +127,12 @@ function ConversationPanel({ conversationId, onBack }: { conversationId: string;
   const [showTransfer, setShowTransfer] = useState(false);
   const [showQuality, setShowQuality] = useState(false);
   const [showQuickMessages, setShowQuickMessages] = useState(false);
+  const [showAddOpportunity, setShowAddOpportunity] = useState(false);
   const [assumeConflict, setAssumeConflict] = useState<{ responsavelNome: string | null } | null>(null);
   const currentUser = useCurrentUser();
   const activeModules = useActiveModules(currentUser.isSuccess);
   const qualityModuleEnabled = activeModules.data?.has("qualidade_ia") ?? false;
+  const crmModuleEnabled = activeModules.data?.has("crm") ?? false;
   const queryClient = useQueryClient();
   const socket = useRealtimeSocket();
 
@@ -139,7 +142,6 @@ function ConversationPanel({ conversationId, onBack }: { conversationId: string;
   const transfer = useTransfer();
   const closeConversation = useCloseConversation();
   const reopenConversation = useReopenConversation();
-  const assignQueue = useAssignQueue();
 
   useRealtimeEvent<{ conversationId: string; message: Message }>("conversation:message", (payload) => {
     if (payload.conversationId !== conversationId) return;
@@ -260,6 +262,11 @@ function ConversationPanel({ conversationId, onBack }: { conversationId: string;
           <Button variant="secondary" onClick={() => setShowTransfer((v) => !v)}>
             {t("atendimento.inbox.transfer")}
           </Button>
+          {crmModuleEnabled && (
+            <Button variant="secondary" onClick={() => setShowAddOpportunity(true)}>
+              {t("atendimento.inbox.addOpportunity")}
+            </Button>
+          )}
           {qualityModuleEnabled && (
             <Button variant="secondary" onClick={() => setShowQuality((v) => !v)}>
               {t("quality.title")}
@@ -306,10 +313,10 @@ function ConversationPanel({ conversationId, onBack }: { conversationId: string;
         />
       )}
 
-      {!data.queue && (
-        <div className="border-b border-line bg-surface-alt p-2 text-xs text-ink-faint">
-          <QueuePicker onSelect={(queueId) => assignQueue.mutate({ id: conversationId, body: { queueId } })} />
-        </div>
+      {showAddOpportunity && (
+        <ModalPanel title={t("atendimento.inbox.addOpportunity")} onClose={() => setShowAddOpportunity(false)} maxWidth="max-w-xl">
+          <ContactForm onDone={() => setShowAddOpportunity(false)} initialPhone={data.contatoNumero} initialPhoneType="whatsapp" />
+        </ModalPanel>
       )}
 
       {showQuality && qualityModuleEnabled && <QualityPanel conversationId={conversationId} />}
@@ -482,28 +489,6 @@ function TransferPanel({
         </Button>
       </div>
     </form>
-  );
-}
-
-function QueuePicker({ onSelect }: { onSelect: (queueId: string) => void }) {
-  const { t } = useI18n();
-  const queues = useQueues();
-  if (!queues.data || queues.data.length === 0) return null;
-  return (
-    <select
-      onChange={(e) => e.target.value && onSelect(e.target.value)}
-      defaultValue=""
-      className="w-full max-w-xs rounded-md border border-line bg-surface px-2 py-1 text-xs sm:w-56"
-    >
-      <option value="" disabled>
-        {t("atendimento.inbox.columnQueue")}…
-      </option>
-      {queues.data.map((q) => (
-        <option key={q.id} value={q.id}>
-          {q.nome}
-        </option>
-      ))}
-    </select>
   );
 }
 

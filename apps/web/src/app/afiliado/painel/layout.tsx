@@ -59,6 +59,7 @@ export default function AfiliadoPainelLayout({ children }: { children: React.Rea
             sizePercent={branding.data?.tenantLoginLogo.sizePercent}
             fallbackLetter="C"
             fallbackClassName="flex h-8 w-8 flex-none items-center justify-center rounded-md bg-brand-500 text-sm font-bold text-white"
+            loading={branding.isLoading}
           />
           <span className="truncate text-sm font-medium text-ink">{t("affiliate.panel.brand")}</span>
         </div>

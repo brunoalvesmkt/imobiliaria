@@ -4,6 +4,7 @@ import type { MasterRole, Prisma, TenantStatus } from "@chatbot-saas/database";
 import { PrismaService } from "../../prisma/prisma.service";
 import { AuditService } from "../../common/audit/audit.service";
 import { TokenService } from "../../auth/token.service";
+import { AuthService } from "../../auth/auth.service";
 import { hashPassword, slugify } from "../../auth/crypto.util";
 import { toCsv } from "../../reports/csv.util";
 import { ADMIN_DEFAULT_PERMISSIONS } from "../../auth/default-permissions";
@@ -14,6 +15,7 @@ import type { AssignPlanDto } from "./dto/assign-plan.dto";
 import type { ToggleModuleDto } from "./dto/toggle-module.dto";
 import type { ImpersonateDto } from "./dto/impersonate.dto";
 import type { CreateManualTenantDto } from "./dto/create-manual-tenant.dto";
+import type { UpdateLoginEmailDto } from "./dto/update-login-email.dto";
 
 @Injectable()
 export class MasterTenantsService {
@@ -21,7 +23,92 @@ export class MasterTenantsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly tokenService: TokenService,
+    private readonly authService: AuthService,
   ) {}
+
+  /**
+   * Usuário de login "principal" da empresa — o mesmo papel `admin` do
+   * sistema (ver `createManual`/`impersonate`), primeiro criado (na assinatura
+   * pública ou no cadastro manual do Master). Empresas hoje só têm um usuário
+   * admin nessa fase; se um dia houver mais de um, este é o alvo determinístico
+   * das ações "e-mail de acesso"/"redefinição de senha" do Master.
+   */
+  private async getLoginUser(tenantId: string) {
+    const adminRole = await this.prisma.role.findFirst({
+      where: { tenantId, isSystem: true, nome: "admin" },
+    });
+    if (!adminRole) return null;
+
+    return this.prisma.tenantUser.findFirst({
+      where: { roleId: adminRole.id, deletedAt: null },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, nome: true, email: true },
+    });
+  }
+
+  async getLoginAccess(id: string) {
+    await this.get(id);
+    const user = await this.getLoginUser(id);
+    return { id: user?.id ?? null, nome: user?.nome ?? null, email: user?.email ?? null };
+  }
+
+  async updateLoginEmail(id: string, dto: UpdateLoginEmailDto, actor: MasterActorContext) {
+    await this.get(id);
+    const user = await this.getLoginUser(id);
+    if (!user) {
+      throw new NotFoundException("Usuário de acesso da empresa não encontrado.");
+    }
+
+    const existing = await this.prisma.tenantUser.findUnique({ where: { email: dto.email } });
+    if (existing && existing.id !== user.id) {
+      throw new ConflictException("Já existe um usuário cadastrado com esse e-mail.");
+    }
+
+    const updated = await this.prisma.tenantUser.update({
+      where: { id: user.id },
+      data: { email: dto.email },
+      select: { id: true, nome: true, email: true },
+    });
+
+    await this.audit.record({
+      actorId: actor.actorId,
+      actorType: "master",
+      tenantId: id,
+      action: "master.tenant_user.email_change",
+      entity: "TenantUser",
+      entityId: user.id,
+      previousData: { email: user.email },
+      newData: { email: updated.email },
+      ip: actor.ip,
+      userAgent: actor.userAgent,
+    });
+
+    return updated;
+  }
+
+  async resendPasswordReset(id: string, actor: MasterActorContext) {
+    await this.get(id);
+    const user = await this.getLoginUser(id);
+    if (!user) {
+      throw new NotFoundException("Usuário de acesso da empresa não encontrado.");
+    }
+
+    await this.authService.requestTenantPasswordReset(user.email);
+
+    await this.audit.record({
+      actorId: actor.actorId,
+      actorType: "master",
+      tenantId: id,
+      action: "master.tenant_user.password_reset_requested",
+      entity: "TenantUser",
+      entityId: user.id,
+      newData: { email: user.email },
+      ip: actor.ip,
+      userAgent: actor.userAgent,
+    });
+
+    return { sent: true };
+  }
 
   async list(status?: TenantStatus) {
     const tenants = await this.prisma.tenant.findMany({

@@ -58,6 +58,12 @@ export class MasterAuthService {
     return this.issueSession(user.id);
   }
 
+  /** Nome/e-mail para o avatar do painel Master — o JWT só carrega `sub`/`role`. */
+  async getProfile(id: string): Promise<{ nome: string; email: string } | null> {
+    const user = await this.prisma.masterUser.findUnique({ where: { id }, select: { nome: true, email: true } });
+    return user;
+  }
+
   async refresh(rawRefreshToken: string): Promise<TenantSession> {
     const tokenHash = hashOpaqueToken(rawRefreshToken);
     const record = await this.prisma.refreshToken.findUnique({ where: { tokenHash } });

@@ -15,17 +15,29 @@ export function LogoImage({
   sizePercent,
   fallbackLetter,
   fallbackClassName,
+  loading = false,
 }: {
   lightUrl: string | null | undefined;
   darkUrl: string | null | undefined;
   sizePercent: number | undefined;
   fallbackLetter: string;
   fallbackClassName: string;
+  /**
+   * `true` enquanto a busca do branding ainda está em andamento — nesse caso
+   * NÃO mostra a letra de fallback (ela piscava por um instante antes da
+   * logo real carregar, mesmo quando a empresa tem logo configurado). Só
+   * cai na letra depois que a busca termina e realmente não há logo.
+   */
+  loading?: boolean;
 }) {
   const { theme } = useTheme();
   const url = (theme === "dark" ? darkUrl : lightUrl) || lightUrl || darkUrl;
 
   if (!url) {
+    if (loading) {
+      const heightPx = Math.round(((sizePercent ?? 100) / 100) * BASE_HEIGHT_PX);
+      return <span aria-hidden="true" style={{ height: `${heightPx}px`, width: `${heightPx}px` }} />;
+    }
     return <span className={fallbackClassName}>{fallbackLetter}</span>;
   }
 

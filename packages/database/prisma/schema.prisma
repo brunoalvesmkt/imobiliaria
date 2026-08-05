@@ -1267,12 +1267,20 @@ model PlatformSettings {
   // empresas (não no login) — ligado/desligado e editado a qualquer momento
   // pelo Master, sem precisar de deploy. Lido via GET /branding/tenant
   // (já autenticado com TenantAuthGuard).
-  announcementEnabled   Boolean  @default(false)
-  announcementText      String?  @db.Text
-  announcementLinkUrl   String?  @db.Text
-  announcementLinkText  String?  @db.Text
-  announcementBgColor   String?
-  announcementTextColor String?
+  announcementEnabled     Boolean  @default(false)
+  announcementText        String?  @db.Text
+  announcementLinkUrl     String?  @db.Text
+  announcementLinkText    String?  @db.Text
+  announcementBgColor     String?
+  announcementTextColor   String?
+  /// "left" | "center" | "right"
+  announcementAlign       String   @default("left")
+  /// Negrito no texto e no botão do aviso.
+  announcementBold        Boolean  @default(false)
+  /// Cor de fundo do botão do link (texto do botão sempre em branco). Nulo = usa announcementTextColor.
+  announcementButtonColor String?
+  /// "rounded" | "square"
+  announcementButtonShape String   @default("rounded")
 
   updatedAt DateTime @updatedAt
 

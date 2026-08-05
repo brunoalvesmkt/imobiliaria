@@ -39,6 +39,7 @@ export function Sidebar({
             sizePercent={branding.data?.sizePercent}
             fallbackLetter="C"
             fallbackClassName="flex h-8 w-8 items-center justify-center rounded-md bg-brand-500 text-sm font-bold text-white"
+            loading={branding.isLoading}
           />
         </div>
 
@@ -75,8 +76,8 @@ export function Sidebar({
           );
         })}
 
-        <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-line pt-3">
-          <TopbarActions />
+        <div className="mt-auto border-t border-line pt-3">
+          <TopbarActions showName={false} />
         </div>
       </nav>
     </>

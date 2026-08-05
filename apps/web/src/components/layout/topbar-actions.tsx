@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useLogout, useMyProfile } from "@/lib/auth";
+import { useLogout, useMyProfile, useTenantInfo } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { ThemeToggle } from "./theme-toggle";
 import { LanguageSwitcher } from "./language-switcher";
@@ -16,11 +16,22 @@ function initials(nome?: string): string {
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase();
 }
 
-/** Grupo de ações do topo (layout do menu, idioma, tema, notificações, avatar) — extraído do Topbar para poder ser reaproveitado dentro do HorizontalNav no layout horizontal, ficando junto do menu em vez de numa barra separada. */
-export function TopbarActions() {
+/**
+ * Grupo de ações do topo (layout do menu, idioma, tema, notificações, avatar)
+ * — extraído do Topbar para poder ser reaproveitado dentro do HorizontalNav
+ * no layout horizontal e do Sidebar no layout lateral, ficando junto do menu
+ * em vez de numa barra separada.
+ *
+ * `showName`: no Sidebar (240px de largura) o nome ao lado do avatar não cabe
+ * junto dos outros 4 ícones e vazava para fora da barra — `hidden sm:inline`
+ * reage à largura da *viewport*, não à do container estreito da sidebar. No
+ * HorizontalNav (barra larga) o nome continua aparecendo normalmente.
+ */
+export function TopbarActions({ showName = true }: { showName?: boolean }) {
   const router = useRouter();
   const { t } = useI18n();
   const profile = useMyProfile(true);
+  const tenantInfo = useTenantInfo(true);
   const logout = useLogout();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -30,7 +41,7 @@ export function TopbarActions() {
   }
 
   return (
-    <div className="flex flex-none items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <MenuLayoutToggle />
       <LanguageSwitcher />
       <ThemeToggle />
@@ -42,10 +53,20 @@ export function TopbarActions() {
           onClick={() => setMenuOpen((v) => !v)}
           className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-ink-dim hover:bg-surface-alt"
         >
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">
+          <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">
             {initials(profile.data?.nome)}
           </span>
-          <span className="hidden sm:inline">{profile.data?.nome ?? " "}</span>
+          {showName && (
+            <span className="hidden min-w-0 flex-col items-start sm:flex">
+              <span className="truncate text-sm font-semibold leading-tight text-brand-700 dark:text-brand-300">{profile.data?.nome ?? " "}</span>
+              <span className="truncate text-xs leading-tight text-ink-faint">{tenantInfo.data?.razaoSocial ?? " "}</span>
+            </span>
+          )}
+          {showName && (
+            <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 flex-none text-ink-faint" aria-hidden="true">
+              <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
         </button>
 
         {menuOpen && (

@@ -37,6 +37,10 @@ export class BrandingService {
         linkText: string | null;
         bgColor: string | null;
         textColor: string | null;
+        align: string;
+        bold: boolean;
+        buttonColor: string | null;
+        buttonShape: string;
       };
     }
   > {
@@ -52,6 +56,10 @@ export class BrandingService {
         linkText: settings.announcementLinkText,
         bgColor: settings.announcementBgColor,
         textColor: settings.announcementTextColor,
+        align: settings.announcementAlign,
+        bold: settings.announcementBold,
+        buttonColor: settings.announcementButtonColor,
+        buttonShape: settings.announcementButtonShape,
       },
     };
   }

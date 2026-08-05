@@ -589,6 +589,12 @@ export class ChatbotEngineService {
     const provider = this.providers.resolve(number.provider);
     const numberCtx = { id: number.id, tenantId: number.tenantId, numero: number.numero, externalAccountId: number.externalAccountId };
 
+    // `{{variavel}}` no texto do card vira o valor gravado por um card de Pergunta/Menu anterior
+    // (`contextData.answers`) — mesma sintaxe já usada no prompt do card de IA, agora também em
+    // Mensagem/Pergunta/Menu, que é onde o usuário realmente espera poder usar isso.
+    const executionContext = (execution.contextData as ExecutionContext | null) ?? {};
+    const texto = data.texto !== undefined ? this.substituteVariables(data.texto, executionContext) : data.texto;
+
     // Pausa "digitando..." antes de enviar — deixa a conversa mais natural (pedido do usuário).
     // Limitada a MAX_TYPING_DELAY_MS para nunca segurar por muito tempo o pipeline que chamou até
     // aqui (webhook da Meta aguarda esta cadeia terminar para responder 200 — ver WebhooksController).
@@ -601,7 +607,7 @@ export class ChatbotEngineService {
     const result = await provider.sendMessage(
       { id: number.id, tenantId: number.tenantId, numero: number.numero, externalAccountId: number.externalAccountId },
       conversation.contatoNumero,
-      { tipo: data.tipo ?? "text", texto: data.texto, midiaUrl },
+      { tipo: data.tipo ?? "text", texto, midiaUrl },
     );
 
     const message = await this.tenantPrisma.message.create({
@@ -610,7 +616,7 @@ export class ChatbotEngineService {
         direction: "out",
         senderType: "chatbot",
         tipo: data.tipo ?? "text",
-        conteudo: data.texto,
+        conteudo: texto,
         midiaUrl: midiaUrl ?? null,
         externalId: result.externalId,
         statusEntrega: "sent",

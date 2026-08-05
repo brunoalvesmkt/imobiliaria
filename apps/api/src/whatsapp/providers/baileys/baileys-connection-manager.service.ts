@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, OnApplicationBootstrap } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { rm } from "node:fs/promises";
@@ -38,12 +38,11 @@ function toConnectResult(status: string, qr: string | undefined): ConnectResult 
  * mantido vivo pela duração do processo do apps/api (mesmo padrão do
  * RealtimeGateway: estado em memória, singleton do módulo). Sessão
  * (credenciais do pareamento) persistida em disco via `useMultiFileAuthState`
- * — sobrevive a reinícios do processo, mas a reconexão automática após um
- * restart frio não está implementada nesta fase (ver DEVELOPMENT_PLAN.md,
- * débito consciente registrado).
+ * — sobrevive a reinícios do processo, e `onApplicationBootstrap` religa
+ * automaticamente todo número que estava conectado antes do restart.
  */
 @Injectable()
-export class BaileysConnectionManagerService {
+export class BaileysConnectionManagerService implements OnApplicationBootstrap {
   private readonly logger = new Logger(BaileysConnectionManagerService.name);
   private readonly sessions = new Map<string, SessionState>();
   private readonly baileysLogger = pino({ level: "silent" });
@@ -55,6 +54,28 @@ export class BaileysConnectionManagerService {
     private readonly domainEvents: DomainEventsService,
     private readonly events: EventEmitter2,
   ) {}
+
+  /**
+   * Religa automaticamente, na subida do processo, as sessões Baileys que
+   * estavam conectadas antes do restart — sem isso, o `Map` em memória
+   * nasce vazio a cada `docker compose up -d --build` e o número continua
+   * mostrando "Conectado" (valor persistido no banco) mas nenhuma mensagem
+   * chega mais ao backend, porque o socket real nunca foi recriado. As
+   * credenciais em disco (`useMultiFileAuthState`) permitem reconectar sem
+   * pedir um novo QR Code.
+   */
+  async onApplicationBootstrap(): Promise<void> {
+    const numbers = await this.prisma.whatsAppNumber.findMany({
+      where: { provider: "baileys_unofficial", status: "connected", deletedAt: null },
+      select: { id: true, tenantId: true, numero: true, externalAccountId: true },
+    });
+
+    for (const number of numbers) {
+      this.startSession(number).catch((error) =>
+        this.logger.error(`Falha ao religar sessão Baileys do número ${number.id} na subida do processo: ${(error as Error).message}`),
+      );
+    }
+  }
 
   private sessionDir(numberId: string): string {
     const base = this.config.get<string>("WHATSAPP_SESSIONS_DIR") ?? ".baileys-sessions";

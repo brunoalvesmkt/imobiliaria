@@ -740,7 +740,7 @@ function Board({
                         setDraggedId(null);
                       }}
                       onClick={() => router.push(`/painel/crm/oportunidades/${opportunity.id}`)}
-                      className={`cursor-pointer rounded-md border border-line bg-surface p-3 text-sm shadow-sm hover:border-brand-400 active:cursor-grabbing ${
+                      className={`flex cursor-pointer flex-col rounded-md border border-line bg-surface p-3 text-sm shadow-sm hover:border-brand-400 active:cursor-grabbing ${
                         draggedId === opportunity.id ? "opacity-40" : ""
                       }`}
                     >
@@ -752,7 +752,8 @@ function Board({
                       <p className="text-xs text-ink-faint">
                         {t("crm.funnel.inStageAgo")} {formatElapsed(opportunity.stageEnteredAt)}
                       </p>
-                      <div className="mt-2 flex items-center justify-between">
+                      {/* mt-auto empurra as setas/joinhas para a base do card — junto com a altura igual por linha (subgrid), isso alinha essa linha de ações na mesma posição vertical em todos os cards da linha. */}
+                      <div className="mt-auto flex items-center justify-between pt-2">
                         <div className="flex gap-1">
                           <button
                             type="button"

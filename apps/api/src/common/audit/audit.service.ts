@@ -75,6 +75,7 @@ export class AuditService {
   async list(filter: {
     tenantId?: string | null;
     entity?: string;
+    entityId?: string;
     action?: string;
     actorId?: string;
     from?: Date;
@@ -86,6 +87,7 @@ export class AuditService {
       where: {
         ...(filter.tenantId !== undefined ? { tenantId: filter.tenantId } : {}),
         ...(filter.entity ? { entity: filter.entity } : {}),
+        ...(filter.entityId ? { entityId: filter.entityId } : {}),
         ...(filter.action ? { action: filter.action } : {}),
         ...(filter.actorId ? { actorId: filter.actorId } : {}),
         ...(filter.from || filter.to

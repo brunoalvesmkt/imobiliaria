@@ -178,6 +178,36 @@ export class ContactsService {
   }
 
   /**
+   * Histórico de movimentações do contato (ficha do contato, módulo CRM) —
+   * reaproveita o AuditLog já gravado por toda ação relevante (criação,
+   * edição, bloqueio, mesclagem, etc. — ver chamadas a `this.audit.record`
+   * neste arquivo) em vez de manter um log próprio duplicado. Resolve o
+   * nome do autor quando é um usuário do tenant (AuditLog só grava o id).
+   */
+  async history(contactId: string) {
+    const tenantId = requireCurrentTenantId();
+    const contact = await this.prisma.contact.findFirst({ where: { id: contactId, tenantId, deletedAt: null } });
+    if (!contact) {
+      throw new NotFoundException("Contato não encontrado.");
+    }
+
+    const entries = await this.audit.list({ tenantId, entity: "Contact", entityId: contactId, limit: 100 });
+    const actorIds = [...new Set(entries.filter((e) => e.actorType === "tenant_user").map((e) => e.actorId))];
+    const actors = actorIds.length
+      ? await this.prisma.tenantUser.findMany({ where: { id: { in: actorIds } }, select: { id: true, nome: true } })
+      : [];
+    const actorNameById = new Map(actors.map((a) => [a.id, a.nome]));
+
+    return entries.map((e) => ({
+      id: e.id,
+      action: e.action,
+      actorType: e.actorType,
+      actorName: e.actorType === "tenant_user" ? (actorNameById.get(e.actorId) ?? null) : null,
+      timestamp: e.timestamp,
+    }));
+  }
+
+  /**
    * Deduplicação por WhatsApp/telefone/e-mail/CPF/CNPJ, conforme as regras
    * ativas do tenant (`DeduplicationRule`) — se nenhuma regra estiver
    * configurada, verifica todos os campos por padrão (ver DATABASE_DESIGN.md

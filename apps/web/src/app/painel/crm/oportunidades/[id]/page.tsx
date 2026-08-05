@@ -283,6 +283,71 @@ export default function OpportunityDetailPage() {
       <ContactTasks contactId={data.contactId} opportunityId={data.id} />
 
       <section className="rounded-lg border border-line bg-surface p-5">
+        <h2 className="mb-1 text-sm font-semibold text-ink">{t("crm.opportunityDetail.cycleTimeSection")}</h2>
+        <p className="mb-4 text-sm text-ink-dim">{t("crm.opportunityDetail.cycleTimeSubtitle")}</p>
+
+        <div className="rounded-md border border-line p-4">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <span className="text-sm font-medium text-ink">{data.funnel.nome}</span>
+              <span className="ml-2 text-xs text-ink-faint">
+                {data.status === "open"
+                  ? t("crm.opportunityDetail.cycleTimeStatusOpen").replace("{stage}", data.stage.nome)
+                  : data.status === "won"
+                    ? t("crm.opportunityDetail.statusWon")
+                    : t("crm.opportunityDetail.statusLost")}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-3 text-xs text-ink-dim">
+              <span>
+                {t("crm.opportunityDetail.cycleTimeTotal")}:{" "}
+                <strong className="text-ink">
+                  {formatDurationHours(
+                    ((data.wonAt ? new Date(data.wonAt).getTime() : data.lostAt ? new Date(data.lostAt).getTime() : Date.now()) -
+                      new Date(data.createdAt).getTime()) /
+                      3_600_000,
+                  )}
+                </strong>
+              </span>
+              {data.wonAt && (
+                <span>
+                  {t("crm.opportunityDetail.cycleTimeToWon")}:{" "}
+                  <strong className="text-ink">
+                    {formatDurationHours((new Date(data.wonAt).getTime() - new Date(data.createdAt).getTime()) / 3_600_000)}
+                  </strong>
+                </span>
+              )}
+              {data.lostAt && (
+                <span>
+                  {t("crm.opportunityDetail.cycleTimeToLost")}:{" "}
+                  <strong className="text-ink">
+                    {formatDurationHours((new Date(data.lostAt).getTime() - new Date(data.createdAt).getTime()) / 3_600_000)}
+                  </strong>
+                </span>
+              )}
+            </div>
+          </div>
+          <ul className="flex flex-col gap-2">
+            {data.stageHistory.map((entry) => {
+              const durationMs = (entry.exitedAt ? new Date(entry.exitedAt).getTime() : Date.now()) - new Date(entry.enteredAt).getTime();
+              return (
+                <li key={entry.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                  <span className="text-ink">{entry.stage.nome}</span>
+                  <span className="text-xs text-ink-dim">
+                    {new Date(entry.enteredAt).toLocaleString(locale)}
+                    {" → "}
+                    {entry.exitedAt ? new Date(entry.exitedAt).toLocaleString(locale) : t("crm.opportunityDetail.historyStillHere")}
+                    {" · "}
+                    {formatDurationHours(durationMs / 3_600_000)}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-line bg-surface p-5">
         <h2 className="mb-4 text-sm font-semibold text-ink">{t("crm.opportunityDetail.historySection")}</h2>
         <ul className="flex flex-col gap-3">
           {[...data.stageHistory].reverse().map((entry, indexFromEnd, arr) => {
@@ -353,9 +418,12 @@ function Info({ label, value }: { label: string; value: string | null }) {
   );
 }
 
+/** Abaixo de 1h mostra minutos em vez de arredondar para "0h" — tempo de ciclo por etapa costuma ser curto o bastante para isso importar. */
 function formatDurationHours(hours: number): string {
   if (!hours || hours <= 0) return "—";
-  const totalHours = Math.round(hours);
+  const totalMinutes = Math.round(hours * 60);
+  if (totalMinutes < 60) return `${totalMinutes}min`;
+  const totalHours = Math.floor(totalMinutes / 60);
   const days = Math.floor(totalHours / 24);
   const remainingHours = totalHours % 24;
   if (days === 0) return `${remainingHours}h`;

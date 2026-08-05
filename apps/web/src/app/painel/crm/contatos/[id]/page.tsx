@@ -14,6 +14,7 @@ import {
   useMergeContacts,
   useCustomFieldDefinitions,
   useContactOpportunitiesTimeline,
+  useContactHistory,
 } from "@/lib/crm";
 import { LeadScoreBadge } from "@/components/crm/lead-score-badge";
 import { ContactForm } from "@/components/crm/contact-form";
@@ -24,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { ContactTasks } from "@/components/crm/contact-tasks";
 import { useI18n } from "@/lib/i18n";
+import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 
 export default function ContactDetailPage() {
   const { t, locale } = useI18n();
@@ -40,6 +42,7 @@ export default function ContactDetailPage() {
   const mergeContacts = useMergeContacts(params.id);
   const customFieldDefinitions = useCustomFieldDefinitions();
   const opportunitiesTimeline = useContactOpportunitiesTimeline(params.id);
+  const history = useContactHistory(params.id);
   const [editing, setEditing] = useState(false);
   const [confirmingAnonymize, setConfirmingAnonymize] = useState(false);
   const [blockReason, setBlockReason] = useState("");
@@ -432,9 +435,44 @@ export default function ContactDetailPage() {
         )}
       </section>
 
+      <section className="rounded-lg border border-line bg-surface p-5">
+        <h2 className="mb-1 text-sm font-semibold text-ink">{t("crm.contacts.history.title")}</h2>
+        <p className="mb-4 text-sm text-ink-dim">{t("crm.contacts.history.subtitle")}</p>
+
+        {history.isLoading ? (
+          <p className="text-sm text-ink-faint">{t("common.loading")}</p>
+        ) : (history.data?.length ?? 0) === 0 ? (
+          <p className="text-sm text-ink-faint">{t("crm.contacts.history.empty")}</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {history.data!.map((entry) => (
+              <li key={entry.id} className="flex items-start justify-between gap-2 border-b border-line pb-2 text-sm last:border-0 last:pb-0">
+                <div>
+                  <p className="text-ink">{historyActionLabel(t, entry.action)}</p>
+                  <p className="text-xs text-ink-faint">
+                    {entry.actorType === "tenant_user"
+                      ? (entry.actorName ?? t("crm.contacts.history.unknownUser"))
+                      : entry.actorType === "master"
+                        ? t("crm.contacts.history.actorMaster")
+                        : t("crm.contacts.history.actorSystem")}
+                  </p>
+                </div>
+                <span className="flex-none text-xs text-ink-faint">{new Date(entry.timestamp).toLocaleString(locale)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       <ContactTasks contactId={params.id} />
     </div>
   );
+}
+
+function historyActionLabel(t: ReturnType<typeof useI18n>["t"], action: string): string {
+  const key = `crm.contacts.history.action.${action}` as DictionaryKey;
+  const translated = t(key);
+  return translated === key ? action : translated;
 }
 
 /** Só usado na ficha de detalhe (somente leitura) — a lista de contatos e o formulário de edição continuam mostrando o número puro. */
@@ -479,10 +517,17 @@ function WhatsAppLink({ number, label }: { number: string; label: string }) {
   );
 }
 
-/** Mesmo formato "Xd Yh" usado em Relatórios > CRM (ver report-shell.tsx) — duplicado aqui para não acoplar esta ficha a uma página de rota. */
+/**
+ * Igual ao formato "Xd Yh" usado em Relatórios > CRM (ver report-shell.tsx — duplicado aqui para
+ * não acoplar esta ficha a uma página de rota), mas com um degrau a mais: abaixo de 1h mostra
+ * minutos em vez de arredondar para "0h" — o tempo de ciclo por etapa individual costuma ser curto
+ * o bastante para isso importar (pedido do usuário).
+ */
 function formatHoursDuration(hours: number): string {
   if (!hours || hours <= 0) return "—";
-  const totalHours = Math.round(hours);
+  const totalMinutes = Math.round(hours * 60);
+  if (totalMinutes < 60) return `${totalMinutes}min`;
+  const totalHours = Math.floor(totalMinutes / 60);
   const days = Math.floor(totalHours / 24);
   const remainingHours = totalHours % 24;
   if (days === 0) return `${remainingHours}h`;

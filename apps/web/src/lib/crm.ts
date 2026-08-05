@@ -218,6 +218,22 @@ export function useContactOpportunitiesTimeline(contactId: string) {
   });
 }
 
+export interface ContactHistoryEntry {
+  id: string;
+  action: string;
+  actorType: "tenant_user" | "master" | "system";
+  actorName: string | null;
+  timestamp: string;
+}
+
+export function useContactHistory(contactId: string) {
+  return useQuery({
+    queryKey: ["crm", "contacts", contactId, "history"],
+    queryFn: () => apiGet<ContactHistoryEntry[]>(`/crm/contacts/${contactId}/history`),
+    enabled: !!contactId,
+  });
+}
+
 export function useCreateContact() {
   const queryClient = useQueryClient();
   return useMutation({

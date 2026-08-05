@@ -828,6 +828,8 @@ const dictionary = {
   "chatbot.builder.field.optionText": "Texto",
   "chatbot.builder.field.subflow": "Subfluxo",
   "chatbot.builder.field.queue": "Fila",
+  "chatbot.builder.field.autoDistribution": "Distribuição automática",
+  "chatbot.builder.field.autoDistributionHint": "Escolhe automaticamente um atendente da equipe desta fila (mesma regra do \"Assumir (auto)\"). Desmarcado, a conversa fica \"Sem responsável\" esperando alguém assumir.",
   "chatbot.builder.field.condition.field": "Campo (variável)",
   "chatbot.builder.field.condition.operator": "Operador",
   "chatbot.builder.field.condition.value": "Valor",

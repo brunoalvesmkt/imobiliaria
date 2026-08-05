@@ -830,6 +830,8 @@ const dictionary: Record<DictionaryKey, string> = {
   "chatbot.builder.field.optionText": "Texto",
   "chatbot.builder.field.subflow": "Subflujo",
   "chatbot.builder.field.queue": "Cola",
+  "chatbot.builder.field.autoDistribution": "Distribución automática",
+  "chatbot.builder.field.autoDistributionHint": "Elige automáticamente un agente del equipo de esta cola (misma regla de \"Asumir (auto)\"). Sin marcar, la conversación queda \"Sin responsable\" esperando que alguien la asuma.",
   "chatbot.builder.field.condition.field": "Campo (variable)",
   "chatbot.builder.field.condition.operator": "Operador",
   "chatbot.builder.field.condition.value": "Valor",

@@ -7,6 +7,7 @@ import { RealtimeGateway } from "../../realtime/realtime.gateway";
 import { FollowUpsService } from "../../automation/followups.service";
 import { DomainEventsService } from "../../common/events/domain-events.service";
 import { SummaryService } from "./summary.service";
+import { QueueDistributionService } from "../queues/queue-distribution.service";
 import type { AssignQueueDto } from "./dto/assign-queue.dto";
 import type { TransferDto } from "./dto/transfer.dto";
 
@@ -20,6 +21,7 @@ export class InboxService {
     private readonly realtime: RealtimeGateway,
     private readonly followUps: FollowUpsService,
     private readonly domainEvents: DomainEventsService,
+    private readonly distribution: QueueDistributionService,
   ) {}
 
   private notify(conversationId: string): void {
@@ -49,62 +51,6 @@ export class InboxService {
       throw new NotFoundException("Conversa não encontrada.");
     }
     return conversation;
-  }
-
-  /**
-   * Regra de distribuição por fila — ver PERMISSIONS_MATRIX.md/prompt
-   * mestre §9.6. `round_robin` alterna entre os membros da equipe;
-   * `least_volume` escolhe quem tem menos conversas abertas na fila;
-   * qualquer outro valor (incluindo "priority", ainda não diferenciado)
-   * cai em `least_volume` como padrão seguro.
-   */
-  private async pickNextMember(queueId: string): Promise<string | null> {
-    const queue = await this.prisma.queue.findUniqueOrThrow({ where: { id: queueId } });
-    if (!queue.teamId) {
-      return null;
-    }
-
-    const members = await this.prisma.teamMember.findMany({
-      where: { teamId: queue.teamId },
-      orderBy: { id: "asc" },
-    });
-    if (members.length === 0) {
-      return null;
-    }
-
-    if (queue.distribuicao === "round_robin") {
-      const lastAssigned = await this.prisma.conversation.findFirst({
-        where: { queueId, responsavelId: { not: null } },
-        orderBy: { updatedAt: "desc" },
-      });
-      if (!lastAssigned?.responsavelId) {
-        return members[0]?.tenantUserId ?? null;
-      }
-      const lastIndex = members.findIndex((m) => m.tenantUserId === lastAssigned.responsavelId);
-      const nextIndex = lastIndex === -1 ? 0 : (lastIndex + 1) % members.length;
-      return members[nextIndex]?.tenantUserId ?? null;
-    }
-
-    // "priority": restringe aos membros com a maior `prioridade` cadastrada
-    // na equipe e, entre eles, desempata por menor volume (mesmo critério
-    // de "least_volume") — diferente de "least_volume" puro, que ignora
-    // prioridade e olha só o volume entre todos os membros.
-    const candidates =
-      queue.distribuicao === "priority"
-        ? members.filter((m) => m.prioridade === Math.max(...members.map((mm) => mm.prioridade)))
-        : members;
-
-    // least_volume (padrão) e desempate de "priority"
-    const counts = await Promise.all(
-      candidates.map(async (m) => ({
-        tenantUserId: m.tenantUserId,
-        count: await this.prisma.conversation.count({
-          where: { queueId, responsavelId: m.tenantUserId, status: { not: "closed" } },
-        }),
-      })),
-    );
-    counts.sort((a, b) => a.count - b.count);
-    return counts[0]?.tenantUserId ?? null;
   }
 
   async assignToQueue(conversationId: string, dto: AssignQueueDto, actorId: string) {
@@ -146,7 +92,7 @@ export class InboxService {
       throw new BadRequestException("Conversa não está em nenhuma fila — atribua uma fila antes de distribuir.");
     }
 
-    const nextMemberId = await this.pickNextMember(conversation.queueId);
+    const nextMemberId = await this.distribution.pickNextMember(conversation.queueId);
     if (!nextMemberId) {
       throw new BadRequestException("Nenhum atendente disponível na equipe desta fila.");
     }

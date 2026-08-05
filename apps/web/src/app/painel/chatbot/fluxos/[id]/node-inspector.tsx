@@ -588,15 +588,30 @@ function TransferFields({ payload, onChange }: { payload: TransferNodeData; onCh
   const { t } = useI18n();
   const queues = useQueues();
   return (
-    <Select
-      label={t("chatbot.builder.field.queue")}
-      value={payload.queueId ?? ""}
-      onChange={(v) => onChange({ ...payload, queueId: v || undefined })}
-      options={[
-        { value: "", label: t("chatbot.builder.noneSelected") },
-        ...(queues.data ?? []).map((q) => ({ value: q.id, label: q.nome })),
-      ]}
-    />
+    <>
+      <Select
+        label={t("chatbot.builder.field.queue")}
+        value={payload.queueId ?? ""}
+        onChange={(v) => onChange({ ...payload, queueId: v || undefined })}
+        options={[
+          { value: "", label: t("chatbot.builder.noneSelected") },
+          ...(queues.data ?? []).map((q) => ({ value: q.id, label: q.nome })),
+        ]}
+      />
+      {payload.queueId && (
+        <div className="flex flex-col gap-1">
+          <label className="flex items-center gap-2 text-sm text-ink">
+            <input
+              type="checkbox"
+              checked={payload.distribuicaoAutomatica ?? false}
+              onChange={(e) => onChange({ ...payload, distribuicaoAutomatica: e.target.checked })}
+            />
+            {t("chatbot.builder.field.autoDistribution")}
+          </label>
+          <p className="text-xs text-ink-faint">{t("chatbot.builder.field.autoDistributionHint")}</p>
+        </div>
+      )}
+    </>
   );
 }
 

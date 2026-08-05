@@ -830,6 +830,8 @@ const dictionary: Record<DictionaryKey, string> = {
   "chatbot.builder.field.optionText": "Text",
   "chatbot.builder.field.subflow": "Subflow",
   "chatbot.builder.field.queue": "Queue",
+  "chatbot.builder.field.autoDistribution": "Automatic distribution",
+  "chatbot.builder.field.autoDistributionHint": "Automatically picks an agent from this queue's team (same rule as \"Claim (auto)\"). Unchecked, the conversation stays \"Unassigned\" waiting for someone to claim it.",
   "chatbot.builder.field.condition.field": "Field (variable)",
   "chatbot.builder.field.condition.operator": "Operator",
   "chatbot.builder.field.condition.value": "Value",

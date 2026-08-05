@@ -16,6 +16,7 @@ import { classifyLeadScore } from "../../crm/lead-score.util";
 import { LeadScoreConfigService } from "../../crm/lead-score-config.service";
 import { ChatbotTimeoutProducer } from "./chatbot-timeout.producer";
 import { FilesService } from "../../files/files.service";
+import { QueueDistributionService } from "../../atendimento/queues/queue-distribution.service";
 import type {
   AiNodeData,
   ConditionNodeData,
@@ -73,6 +74,7 @@ export class ChatbotEngineService {
     private readonly leadScoreConfig: LeadScoreConfigService,
     private readonly timeoutProducer: ChatbotTimeoutProducer,
     private readonly files: FilesService,
+    private readonly queueDistribution: QueueDistributionService,
   ) {}
 
   async startFlow(flowId: string, conversationId: string): Promise<ChatbotExecution> {
@@ -760,11 +762,21 @@ export class ChatbotEngineService {
   }
 
   private async transferToHuman(execution: ChatbotExecution, data: TransferNodeData): Promise<void> {
+    // Distribuição automática só entra quando o card manda para uma fila sem já ter escolhido um
+    // atendente específico — mesma regra usada em "Assumir (auto)" no Atendimento (ver
+    // QueueDistributionService.pickNextMember). Sem isso (padrão), a conversa cai na fila "Sem
+    // responsável" esperando alguém assumir manualmente.
+    const autoAssignedUserId =
+      data.queueId && !data.tenantUserId && data.distribuicaoAutomatica
+        ? await this.queueDistribution.pickNextMember(data.queueId)
+        : null;
+    const tenantUserId = data.tenantUserId ?? autoAssignedUserId ?? undefined;
+
     await this.tenantPrisma.conversation.update({
       where: { id: execution.conversationId },
       data: {
         ...(data.queueId ? { queueId: data.queueId } : {}),
-        ...(data.tenantUserId ? { responsavelId: data.tenantUserId } : {}),
+        ...(tenantUserId ? { responsavelId: tenantUserId } : {}),
       },
     });
 
@@ -773,7 +785,7 @@ export class ChatbotEngineService {
         conversationId: execution.conversationId,
         tipo: "transfer",
         actorId: null,
-        payload: { origem: "chatbot", queueId: data.queueId, tenantUserId: data.tenantUserId } as unknown as Prisma.InputJsonValue,
+        payload: { origem: "chatbot", queueId: data.queueId, tenantUserId } as unknown as Prisma.InputJsonValue,
       },
     });
   }

@@ -128,6 +128,13 @@ export interface SubflowNodeData {
 export interface TransferNodeData {
   queueId?: string;
   tenantUserId?: string;
+  /**
+   * Só relevante quando `queueId` é informado sem `tenantUserId` explícito — se `true`, escolhe
+   * automaticamente um atendente da equipe da fila (mesma regra de distribuição usada em
+   * "Assumir (auto)" no Atendimento) em vez de deixar a conversa "Sem responsável" esperando
+   * alguém assumir manualmente.
+   */
+  distribuicaoAutomatica?: boolean;
 }
 
 export interface AiNodeData {

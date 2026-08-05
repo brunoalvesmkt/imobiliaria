@@ -6,6 +6,7 @@ import { TeamsController } from "./teams/teams.controller";
 import { TeamsService } from "./teams/teams.service";
 import { QueuesController } from "./queues/queues.controller";
 import { QueuesService } from "./queues/queues.service";
+import { QueueDistributionModule } from "./queues/queue-distribution.module";
 import { InboxController } from "./inbox/inbox.controller";
 import { InboxService } from "./inbox/inbox.service";
 import { SummaryService } from "./inbox/summary.service";
@@ -17,7 +18,7 @@ import { QuickMessagesController } from "./quick-messages/quick-messages.control
 import { QuickMessagesService } from "./quick-messages/quick-messages.service";
 
 @Module({
-  imports: [RealtimeModule, AutomationModule, AiModule],
+  imports: [RealtimeModule, AutomationModule, AiModule, QueueDistributionModule],
   controllers: [TeamsController, QueuesController, InboxController, QualityController, QualityConfigController, QuickMessagesController],
   providers: [TeamsService, QueuesService, InboxService, SummaryService, QualityService, QualityConfigService, QuickMessagesService],
 })

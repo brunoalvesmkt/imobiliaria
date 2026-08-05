@@ -7,6 +7,7 @@ import { RealtimeModule } from "../realtime/realtime.module";
 import { AiModule } from "../ai/ai.module";
 import { LeadScoreConfigModule } from "../crm/lead-score-config.module";
 import { FilesModule } from "../files/files.module";
+import { QueueDistributionModule } from "../atendimento/queues/queue-distribution.module";
 import { FlowsController } from "./flows/flows.controller";
 import { FlowsService } from "./flows/flows.service";
 import { ChatbotEngineService } from "./engine/chatbot-engine.service";
@@ -22,6 +23,7 @@ import { KnowledgeBaseService } from "./knowledge-base/knowledge-base.service";
     AiModule,
     LeadScoreConfigModule,
     FilesModule,
+    QueueDistributionModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

@@ -78,6 +78,8 @@ export interface SubflowNodeData {
 export interface TransferNodeData {
   queueId?: string;
   tenantUserId?: string;
+  /** Escolhe automaticamente um atendente da equipe da fila (mesma regra de "Assumir (auto)") em vez de deixar "Sem responsável". */
+  distribuicaoAutomatica?: boolean;
 }
 
 export type AiProviderName = "anthropic" | "openai" | "google";

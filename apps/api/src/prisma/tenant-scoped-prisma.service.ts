@@ -590,6 +590,9 @@ export class TenantScopedPrismaService {
 
       update: (args: { where: { id: string }; data: Prisma.CustomFieldDefinitionUncheckedUpdateInput }) =>
         this.prisma.customFieldDefinition.update({ where: { id: args.where.id, tenantId }, data: args.data }),
+
+      delete: (args: { where: { id: string } }) =>
+        this.prisma.customFieldDefinition.delete({ where: { id: args.where.id, tenantId } }),
     };
   }
 }

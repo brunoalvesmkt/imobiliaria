@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
 import { TenantAuthGuard } from "../../auth/guards/tenant-auth.guard";
 import { ModuleActiveGuard } from "../../common/modules/module-active.guard";
 import { PermissionsGuard } from "../../common/permissions/permissions.guard";
@@ -32,5 +32,11 @@ export class CustomFieldsController {
   @RequirePermission("crm", "administer")
   update(@Param("id") id: string, @Body() dto: UpdateCustomFieldDto, @CurrentUser() user: AuthenticatedRequestUser) {
     return this.service.update(id, dto, user.id);
+  }
+
+  @Delete(":id")
+  @RequirePermission("crm", "administer")
+  delete(@Param("id") id: string, @CurrentUser() user: AuthenticatedRequestUser) {
+    return this.service.delete(id, user.id);
   }
 }

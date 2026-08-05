@@ -367,6 +367,14 @@ export function useUpdateCustomFieldDefinition() {
   });
 }
 
+export function useDeleteCustomFieldDefinition() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiDelete<void>(`/crm/custom-fields/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["crm", "custom-fields"] }),
+  });
+}
+
 export interface FunnelStage {
   id: string;
   funnelId: string;

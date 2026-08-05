@@ -5,6 +5,7 @@ import {
   useCustomFieldDefinitions,
   useCreateCustomFieldDefinition,
   useUpdateCustomFieldDefinition,
+  useDeleteCustomFieldDefinition,
   CUSTOM_FIELD_TYPES,
   type CustomFieldType,
 } from "@/lib/crm";
@@ -18,7 +19,13 @@ export default function CustomFieldsPage() {
   const { t } = useI18n();
   const definitions = useCustomFieldDefinitions();
   const update = useUpdateCustomFieldDefinition();
+  const deleteField = useDeleteCustomFieldDefinition();
   const [showForm, setShowForm] = useState(false);
+
+  function onDelete(id: string, nome: string) {
+    if (!window.confirm(t("crm.customFields.confirmDelete").replace("{nome}", nome))) return;
+    deleteField.mutate(id);
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -42,13 +49,22 @@ export default function CustomFieldsPage() {
                 {def.obrigatorio ? ` · ${t("crm.customFields.required")}` : ""}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => update.mutate({ id: def.id, ativo: !def.ativo })}
-              className="text-xs font-medium text-ink-dim hover:underline"
-            >
-              {def.ativo ? t("chatbot.kb.deactivate") : t("chatbot.kb.activate")}
-            </button>
+            <div className="flex flex-none items-center gap-3">
+              <button
+                type="button"
+                onClick={() => update.mutate({ id: def.id, ativo: !def.ativo })}
+                className="text-xs font-medium text-ink-dim hover:underline"
+              >
+                {def.ativo ? t("chatbot.kb.deactivate") : t("chatbot.kb.activate")}
+              </button>
+              <button
+                type="button"
+                onClick={() => onDelete(def.id, def.nome)}
+                className="text-xs font-medium text-red-600 hover:underline"
+              >
+                {t("common.delete")}
+              </button>
+            </div>
           </div>
         ))}
         {definitions.data?.length === 0 && <p className="text-sm text-ink-faint">{t("crm.customFields.empty")}</p>}

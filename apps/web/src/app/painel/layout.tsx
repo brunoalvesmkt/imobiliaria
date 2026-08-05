@@ -46,7 +46,12 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
     return () => clearInterval(interval);
   }, [currentUser.isSuccess]);
 
-  if (currentUser.isLoading || currentUser.isError) {
+  // Espera `activeModules`/`moduleOrder` também resolverem antes de montar o
+  // menu — como essas buscas só começam depois de `currentUser` ter sucesso
+  // (dependência em cadeia), renderizar assim que `currentUser` resolve
+  // mostrava o menu com os módulos temporariamente vazios/incompletos (e a
+  // logo com o fallback de letra) até essas buscas chegarem.
+  if (currentUser.isLoading || currentUser.isError || activeModules.isLoading || moduleOrder.isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-surface-alt">
         <span className="text-sm text-ink-faint">{t("common.loading")}</span>

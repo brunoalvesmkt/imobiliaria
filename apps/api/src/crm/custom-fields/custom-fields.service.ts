@@ -88,4 +88,24 @@ export class CustomFieldsService {
 
     return updated;
   }
+
+  /**
+   * Exclusão de verdade (não é o `ativo: false` do "Desativar") — os valores já
+   * salvos em `Contact.customFields` para esta `chave` não são apagados (ver
+   * nota da classe: é um JSON solto, sem FK), só deixam de ter uma definição
+   * associada (não aparecem mais na ficha do contato).
+   */
+  async delete(id: string, actorId: string) {
+    const item = await this.get(id);
+    await this.tenantPrisma.customFieldDefinition.delete({ where: { id } });
+
+    await this.audit.record({
+      actorId,
+      actorType: "tenant_user",
+      action: "custom_field_definition.delete",
+      entity: "CustomFieldDefinition",
+      entityId: id,
+      previousData: { nome: item.nome, tipo: item.tipo },
+    });
+  }
 }

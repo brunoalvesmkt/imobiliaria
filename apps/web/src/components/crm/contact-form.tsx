@@ -251,9 +251,12 @@ export function ContactForm({
         onChange={(e) => setForm({ ...form, observacoes: e.target.value })}
       />
 
-      <div>
+      <div className="flex items-center gap-2">
         <Button type="submit" loading={saving.isPending}>
           {isEditing ? t("common.save") : t("crm.contacts.saveContact")}
+        </Button>
+        <Button type="button" variant="secondary" onClick={onDone}>
+          {t("common.cancel")}
         </Button>
       </div>
     </form>

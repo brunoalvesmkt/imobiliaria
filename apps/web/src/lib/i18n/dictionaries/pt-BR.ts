@@ -735,6 +735,7 @@ const dictionary = {
   "atendimento.teams.errorGeneric": "Não foi possível excluir a equipe.",
   "atendimento.queues.distributionLabel": "Distribuição",
   "atendimento.queues.priority": "Prioridade",
+  "atendimento.queues.teamLabel": "Equipe vinculada",
   "atendimento.queues.distribution.round_robin": "Round robin",
   "atendimento.queues.distribution.least_volume": "Menor volume",
   "atendimento.queues.distribution.priority": "Por prioridade",

@@ -737,6 +737,7 @@ const dictionary: Record<DictionaryKey, string> = {
   "atendimento.teams.errorGeneric": "No fue posible eliminar el equipo.",
   "atendimento.queues.distributionLabel": "Distribución",
   "atendimento.queues.priority": "Prioridad",
+  "atendimento.queues.teamLabel": "Equipo vinculado",
   "atendimento.queues.distribution.round_robin": "Round robin",
   "atendimento.queues.distribution.least_volume": "Menor volumen",
   "atendimento.queues.distribution.priority": "Por prioridad",

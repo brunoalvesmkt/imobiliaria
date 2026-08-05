@@ -266,6 +266,7 @@ function TeamCard({ team }: { team: Team }) {
 function QueueCard({ queue }: { queue: Queue }) {
   const { t } = useI18n();
   const isAdmin = useIsAtendimentoAdmin();
+  const teams = useTeams();
   const updateQueue = useUpdateQueue(queue.id);
   const businessHours = useBusinessHours(queue.id);
   const addBusinessHours = useAddBusinessHours(queue.id);
@@ -277,6 +278,8 @@ function QueueCard({ queue }: { queue: Queue }) {
   const [nome, setNome] = useState(queue.nome);
   const [distribuicao, setDistribuicao] = useState(queue.distribuicao);
   const [prioridade, setPrioridade] = useState(String(queue.prioridade ?? 0));
+  const [teamId, setTeamId] = useState(queue.teamId ?? "");
+  const teamName = teams.data?.find((team) => team.id === queue.teamId)?.nome;
   const [diaSemana, setDiaSemana] = useState("1");
   const [horaInicio, setHoraInicio] = useState("09:00");
   const [horaFim, setHoraFim] = useState("18:00");
@@ -305,7 +308,11 @@ function QueueCard({ queue }: { queue: Queue }) {
               </span>
             )}
           </div>
-          <p className="text-xs text-ink-faint">{t(`atendimento.queues.distribution.${queue.distribuicao}` as DictionaryKey)}</p>
+          <p className="text-xs text-ink-faint">
+            {t(`atendimento.queues.distribution.${queue.distribuicao}` as DictionaryKey)}
+            {" · "}
+            {teamName ?? t("atendimento.queues.noTeam")}
+          </p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-1">
           {isAdmin && (
@@ -313,6 +320,9 @@ function QueueCard({ queue }: { queue: Queue }) {
               type="button"
               onClick={() => {
                 setNome(queue.nome);
+                setDistribuicao(queue.distribuicao);
+                setPrioridade(String(queue.prioridade ?? 0));
+                setTeamId(queue.teamId ?? "");
                 setEditing((v) => !v);
               }}
               className="text-xs font-medium text-brand-700 hover:underline"
@@ -386,12 +396,27 @@ function QueueCard({ queue }: { queue: Queue }) {
             value={prioridade}
             onChange={(e) => setPrioridade(e.target.value)}
           />
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-ink">{t("atendimento.queues.teamLabel")}</label>
+            <select
+              value={teamId}
+              onChange={(e) => setTeamId(e.target.value)}
+              className="rounded-md border border-line bg-surface px-2 py-1 text-xs"
+            >
+              <option value="">{t("atendimento.queues.noTeam")}</option>
+              {teams.data?.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.nome}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="flex gap-2">
             <Button
               loading={updateQueue.isPending}
               disabled={!nome.trim()}
               onClick={async () => {
-                await updateQueue.mutateAsync({ nome, distribuicao, prioridade: Number(prioridade) });
+                await updateQueue.mutateAsync({ nome, distribuicao, prioridade: Number(prioridade), teamId: teamId || null });
                 setEditing(false);
               }}
             >

@@ -214,7 +214,7 @@ export function useCreateQueue() {
 export function useUpdateQueue(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: Partial<{ nome: string; descricao: string; teamId: string; prioridade: number; distribuicao: Queue["distribuicao"]; slaMinutos: number; mensagemEspera: string; mensagemForaExpediente: string }>) =>
+    mutationFn: (input: Partial<{ nome: string; descricao: string; teamId: string | null; prioridade: number; distribuicao: Queue["distribuicao"]; slaMinutos: number; mensagemEspera: string; mensagemForaExpediente: string }>) =>
       apiPatch<Queue>(`/atendimento/queues/${id}`, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["atendimento", "queues"] }),
   });

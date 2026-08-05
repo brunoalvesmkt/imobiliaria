@@ -44,8 +44,11 @@ export interface PlatformSettings {
   announcementTextColor: string | null;
   announcementAlign: "left" | "center" | "right";
   announcementBold: boolean;
+  announcementButtonBold: boolean;
   announcementButtonColor: string | null;
+  announcementButtonTextColor: string | null;
   announcementButtonShape: "rounded" | "square";
+  announcementDismissMode: "session" | "always";
   updatedAt: string;
 }
 

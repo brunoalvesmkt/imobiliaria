@@ -95,7 +95,13 @@ function MasterActions({
         {menuOpen && (
           <>
             <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} aria-hidden="true" />
-            <div className="absolute right-0 top-full z-20 mt-1 w-48 rounded-md border border-line bg-surface py-1 shadow-md">
+            {/* No menu lateral (showName=false) o avatar fica no rodapé da tela — abrir para
+                baixo deixava o menu suspenso cortado fora da viewport. Abre para cima ali. */}
+            <div
+              className={`absolute right-0 z-20 w-48 rounded-md border border-line bg-surface py-1 shadow-md ${
+                showName ? "top-full mt-1" : "bottom-full mb-1"
+              }`}
+            >
               <div className="border-b border-line px-3 py-2">
                 <p className="truncate text-sm font-medium text-ink">{nome}</p>
                 <p className="truncate text-xs text-ink-faint">
@@ -176,7 +182,7 @@ export default function MasterPainelLayout({ children }: { children: React.React
   if (layout === "horizontal") {
     return (
       <div className="flex min-h-screen flex-col bg-surface-alt">
-        <nav className="flex flex-none items-center gap-1 overflow-x-auto border-b border-line bg-surface px-4 py-2 sm:px-6">
+        <nav className="flex flex-none items-center gap-1 border-b border-line bg-surface px-4 py-2 sm:px-6">
           <div className="mr-2 flex-none">
             <LogoImage
               lightUrl={branding.data?.logoLightUrl}
@@ -187,7 +193,10 @@ export default function MasterPainelLayout({ children }: { children: React.React
               loading={branding.isLoading}
             />
           </div>
-          <div className="flex flex-1 items-center gap-1">
+          {/* Rolagem horizontal só nos itens de menu — ver comentário equivalente no
+              HorizontalNav do tenant: `overflow-x-auto` no <nav> inteiro cortava o
+              menu suspenso do avatar. */}
+          <div className="flex flex-1 items-center gap-1 overflow-x-auto">
             {visibleItems.map((item) => {
               const isActive = isNavItemActive(pathname, item.href);
               return (
@@ -211,12 +220,12 @@ export default function MasterPainelLayout({ children }: { children: React.React
   }
 
   return (
-    <div className="flex min-h-screen bg-surface-alt">
+    <div className="flex h-screen overflow-hidden bg-surface-alt">
       {sidebarOpen && (
         <div className="fixed inset-0 z-30 bg-black/40 md:hidden" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
       )}
       <nav
-        className={`fixed inset-y-0 left-0 z-40 flex w-60 flex-none flex-col gap-1 border-r border-line bg-surface p-4 transition-transform md:static md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-60 flex-none flex-col gap-1 overflow-y-auto border-r border-line bg-surface p-4 transition-transform md:static md:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -251,9 +260,9 @@ export default function MasterPainelLayout({ children }: { children: React.React
         </div>
       </nav>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {mobileHeader}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>
       </div>
     </div>
   );

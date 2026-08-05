@@ -39,8 +39,11 @@ export class BrandingService {
         textColor: string | null;
         align: string;
         bold: boolean;
+        buttonBold: boolean;
         buttonColor: string | null;
+        buttonTextColor: string | null;
         buttonShape: string;
+        dismissMode: string;
       };
     }
   > {
@@ -58,8 +61,11 @@ export class BrandingService {
         textColor: settings.announcementTextColor,
         align: settings.announcementAlign,
         bold: settings.announcementBold,
+        buttonBold: settings.announcementButtonBold,
         buttonColor: settings.announcementButtonColor,
+        buttonTextColor: settings.announcementButtonTextColor,
         buttonShape: settings.announcementButtonShape,
+        dismissMode: settings.announcementDismissMode,
       },
     };
   }

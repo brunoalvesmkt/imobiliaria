@@ -196,4 +196,17 @@ export class UpdatePlatformSettingsDto {
   @IsOptional()
   @IsIn(["rounded", "square"])
   announcementButtonShape?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  announcementButtonBold?: boolean;
+
+  @IsOptional()
+  @IsIn(["session", "always"])
+  announcementDismissMode?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^#[0-9a-fA-F]{6}$/)
+  announcementButtonTextColor?: string | null;
 }

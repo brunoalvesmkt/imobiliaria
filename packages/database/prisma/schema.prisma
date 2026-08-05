@@ -1275,12 +1275,18 @@ model PlatformSettings {
   announcementTextColor   String?
   /// "left" | "center" | "right"
   announcementAlign       String   @default("left")
-  /// Negrito no texto e no botão do aviso.
+  /// Negrito no texto do aviso (separado do negrito do botão, ver announcementButtonBold).
   announcementBold        Boolean  @default(false)
   /// Cor de fundo do botão do link (texto do botão sempre em branco). Nulo = usa announcementTextColor.
   announcementButtonColor String?
   /// "rounded" | "square"
   announcementButtonShape String   @default("rounded")
+  /// Negrito no botão do aviso, independente do texto (announcementBold).
+  announcementButtonBold  Boolean  @default(false)
+  /// "session" (fecha e não mostra mais até o próximo login) | "always" (sempre mostra de novo).
+  announcementDismissMode String   @default("always")
+  /// Cor do texto do botão do link. Nulo = branco.
+  announcementButtonTextColor String?
 
   updatedAt DateTime @updatedAt
 

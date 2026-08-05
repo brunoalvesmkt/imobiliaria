@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTenantBranding } from "@/lib/branding";
 import { useI18n } from "@/lib/i18n";
 
@@ -10,13 +10,32 @@ const JUSTIFY_BY_ALIGN: Record<string, string> = {
   right: "justify-end",
 };
 
+const DISMISS_STORAGE_KEY = "announcement-dismissed";
+
 export function AnnouncementBanner() {
   const { t } = useI18n();
   const branding = useTenantBranding();
   const [dismissed, setDismissed] = useState(false);
   const announcement = branding.data?.announcement;
 
+  // Modo "session": fechar esconde o aviso até o próximo login (na prática,
+  // até a aba/sessão do navegador ser encerrada — sessionStorage). Modo
+  // "always": o fechamento vale só para a página atual, volta a aparecer
+  // na próxima navegação/recarregamento.
+  useEffect(() => {
+    if (announcement?.dismissMode === "session" && sessionStorage.getItem(DISMISS_STORAGE_KEY) === "1") {
+      setDismissed(true);
+    }
+  }, [announcement?.dismissMode]);
+
   if (!announcement?.enabled || !announcement.text || dismissed) return null;
+
+  function onClose() {
+    setDismissed(true);
+    if (announcement?.dismissMode === "session") {
+      sessionStorage.setItem(DISMISS_STORAGE_KEY, "1");
+    }
+  }
 
   const textColor = announcement.textColor ?? "#78350f";
   const buttonShapeClass = announcement.buttonShape === "square" ? "rounded-none" : "rounded-md";
@@ -33,8 +52,8 @@ export function AnnouncementBanner() {
             href={announcement.linkUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className={`px-3 py-1 text-white transition-opacity hover:opacity-90 ${buttonShapeClass} ${announcement.bold ? "font-bold" : "font-semibold"}`}
-            style={{ backgroundColor: announcement.buttonColor ?? textColor }}
+            className={`px-3 py-1 transition-opacity hover:opacity-90 ${buttonShapeClass} ${announcement.buttonBold ? "font-bold" : "font-semibold"}`}
+            style={{ backgroundColor: announcement.buttonColor ?? textColor, color: announcement.buttonTextColor ?? "#ffffff" }}
           >
             {announcement.linkText || announcement.linkUrl}
           </a>
@@ -42,7 +61,7 @@ export function AnnouncementBanner() {
       </div>
       <button
         type="button"
-        onClick={() => setDismissed(true)}
+        onClick={onClose}
         aria-label={t("layout.announcement.close")}
         className="flex h-5 w-5 flex-none items-center justify-center rounded-full opacity-70 hover:opacity-100"
       >

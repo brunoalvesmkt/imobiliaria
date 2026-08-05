@@ -72,7 +72,13 @@ export function TopbarActions({ showName = true }: { showName?: boolean }) {
         {menuOpen && (
           <>
             <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} aria-hidden="true" />
-            <div className="absolute right-0 top-full z-20 mt-1 w-56 rounded-md border border-line bg-surface py-1 shadow-md">
+            {/* No Sidebar (showName=false) o avatar fica colado no rodapé da tela — abrir para
+                baixo (top-full) deixava o menu cortado fora da viewport. Abre para cima ali. */}
+            <div
+              className={`absolute right-0 z-20 w-56 rounded-md border border-line bg-surface py-1 shadow-md ${
+                showName ? "top-full mt-1" : "bottom-full mb-1"
+              }`}
+            >
               <div className="border-b border-line px-3 py-2">
                 <p className="truncate text-sm font-medium text-ink">{profile.data?.nome}</p>
                 <p className="truncate text-xs text-ink-faint">{profile.data?.email}</p>

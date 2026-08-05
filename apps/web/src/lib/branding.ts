@@ -17,8 +17,11 @@ export interface AnnouncementConfig {
   textColor: string | null;
   align: "left" | "center" | "right";
   bold: boolean;
+  buttonBold: boolean;
   buttonColor: string | null;
+  buttonTextColor: string | null;
   buttonShape: "rounded" | "square";
+  dismissMode: "session" | "always";
 }
 
 export function useTenantBranding(enabled = true) {

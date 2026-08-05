@@ -16,7 +16,7 @@ export function HorizontalNav({ activeModules, moduleOrder }: { activeModules: S
   const branding = useTenantBranding();
 
   return (
-    <nav className="flex flex-none items-center gap-1 overflow-x-auto border-b border-line bg-surface px-4 py-2 sm:px-6">
+    <nav className="flex flex-none items-center gap-1 border-b border-line bg-surface px-4 py-2 sm:px-6">
       <div className="mr-2 flex-none">
         <LogoImage
           lightUrl={branding.data?.logoLightUrl}
@@ -27,7 +27,11 @@ export function HorizontalNav({ activeModules, moduleOrder }: { activeModules: S
           loading={branding.isLoading}
         />
       </div>
-      <div className="flex flex-1 items-center justify-center gap-1">
+      {/* Rolagem horizontal só nos itens de menu — se ficasse no <nav> inteiro, o
+          `overflow-x-auto` força `overflow-y` a computar como `auto` também (regra do
+          CSS quando um eixo não é `visible`), cortando o menu suspenso do avatar, que
+          é `absolute` e se estende para fora da barra. */}
+      <div className="flex flex-1 items-center justify-center gap-1 overflow-x-auto">
         {items
           .filter((item) => !item.module || activeModules.has(item.module))
           .map((item) => {

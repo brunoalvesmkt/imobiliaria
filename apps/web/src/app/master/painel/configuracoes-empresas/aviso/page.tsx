@@ -9,6 +9,7 @@ import { Section, Toggle } from "../_shared";
 
 const DEFAULT_BG_COLOR = "#fef3c7";
 const DEFAULT_TEXT_COLOR = "#78350f";
+const DEFAULT_BUTTON_TEXT_COLOR = "#ffffff";
 
 const ALIGN_OPTIONS: { value: "left" | "center" | "right"; labelKey: "master.settings.announcement.align.left" | "master.settings.announcement.align.center" | "master.settings.announcement.align.right" }[] = [
   { value: "left", labelKey: "master.settings.announcement.align.left" },
@@ -19,6 +20,11 @@ const ALIGN_OPTIONS: { value: "left" | "center" | "right"; labelKey: "master.set
 const SHAPE_OPTIONS: { value: "rounded" | "square"; labelKey: "master.settings.announcement.shape.rounded" | "master.settings.announcement.shape.square" }[] = [
   { value: "rounded", labelKey: "master.settings.announcement.shape.rounded" },
   { value: "square", labelKey: "master.settings.announcement.shape.square" },
+];
+
+const DISMISS_MODE_OPTIONS: { value: "session" | "always"; labelKey: "master.settings.announcement.dismissMode.session" | "master.settings.announcement.dismissMode.always" }[] = [
+  { value: "session", labelKey: "master.settings.announcement.dismissMode.session" },
+  { value: "always", labelKey: "master.settings.announcement.dismissMode.always" },
 ];
 
 const JUSTIFY_BY_ALIGN: Record<string, string> = {
@@ -46,6 +52,7 @@ export default function MasterSettingsAvisoPage() {
   if (!settings.data) return null;
   const s = settings.data;
   const textColor = s.announcementTextColor ?? DEFAULT_TEXT_COLOR;
+  const buttonTextColor = s.announcementButtonTextColor ?? DEFAULT_BUTTON_TEXT_COLOR;
   const buttonShapeClass = s.announcementButtonShape === "square" ? "rounded-none" : "rounded-md";
 
   return (
@@ -81,7 +88,7 @@ export default function MasterSettingsAvisoPage() {
         <Toggle
           checked={s.announcementBold}
           onChange={(v) => update.mutate({ announcementBold: v })}
-          label={t("master.settings.announcement.bold")}
+          label={t("master.settings.announcement.textBold")}
         />
 
         <div className="flex flex-col gap-1.5 pt-1">
@@ -94,6 +101,25 @@ export default function MasterSettingsAvisoPage() {
                 onClick={() => update.mutate({ announcementAlign: opt.value })}
                 className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
                   s.announcementAlign === opt.value ? "bg-brand-500 text-white" : "text-ink-dim hover:bg-surface-alt"
+                }`}
+              >
+                {t(opt.labelKey)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5 pt-1">
+          <span className="text-sm font-medium text-ink">{t("master.settings.announcement.dismissMode.label")}</span>
+          <p className="text-xs text-ink-faint">{t("master.settings.announcement.dismissMode.subtitle")}</p>
+          <div className="inline-flex w-fit rounded-md border border-line p-0.5">
+            {DISMISS_MODE_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => update.mutate({ announcementDismissMode: opt.value })}
+                className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
+                  s.announcementDismissMode === opt.value ? "bg-brand-500 text-white" : "text-ink-dim hover:bg-surface-alt"
                 }`}
               >
                 {t(opt.labelKey)}
@@ -123,6 +149,12 @@ export default function MasterSettingsAvisoPage() {
             if (linkText !== (s.announcementLinkText ?? "")) update.mutate({ announcementLinkText: linkText.trim() || null });
           }}
           maxLength={60}
+        />
+
+        <Toggle
+          checked={s.announcementButtonBold}
+          onChange={(v) => update.mutate({ announcementButtonBold: v })}
+          label={t("master.settings.announcement.buttonBold")}
         />
 
         <div className="flex flex-col gap-1.5 pt-1">
@@ -180,6 +212,18 @@ export default function MasterSettingsAvisoPage() {
               className="h-9 w-16 cursor-pointer rounded-md border border-line bg-surface"
             />
           </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="announcementButtonTextColor" className="text-sm font-medium text-ink">
+              {t("master.settings.announcement.buttonTextColor")}
+            </label>
+            <input
+              id="announcementButtonTextColor"
+              type="color"
+              value={buttonTextColor}
+              onChange={(e) => update.mutate({ announcementButtonTextColor: e.target.value })}
+              className="h-9 w-16 cursor-pointer rounded-md border border-line bg-surface"
+            />
+          </div>
         </div>
 
         {s.announcementEnabled && text.trim() && (
@@ -195,8 +239,8 @@ export default function MasterSettingsAvisoPage() {
               <span className={s.announcementBold ? "font-bold" : undefined}>{text}</span>
               {linkUrl.trim() && (
                 <span
-                  className={`px-3 py-1 text-white ${buttonShapeClass} ${s.announcementBold ? "font-bold" : "font-semibold"}`}
-                  style={{ backgroundColor: s.announcementButtonColor ?? textColor }}
+                  className={`px-3 py-1 ${buttonShapeClass} ${s.announcementButtonBold ? "font-bold" : "font-semibold"}`}
+                  style={{ backgroundColor: s.announcementButtonColor ?? textColor, color: buttonTextColor }}
                 >
                   {linkText.trim() || linkUrl.trim()}
                 </span>

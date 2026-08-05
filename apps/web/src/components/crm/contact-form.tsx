@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useContactOrigins, useCreateContact, useUpdateContact, type Contact, type ContactPhoneType } from "@/lib/crm";
 import { Field } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,15 @@ const PHONE_TYPES: ContactPhoneType[] = ["whatsapp", "residencial", "comercial"]
 interface PhoneRow {
   numero: string;
   tipo: ContactPhoneType;
+}
+
+/** Remove o DDI do Brasil ("55") de um número, quando presente — mesma regra usada no backend ao criar contato automaticamente a partir do WhatsApp. */
+function stripDddiBrasil(numero: string): string {
+  const digits = numero.replace(/\D/g, "");
+  if (digits.startsWith("55") && (digits.length === 12 || digits.length === 13)) {
+    return digits.slice(2);
+  }
+  return digits;
 }
 
 /** Formata como o resto do módulo CRM exibe telefone — "(11) 99999-9999" / "(11) 9999-9999" — enquanto o usuário digita. */
@@ -63,13 +72,25 @@ export function ContactForm({
   const [phones, setPhones] = useState<PhoneRow[]>(
     contact && contact.phones.length > 0
       ? contact.phones.map((p) => ({ numero: maskPhone(p.numero), tipo: p.tipo }))
-      : [{ numero: initialPhone ? maskPhone(initialPhone) : "", tipo: initialPhoneType ?? "whatsapp" }],
+      : [{ numero: initialPhone ? maskPhone(stripDddiBrasil(initialPhone)) : "", tipo: initialPhoneType ?? "whatsapp" }],
   );
   const [emails, setEmails] = useState<string[]>(
     contact && contact.emails.length > 0 ? contact.emails.map((e) => e.email) : [""],
   );
   const [clientError, setClientError] = useState<string | null>(null);
   const saving = isEditing ? updateContact : createContact;
+
+  // Ao abrir pré-preenchido com o número do WhatsApp (Caixa de entrada do
+  // Atendimento), seleciona automaticamente a origem "WhatsApp" se a empresa
+  // já tiver cadastrado uma com esse nome — não inventa uma origem nova.
+  useEffect(() => {
+    if (isEditing || initialPhoneType !== "whatsapp" || form.origemId) return;
+    const whatsappOrigin = origins.data?.find((o) => o.nome.trim().toLowerCase() === "whatsapp");
+    if (whatsappOrigin) {
+      setForm((prev) => ({ ...prev, origemId: whatsappOrigin.id }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [origins.data]);
 
   function updatePhone(index: number, patch: Partial<PhoneRow>) {
     setPhones((prev) => prev.map((p, i) => (i === index ? { ...p, ...patch } : p)));

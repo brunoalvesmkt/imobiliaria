@@ -10,6 +10,7 @@ import { Alert } from "@/components/ui/alert";
 import { useI18n } from "@/lib/i18n";
 import { apiUrl, ApiError } from "@/lib/api-client";
 import { StatusBadge } from "./status-badge";
+import { formatCpfCnpj } from "@/lib/cpf-cnpj";
 
 export default function MasterTenantsPage() {
   const { t } = useI18n();
@@ -77,7 +78,7 @@ function TenantRow({ tenant }: { tenant: MasterTenant }) {
           </span>
         )}
       </td>
-      <td className="px-4 py-2 text-ink-dim">{tenant.cnpj}</td>
+      <td className="px-4 py-2 text-ink-dim">{formatCpfCnpj(tenant.cnpj)}</td>
       <td className="px-4 py-2">
         <StatusBadge status={tenant.status} />
       </td>

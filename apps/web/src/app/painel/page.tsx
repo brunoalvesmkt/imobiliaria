@@ -10,6 +10,7 @@ import { useDashboardSummary } from "@/lib/dashboard";
 import { ActionsBlock, KpiCard, OperationalGrid, PeriodLabel, PeriodPresetFilter, UpdatedAgo, defaultPeriodFilter } from "./dashboard-widgets";
 
 const CHART_COLOR = "#16a34a";
+const CHART_COLOR_PURPLE = "#7c3aed";
 
 function formatCurrency(value: number): string {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
@@ -205,6 +206,132 @@ export default function DashboardPage() {
           <ChartCard title={t("dashboard.atendimento.porStatus")} empty={data.atendimento.atual.conversationsByStatus.length === 0}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.atendimento.atual.conversationsByStatus.map((g) => ({ ...g, label: t(`dashboard.atendimento.status.${g.status}` as DictionaryKey) }))}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                <YAxis allowDecimals={false} />
+                <Tooltip />
+                <Bar dataKey="count" fill={CHART_COLOR} radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        </section>
+      )}
+
+      {data.chatbot && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-sm font-semibold text-ink">{t("dashboard.chatbot.title")}</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <KpiCard
+              label={t("dashboard.chatbot.totalExecucoes")}
+              value={data.chatbot.atual.executionsByStatus.reduce((sum, g) => sum + g.count, 0)}
+              delta={data.chatbot.deltas.total}
+              comparisonLabel={comparisonLabel}
+              href="/painel/chatbot"
+              tooltip={t("dashboard.tooltip.chatbotTotalExecucoes")}
+            />
+            <KpiCard
+              label={t("dashboard.chatbot.taxaConclusao")}
+              value={formatPercent01(data.chatbot.atual.completionRate)}
+              delta={data.chatbot.deltas.completionRate}
+              comparisonLabel={comparisonLabel}
+              tooltip={t("dashboard.tooltip.chatbotTaxaConclusao")}
+            />
+            <KpiCard
+              label={t("dashboard.chatbot.transferidas")}
+              value={data.chatbot.atual.executionsByStatus.find((g) => g.status === "transferred")?.count ?? 0}
+              delta={data.chatbot.deltas.transferidas}
+              invert
+              comparisonLabel={comparisonLabel}
+              href="/painel/atendimento/inbox"
+              tooltip={t("dashboard.tooltip.chatbotTransferidas")}
+            />
+          </div>
+
+          <ChartCard title={t("dashboard.chatbot.porStatus")} empty={data.chatbot.atual.executionsByStatus.length === 0}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data.chatbot.atual.executionsByStatus.map((g) => ({ ...g, label: t(`dashboard.chatbot.status.${g.status}` as DictionaryKey) }))}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                <YAxis allowDecimals={false} />
+                <Tooltip />
+                <Bar dataKey="count" fill={CHART_COLOR_PURPLE} radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        </section>
+      )}
+
+      {data.automacao && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-sm font-semibold text-ink">{t("dashboard.automacao.title")}</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <KpiCard
+              label={t("dashboard.automacao.totalExecucoes")}
+              value={data.automacao.atual.executionsByStatus.reduce((sum, g) => sum + g.count, 0)}
+              delta={data.automacao.deltas.total}
+              comparisonLabel={comparisonLabel}
+              href="/painel/automacao"
+              tooltip={t("dashboard.tooltip.automacaoTotalExecucoes")}
+            />
+            <KpiCard
+              label={t("dashboard.automacao.deadLetter")}
+              value={data.automacao.atual.deadLetterCount}
+              delta={data.automacao.deltas.deadLetterCount}
+              invert
+              comparisonLabel={comparisonLabel}
+              href="/painel/automacao"
+              tooltip={t("dashboard.tooltip.automacaoDeadLetter")}
+            />
+          </div>
+
+          <ChartCard title={t("dashboard.automacao.porStatus")} empty={data.automacao.atual.executionsByStatus.length === 0}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data.automacao.atual.executionsByStatus.map((g) => ({ ...g, label: t(`dashboard.automacao.status.${g.status}` as DictionaryKey) }))}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                <YAxis allowDecimals={false} />
+                <Tooltip />
+                <Bar dataKey="count" fill={CHART_COLOR_PURPLE} radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        </section>
+      )}
+
+      {data.whatsapp && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-sm font-semibold text-ink">{t("dashboard.whatsapp.title")}</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <KpiCard
+              label={t("dashboard.whatsapp.enviadas")}
+              value={data.whatsapp.atual.messagesSent}
+              delta={data.whatsapp.deltas.messagesSent}
+              comparisonLabel={comparisonLabel}
+              href="/painel/whatsapp"
+              tooltip={t("dashboard.tooltip.whatsappEnviadas")}
+            />
+            <KpiCard
+              label={t("dashboard.whatsapp.recebidas")}
+              value={data.whatsapp.atual.messagesReceived}
+              delta={data.whatsapp.deltas.messagesReceived}
+              comparisonLabel={comparisonLabel}
+              href="/painel/whatsapp"
+              tooltip={t("dashboard.tooltip.whatsappRecebidas")}
+            />
+            <KpiCard
+              label={t("dashboard.whatsapp.falhas")}
+              value={data.whatsapp.atual.messagesFailed}
+              delta={data.whatsapp.deltas.messagesFailed}
+              invert
+              comparisonLabel={comparisonLabel}
+              href="/painel/whatsapp"
+              tooltip={t("dashboard.tooltip.whatsappFalhas")}
+            />
+          </div>
+
+          <ChartCard title={t("dashboard.whatsapp.porNumero")} empty={data.whatsapp.atual.numbersByStatus.length === 0}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data.whatsapp.atual.numbersByStatus.map((g) => ({ ...g, label: t(`dashboard.whatsapp.status.${g.status}` as DictionaryKey) }))}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="label" tick={{ fontSize: 12 }} />
                 <YAxis allowDecimals={false} />

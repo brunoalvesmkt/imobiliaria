@@ -44,9 +44,12 @@ export class DashboardService {
     const flags = await this.prisma.featureFlag.findMany({ where: { tenantId, enabled: true } });
     const activeModules = new Set(flags.map((f) => f.module));
 
-    const [crm, atendimento, operacional, alertConfig] = await Promise.all([
+    const [crm, atendimento, chatbot, automacao, whatsapp, operacional, alertConfig] = await Promise.all([
       activeModules.has("crm") ? this.crmSection(current, previous) : null,
       activeModules.has("atendimento") ? this.atendimentoSection(current, previous) : null,
+      activeModules.has("chatbot") ? this.chatbotSection(current, previous) : null,
+      activeModules.has("automacao") ? this.automacaoSection(current, previous) : null,
+      activeModules.has("whatsapp") ? this.whatsappSection(current, previous) : null,
       this.operationalSnapshot(tenantId, activeModules),
       this.getAlertConfig(),
     ]);
@@ -59,6 +62,9 @@ export class DashboardService {
       comparacao: previous ? { from: previous.from, to: previous.to, label: previousLabel } : null,
       crm,
       atendimento,
+      chatbot,
+      automacao,
+      whatsapp,
       operacional,
       acoes,
     };
@@ -101,6 +107,61 @@ export class DashboardService {
     };
   }
 
+  private async chatbotSection(current: { from: Date; to: Date }, previous: { from: Date; to: Date } | null) {
+    const [curr, prev] = await Promise.all([
+      this.reports.chatbot({ from: current.from.toISOString(), to: current.to.toISOString() }),
+      previous ? this.reports.chatbot({ from: previous.from.toISOString(), to: previous.to.toISOString() }) : null,
+    ]);
+
+    const totalOf = (data: typeof curr) => data.executionsByStatus.reduce((sum, g) => sum + g.count, 0);
+    const transferidasOf = (data: typeof curr) => data.executionsByStatus.find((g) => g.status === "transferred")?.count ?? 0;
+
+    return {
+      atual: curr,
+      anterior: prev,
+      deltas: {
+        total: delta(totalOf(curr), prev ? totalOf(prev) : null),
+        completionRate: delta(curr.completionRate, prev?.completionRate ?? null),
+        transferidas: delta(transferidasOf(curr), prev ? transferidasOf(prev) : null),
+      },
+    };
+  }
+
+  private async automacaoSection(current: { from: Date; to: Date }, previous: { from: Date; to: Date } | null) {
+    const [curr, prev] = await Promise.all([
+      this.reports.automacao({ from: current.from.toISOString(), to: current.to.toISOString() }),
+      previous ? this.reports.automacao({ from: previous.from.toISOString(), to: previous.to.toISOString() }) : null,
+    ]);
+
+    const totalOf = (data: typeof curr) => data.executionsByStatus.reduce((sum, g) => sum + g.count, 0);
+
+    return {
+      atual: curr,
+      anterior: prev,
+      deltas: {
+        total: delta(totalOf(curr), prev ? totalOf(prev) : null),
+        deadLetterCount: delta(curr.deadLetterCount, prev?.deadLetterCount ?? null),
+      },
+    };
+  }
+
+  private async whatsappSection(current: { from: Date; to: Date }, previous: { from: Date; to: Date } | null) {
+    const [curr, prev] = await Promise.all([
+      this.reports.whatsapp({ from: current.from.toISOString(), to: current.to.toISOString() }),
+      previous ? this.reports.whatsapp({ from: previous.from.toISOString(), to: previous.to.toISOString() }) : null,
+    ]);
+
+    return {
+      atual: curr,
+      anterior: prev,
+      deltas: {
+        messagesSent: delta(curr.messagesSent, prev?.messagesSent ?? null),
+        messagesReceived: delta(curr.messagesReceived, prev?.messagesReceived ?? null),
+        messagesFailed: delta(curr.messagesFailed, prev?.messagesFailed ?? null),
+      },
+    };
+  }
+
   /** "Visão operacional agora" — nunca afetado pelo filtro de período. */
   private async operationalSnapshot(tenantId: string, activeModules: Set<string>) {
     const onlineUsers = this.realtime.getOnlineUsers(tenantId);
@@ -128,6 +189,28 @@ export class DashboardService {
       ]);
       result.oportunidadesSemResponsavel = oportunidadesSemResponsavel;
       result.tarefasVencidas = tarefasVencidas;
+    }
+
+    if (activeModules.has("chatbot")) {
+      result.fluxosAtivos = await this.prisma.chatbotFlow.count({ where: { tenantId, deletedAt: null, status: "published" } });
+    }
+
+    if (activeModules.has("automacao")) {
+      const [automacoesAtivas, execucoesEmDeadLetter] = await Promise.all([
+        this.prisma.automation.count({ where: { tenantId, status: "active" } }),
+        this.prisma.automationExecution.count({ where: { tenantId, status: "dead_letter" } }),
+      ]);
+      result.automacoesAtivas = automacoesAtivas;
+      result.automacoesComFalha = execucoesEmDeadLetter;
+    }
+
+    if (activeModules.has("whatsapp")) {
+      const [conectados, desconectados] = await Promise.all([
+        this.prisma.whatsAppNumber.count({ where: { tenantId, deletedAt: null, status: "connected" } }),
+        this.prisma.whatsAppNumber.count({ where: { tenantId, deletedAt: null, status: { not: "connected" } } }),
+      ]);
+      result.whatsappConectados = conectados;
+      result.whatsappDesconectados = desconectados;
     }
 
     return result;
@@ -208,6 +291,50 @@ export class DashboardService {
           quantidade: desconectados,
           severidade: "critica",
           modulo: "whatsapp",
+          link: "/painel/whatsapp",
+        });
+      }
+    }
+
+    if (activeModules.has("automacao")) {
+      const emDeadLetter = await this.prisma.automationExecution.count({ where: { tenantId, status: "dead_letter" } });
+      if (emDeadLetter > 0) {
+        actions.push({
+          id: "automacao_dead_letter",
+          titulo: "Automações com falha",
+          descricao: "Execuções que esgotaram as tentativas automáticas.",
+          quantidade: emDeadLetter,
+          severidade: "alta",
+          modulo: "automacao",
+          link: "/painel/automacao",
+        });
+      }
+    }
+
+    if (activeModules.has("chatbot")) {
+      const fluxosPublicados = await this.prisma.chatbotFlow.count({ where: { tenantId, deletedAt: null, status: "published" } });
+      const numerosSemFluxo = await this.prisma.whatsAppNumber.count({
+        where: { tenantId, deletedAt: null, tipo: "chatbot", status: "connected", flows: { none: { ativo: true } } },
+      });
+      if (fluxosPublicados === 0) {
+        actions.push({
+          id: "chatbot_sem_fluxo_publicado",
+          titulo: "Nenhum fluxo de chatbot publicado",
+          descricao: "Nenhum fluxo está ativo para responder automaticamente.",
+          quantidade: 1,
+          severidade: "media",
+          modulo: "chatbot",
+          link: "/painel/chatbot",
+        });
+      }
+      if (numerosSemFluxo > 0) {
+        actions.push({
+          id: "chatbot_numero_sem_fluxo",
+          titulo: "Números conectados sem fluxo ativo",
+          descricao: "Mensagens recebidas nesses números não acionam nenhum chatbot.",
+          quantidade: numerosSemFluxo,
+          severidade: "media",
+          modulo: "chatbot",
           link: "/painel/whatsapp",
         });
       }

@@ -251,6 +251,11 @@ export function OperationalGrid({ operacional }: { operacional: Record<string, n
       href: "/painel/crm/funil?semResponsavel=1",
     },
     { key: "tarefasVencidas", label: "dashboard.operacional.tarefasVencidas", tooltip: "dashboard.operacional.tarefasVencidas.tooltip", href: "/painel/crm/tarefas" },
+    { key: "fluxosAtivos", label: "dashboard.operacional.fluxosAtivos", tooltip: "dashboard.operacional.fluxosAtivos.tooltip", href: "/painel/chatbot" },
+    { key: "automacoesAtivas", label: "dashboard.operacional.automacoesAtivas", tooltip: "dashboard.operacional.automacoesAtivas.tooltip", href: "/painel/automacao" },
+    { key: "automacoesComFalha", label: "dashboard.operacional.automacoesComFalha", tooltip: "dashboard.operacional.automacoesComFalha.tooltip", href: "/painel/automacao" },
+    { key: "whatsappConectados", label: "dashboard.operacional.whatsappConectados", tooltip: "dashboard.operacional.whatsappConectados.tooltip", href: "/painel/whatsapp" },
+    { key: "whatsappDesconectados", label: "dashboard.operacional.whatsappDesconectados", tooltip: "dashboard.operacional.whatsappDesconectados.tooltip", href: "/painel/whatsapp" },
   ];
   const visible = items.filter((i) => operacional[i.key] !== undefined);
 

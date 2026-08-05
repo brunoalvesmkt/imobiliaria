@@ -63,6 +63,46 @@ interface AtendimentoSection {
   };
 }
 
+interface ChatbotSection {
+  atual: {
+    executionsByStatus: { status: string; count: number }[];
+    completionRate: number;
+  };
+  anterior: ChatbotSection["atual"] | null;
+  deltas: {
+    total: Delta;
+    completionRate: Delta;
+    transferidas: Delta;
+  };
+}
+
+interface AutomacaoSection {
+  atual: {
+    executionsByStatus: { status: string; count: number }[];
+    deadLetterCount: number;
+  };
+  anterior: AutomacaoSection["atual"] | null;
+  deltas: {
+    total: Delta;
+    deadLetterCount: Delta;
+  };
+}
+
+interface WhatsappSection {
+  atual: {
+    messagesSent: number;
+    messagesReceived: number;
+    messagesFailed: number;
+    numbersByStatus: { status: string; count: number }[];
+  };
+  anterior: WhatsappSection["atual"] | null;
+  deltas: {
+    messagesSent: Delta;
+    messagesReceived: Delta;
+    messagesFailed: Delta;
+  };
+}
+
 export interface DashboardAction {
   id: string;
   titulo: string;
@@ -79,6 +119,9 @@ export interface DashboardSummary {
   comparacao: { from: string; to: string; label: string | null } | null;
   crm: CrmSection | null;
   atendimento: AtendimentoSection | null;
+  chatbot: ChatbotSection | null;
+  automacao: AutomacaoSection | null;
+  whatsapp: WhatsappSection | null;
   operacional: {
     atendentesOnline: number;
     atendentesOffline?: number;
@@ -86,6 +129,11 @@ export interface DashboardSummary {
     filasAbertas?: number;
     oportunidadesSemResponsavel?: number;
     tarefasVencidas?: number;
+    fluxosAtivos?: number;
+    automacoesAtivas?: number;
+    automacoesComFalha?: number;
+    whatsappConectados?: number;
+    whatsappDesconectados?: number;
   };
   acoes: DashboardAction[];
 }

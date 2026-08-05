@@ -18,6 +18,7 @@ import { useCurrentMasterUser } from "@/lib/master-auth";
 import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 import { StatusBadge } from "../status-badge";
+import { formatCpfCnpj } from "@/lib/cpf-cnpj";
 
 const STATUSES: TenantStatus[] = ["trial", "active", "suspended", "blocked", "cancelled"];
 const MODULES = ["crm", "whatsapp", "atendimento", "chatbot", "automacao", "qualidade_ia"];
@@ -83,7 +84,7 @@ export default function MasterTenantDetailPage() {
           <h2 className="text-sm font-semibold text-ink">{t("master.tenants.contactInfo")}</h2>
           <dl className="mt-2 grid grid-cols-2 gap-2 text-sm">
             <dt className="text-ink-faint">{t("master.tenants.columnCnpj")}</dt>
-            <dd className="text-ink">{data.cnpj}</dd>
+            <dd className="text-ink">{formatCpfCnpj(data.cnpj)}</dd>
             <dt className="text-ink-faint">{t("master.tenants.responsible")}</dt>
             <dd className="text-ink">{data.responsavel}</dd>
             <dt className="text-ink-faint">E-mail</dt>

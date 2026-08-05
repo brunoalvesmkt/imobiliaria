@@ -132,6 +132,20 @@ export class AutomationsService {
     return updated;
   }
 
+  async remove(id: string, actorId: string): Promise<void> {
+    const automation = await this.get(id);
+    await this.tenantPrisma.automation.delete({ where: { id } });
+
+    await this.audit.record({
+      actorId,
+      actorType: "tenant_user",
+      action: "automation.remove",
+      entity: "Automation",
+      entityId: id,
+      previousData: { nome: automation.nome },
+    });
+  }
+
   listExecutions(automationId: string) {
     return this.tenantPrisma.automationExecution.findMany({
       where: { automationId },

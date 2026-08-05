@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiGet, apiPatch, apiPost } from "./api-client";
+import { apiDelete, apiGet, apiPatch, apiPost } from "./api-client";
 
 export type DomainEventName =
   | "conversation.created"
@@ -158,6 +158,14 @@ export function useAutomationExecutions(id: string) {
     queryKey: ["automation", "rules", id, "executions"],
     queryFn: () => apiGet<AutomationExecution[]>(`/automation/rules/${id}/executions`),
     enabled: !!id,
+  });
+}
+
+export function useDeleteAutomation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiDelete<{ status: "ok" }>(`/automation/rules/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["automation", "rules"] }),
   });
 }
 

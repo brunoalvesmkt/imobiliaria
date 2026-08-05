@@ -8,6 +8,7 @@ import {
   useAutomations,
   useCreateAutomation,
   useUpdateAutomation,
+  useDeleteAutomation,
   type Automation,
   type AutomationAction,
   type AutomationCondition,
@@ -16,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
+import { ApiError } from "@/lib/api-client";
 import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 import { ConditionsEditor } from "./conditions-editor";
@@ -66,9 +68,23 @@ export default function AutomationPage() {
 function AutomationRow({ automation }: { automation: Automation }) {
   const { t } = useI18n();
   const update = useUpdateAutomation(automation.id);
+  const deleteAutomation = useDeleteAutomation();
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function onDelete() {
+    setDeleteError(null);
+    try {
+      await deleteAutomation.mutateAsync(automation.id);
+    } catch (err) {
+      setDeleteError(err instanceof ApiError ? err.message : t("automation.action.deleteErrorGeneric"));
+      setConfirmingDelete(false);
+    }
+  }
 
   return (
-    <tr className="border-b border-line last:border-0">
+    <>
+      <tr className="border-b border-line last:border-0">
       <td className="px-4 py-2 font-medium text-ink">
         <Link href={`/painel/automacao/${automation.id}`} className="hover:underline">
           {automation.nome}
@@ -79,7 +95,7 @@ function AutomationRow({ automation }: { automation: Automation }) {
         <StatusBadge status={automation.status} />
       </td>
       <td className="px-4 py-2 text-right">
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           {automation.status === "active" && (
             <button
               type="button"
@@ -110,9 +126,32 @@ function AutomationRow({ automation }: { automation: Automation }) {
           <Link href={`/painel/automacao/${automation.id}/execucoes`} className="text-xs font-medium text-ink-dim hover:underline">
             {t("automation.action.viewExecutions")}
           </Link>
+          {confirmingDelete ? (
+            <>
+              <span className="text-xs text-ink-dim">{t("automation.action.deleteConfirmText")}</span>
+              <button type="button" onClick={onDelete} className="text-xs font-medium text-red-600 hover:underline">
+                {t("automation.action.deleteConfirmYes")}
+              </button>
+              <button type="button" onClick={() => setConfirmingDelete(false)} className="text-xs font-medium text-ink-faint hover:underline">
+                {t("common.cancel")}
+              </button>
+            </>
+          ) : (
+            <button type="button" onClick={() => setConfirmingDelete(true)} className="text-xs font-medium text-red-600 hover:underline">
+              {t("automation.action.delete")}
+            </button>
+          )}
         </div>
       </td>
-    </tr>
+      </tr>
+      {deleteError && (
+        <tr>
+          <td colSpan={4} className="px-4 pb-2">
+            <Alert tone="error">{deleteError}</Alert>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 

@@ -465,6 +465,8 @@ export class TenantScopedPrismaService {
 
       update: (args: { where: { id: string }; data: Prisma.AutomationUncheckedUpdateInput }) =>
         this.prisma.automation.update({ where: { id: args.where.id, tenantId }, data: args.data }),
+
+      delete: (args: { where: { id: string } }) => this.prisma.automation.delete({ where: { id: args.where.id, tenantId } }),
     };
   }
 

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
 import { TenantAuthGuard } from "../auth/guards/tenant-auth.guard";
 import { ModuleActiveGuard } from "../common/modules/module-active.guard";
 import { PermissionsGuard } from "../common/permissions/permissions.guard";
@@ -45,6 +45,12 @@ export class AutomationsController {
   @RequirePermission("automacao", "edit")
   update(@Param("id") id: string, @Body() dto: UpdateAutomationDto, @CurrentUser() user: AuthenticatedRequestUser) {
     return this.service.update(id, dto, user.id);
+  }
+
+  @Delete(":id")
+  @RequirePermission("automacao", "delete")
+  remove(@Param("id") id: string, @CurrentUser() user: AuthenticatedRequestUser) {
+    return this.service.remove(id, user.id);
   }
 
   @Post(":id/test")

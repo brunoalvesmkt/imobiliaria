@@ -90,6 +90,14 @@ export interface QuestionNodeData {
   timeoutMaxTentativas?: number;
   /** Um passo por tentativa (`timeoutSteps[0]` = espera antes da 1ª reativação, `timeoutSteps[1]` = antes da 2ª, ...) — tamanho normalmente igual a `timeoutMaxTentativas`. */
   timeoutSteps?: TimeoutStep[];
+  /**
+   * Ao esgotar `timeoutMaxTentativas` SEM a saída "Limite atingido" conectada, em vez de encerrar
+   * a execução (padrão), o card fica esperando indefinidamente uma resposta real do cliente —
+   * nenhuma reativação a mais é agendada, mas o próximo bloco só é chamado quando o cliente
+   * responder. Se "Limite atingido" estiver conectada, ela sempre é seguida (intenção explícita
+   * do autor do fluxo) — este campo não tem efeito nesse caso.
+   */
+  avancarSomenteComResposta?: boolean;
   /** Pausa (ms) simulando "digitando..." antes de enviar a pergunta — ver comentário no topo do arquivo. */
   delayMs?: number;
 }
@@ -111,6 +119,8 @@ export interface MenuNodeData {
   timeoutEnabled?: boolean;
   timeoutMaxTentativas?: number;
   timeoutSteps?: TimeoutStep[];
+  /** Ao esgotar `timeoutMaxTentativas` — ver comentário em QuestionNodeData. */
+  avancarSomenteComResposta?: boolean;
   /** Pausa (ms) simulando "digitando..." antes de enviar o menu — ver comentário no topo do arquivo. */
   delayMs?: number;
 }

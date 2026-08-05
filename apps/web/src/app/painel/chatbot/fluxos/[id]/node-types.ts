@@ -38,6 +38,8 @@ export interface QuestionNodeData {
   timeoutEnabled?: boolean;
   timeoutMaxTentativas?: number;
   timeoutSteps?: TimeoutStep[];
+  /** Ao esgotar as tentativas sem "Limite atingido" conectada, espera indefinidamente uma resposta real em vez de encerrar — ver flow-definition.types.ts no backend. */
+  avancarSomenteComResposta?: boolean;
   delayMs?: number;
 }
 
@@ -56,6 +58,7 @@ export interface MenuNodeData {
   timeoutEnabled?: boolean;
   timeoutMaxTentativas?: number;
   timeoutSteps?: TimeoutStep[];
+  avancarSomenteComResposta?: boolean;
   delayMs?: number;
 }
 

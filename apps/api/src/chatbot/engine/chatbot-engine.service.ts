@@ -387,7 +387,10 @@ export class ChatbotEngineService {
    * pela saída "Não respondeu" (TIMEOUT_HANDLE) — se essa saída apontar para o próprio card, o
    * `advance()` naturalmente reenvia a pergunta e reagenda um novo timeout, sem lógica especial de
    * "repetição". Ao esgotar o limite, segue pela saída opcional "Limite atingido"
-   * (TIMEOUT_LIMIT_HANDLE) — se não estiver conectada, a execução é encerrada.
+   * (TIMEOUT_LIMIT_HANDLE) se ela estiver conectada (sempre, é intenção explícita do autor do
+   * fluxo). Sem essa conexão: por padrão a execução é encerrada, mas com
+   * `avancarSomenteComResposta` marcado no card, fica esperando indefinidamente uma resposta real
+   * em vez disso.
    */
   async triggerTimeout(execution: ChatbotExecution): Promise<ChatbotExecution> {
     const context = (execution.contextData as ExecutionContext | null) ?? {};
@@ -396,7 +399,7 @@ export class ChatbotEngineService {
     if (!node) {
       return this.finish(execution, "abandoned", context);
     }
-    const data = node.data as unknown as { timeoutMaxTentativas?: number };
+    const data = node.data as unknown as { timeoutMaxTentativas?: number; avancarSomenteComResposta?: boolean };
 
     const timeoutAttempts = { ...context.timeoutAttempts };
     const attempts = (timeoutAttempts[node.id] ?? 0) + 1;
@@ -405,12 +408,20 @@ export class ChatbotEngineService {
     const limit = data.timeoutMaxTentativas ?? DEFAULT_TIMEOUT_MAX_TENTATIVAS;
 
     if (attempts > limit) {
+      // Uma conexão "Limite atingido" desenhada no canvas é intenção explícita do autor do fluxo
+      // — sempre é seguida, com ou sem "avançar só com resposta real" marcado. Esse toggle só
+      // muda o que acontece quando NÃO há conexão: em vez de abandonar a execução (padrão), o
+      // card fica esperando indefinidamente uma resposta real do cliente (nenhuma reativação a
+      // mais é agendada, mas também não força um fim de conversa sem resposta).
       const limitEdge = definition.edges.find((e) => e.source === node.id && e.sourceHandle === TIMEOUT_LIMIT_HANDLE);
-      if (!limitEdge) {
-        return this.finish(execution, "abandoned", nextContext);
+      if (limitEdge) {
+        const advanced = await this.persist(execution, limitEdge.target, "running", nextContext);
+        return this.advance(advanced);
       }
-      const advanced = await this.persist(execution, limitEdge.target, "running", nextContext);
-      return this.advance(advanced);
+      if (data.avancarSomenteComResposta) {
+        return this.persist(execution, node.id, "running", nextContext);
+      }
+      return this.finish(execution, "abandoned", nextContext);
     }
 
     const timeoutEdge = definition.edges.find((e) => e.source === node.id && e.sourceHandle === TIMEOUT_HANDLE);

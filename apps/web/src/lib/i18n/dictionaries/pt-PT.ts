@@ -873,6 +873,8 @@ const dictionary: Record<DictionaryKey, string> = {
   "chatbot.builder.field.timeoutMaxTentativas": "Nº máximo de reativações",
   "chatbot.builder.field.timeoutAttempt": "Tentativa {n}",
   "chatbot.builder.field.timeoutEdgeHint": "Ligue as saídas \"Não respondeu\" e \"Limite atingido\" (opcional) no cartão, abaixo.",
+  "chatbot.builder.field.avancarSomenteComResposta": "Avançar somente com resposta real",
+  "chatbot.builder.field.avancarSomenteComRespostaHint": "Ao esgotar as tentativas sem a saída \"Limite atingido\" ligada, o cartão fica à espera indefinidamente de uma resposta do cliente em vez de encerrar a conversa. Se \"Limite atingido\" estiver ligada, ela é sempre seguida — esta opção não tem efeito nesse caso.",
   "chatbot.builder.field.timeoutDisabledHint": "O cartão funciona normalmente, sem reativação por falta de resposta.",
   "chatbot.builder.field.timeoutNoResponse": "Não respondeu",
   "chatbot.builder.field.timeoutLimitReached": "Limite atingido",

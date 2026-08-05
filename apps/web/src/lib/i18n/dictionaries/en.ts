@@ -873,6 +873,8 @@ const dictionary: Record<DictionaryKey, string> = {
   "chatbot.builder.field.timeoutMaxTentativas": "Max. reactivations",
   "chatbot.builder.field.timeoutAttempt": "Attempt {n}",
   "chatbot.builder.field.timeoutEdgeHint": "Connect the \"No reply\" and \"Limit reached\" (optional) outputs on the card, below.",
+  "chatbot.builder.field.avancarSomenteComResposta": "Only advance with a real reply",
+  "chatbot.builder.field.avancarSomenteComRespostaHint": "When attempts run out without the \"Limit reached\" output connected, the card waits indefinitely for a real reply instead of ending the conversation. If \"Limit reached\" is connected, it's always followed — this option has no effect in that case.",
   "chatbot.builder.field.timeoutDisabledHint": "The card works normally, with no reactivation on missing reply.",
   "chatbot.builder.field.timeoutNoResponse": "No reply",
   "chatbot.builder.field.timeoutLimitReached": "Limit reached",

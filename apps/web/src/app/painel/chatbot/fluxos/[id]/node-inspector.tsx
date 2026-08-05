@@ -309,15 +309,18 @@ function TimeoutFields({
   timeoutEnabled,
   timeoutMaxTentativas,
   timeoutSteps,
+  avancarSomenteComResposta,
   onChange,
 }: {
   timeoutEnabled?: boolean | undefined;
   timeoutMaxTentativas?: number | undefined;
   timeoutSteps?: TimeoutStep[] | undefined;
+  avancarSomenteComResposta?: boolean | undefined;
   onChange: (patch: {
     timeoutEnabled?: boolean | undefined;
     timeoutMaxTentativas?: number | undefined;
     timeoutSteps?: TimeoutStep[] | undefined;
+    avancarSomenteComResposta?: boolean | undefined;
   }) => void;
 }) {
   const { t } = useI18n();
@@ -392,6 +395,15 @@ function TimeoutFields({
             })}
           </div>
           <p className="text-xs text-ink-faint">{t("chatbot.builder.field.timeoutEdgeHint")}</p>
+          <label className="flex items-center gap-2 text-xs text-ink">
+            <input
+              type="checkbox"
+              checked={avancarSomenteComResposta ?? false}
+              onChange={(e) => onChange({ avancarSomenteComResposta: e.target.checked })}
+            />
+            {t("chatbot.builder.field.avancarSomenteComResposta")}
+          </label>
+          <p className="text-xs text-ink-faint">{t("chatbot.builder.field.avancarSomenteComRespostaHint")}</p>
         </>
       ) : (
         <p className="text-xs text-ink-faint">{t("chatbot.builder.field.timeoutDisabledHint")}</p>
@@ -449,6 +461,7 @@ function QuestionFields({
         timeoutEnabled={payload.timeoutEnabled}
         timeoutMaxTentativas={payload.timeoutMaxTentativas}
         timeoutSteps={payload.timeoutSteps}
+        avancarSomenteComResposta={payload.avancarSomenteComResposta}
         onChange={(patch) => onChange({ ...payload, ...patch })}
       />
       <DelayField delayMs={payload.delayMs} onChange={(delayMs) => onChange({ ...payload, delayMs })} />
@@ -528,6 +541,7 @@ function MenuFields({
         timeoutEnabled={payload.timeoutEnabled}
         timeoutMaxTentativas={payload.timeoutMaxTentativas}
         timeoutSteps={payload.timeoutSteps}
+        avancarSomenteComResposta={payload.avancarSomenteComResposta}
         onChange={(patch) => onChange({ ...payload, ...patch })}
       />
       <DelayField delayMs={payload.delayMs} onChange={(delayMs) => onChange({ ...payload, delayMs })} />

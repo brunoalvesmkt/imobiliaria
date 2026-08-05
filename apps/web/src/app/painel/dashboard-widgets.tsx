@@ -299,5 +299,5 @@ export function UpdatedAgo({ dataUpdatedAt }: { dataUpdatedAt: number }) {
 }
 
 export function defaultPeriodFilter(): PeriodFilterState {
-  return { preset: "30dias" as PeriodPreset, compare: "periodoAnterior" as CompareMode };
+  return { preset: "hoje" as PeriodPreset, compare: "periodoAnterior" as CompareMode };
 }

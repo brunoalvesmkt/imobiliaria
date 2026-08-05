@@ -39,7 +39,6 @@ export function Sidebar({
             fallbackLetter="C"
             fallbackClassName="flex h-8 w-8 items-center justify-center rounded-md bg-brand-500 text-sm font-bold text-white"
           />
-          <span className="text-sm font-semibold text-ink">{t("nav.brand")}</span>
         </div>
 
         {items.filter((item) => !item.module || activeModules.has(item.module)).map((item) => {

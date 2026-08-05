@@ -151,7 +151,6 @@ export default function MasterPainelLayout({ children }: { children: React.React
             fallbackLetter="M"
             fallbackClassName="flex h-8 w-8 items-center justify-center rounded-md bg-ink text-sm font-bold text-surface"
           />
-          <span className="text-sm font-semibold text-ink">{t("master.brand")}</span>
         </div>
         {visibleItems.map((item) => {
           const isActive = pathname?.startsWith(item.href);

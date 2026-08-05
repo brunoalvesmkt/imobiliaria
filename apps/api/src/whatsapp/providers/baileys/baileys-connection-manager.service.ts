@@ -264,6 +264,23 @@ export class BaileysConnectionManagerService implements OnApplicationBootstrap {
     await rm(this.sessionDir(number.id), { recursive: true, force: true }).catch(() => undefined);
   }
 
+  /**
+   * "Digitando..."/"Gravando áudio..." de verdade no WhatsApp do contato — usado pelo motor do
+   * chatbot para simular uma pausa natural antes de responder (ver ChatbotEngineService). Melhor
+   * esforço deliberado: nunca lança erro nem impede o envio da mensagem real logo em seguida —
+   * uma falha aqui é só cosmética (o card ainda manda a mensagem, só sem o indicador).
+   */
+  async sendPresenceUpdate(number: ProviderNumberContext, to: string, state: "composing" | "paused"): Promise<void> {
+    const session = this.sessions.get(number.id);
+    if (!session || session.status !== "connected") return;
+    const jid = to.includes("@") ? to : `${to}@s.whatsapp.net`;
+    try {
+      await session.sock.sendPresenceUpdate(state, jid);
+    } catch (error) {
+      this.logger.warn(`Falha ao enviar indicador de "digitando" para o número ${number.id}: ${(error as Error).message}`);
+    }
+  }
+
   async sendMessage(number: ProviderNumberContext, to: string, content: OutgoingMessageContent): Promise<SendMessageResult> {
     const session = this.sessions.get(number.id);
     if (!session || session.status !== "connected") {

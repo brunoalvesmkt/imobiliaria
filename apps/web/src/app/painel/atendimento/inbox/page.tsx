@@ -13,12 +13,14 @@ import {
   useReopenConversation,
   useReturnToQueue,
   useSendMessage,
+  useTeams,
   useTransfer,
   type Conversation,
   type ConversationDetail,
   type Message,
 } from "@/lib/atendimento";
 import { useQuickMessages, useRenderQuickMessage } from "@/lib/quick-messages";
+import { useTenantUsers } from "@/lib/tenant-users";
 import { useRealtimeEvent, useRealtimeSocket } from "@/lib/realtime";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
@@ -117,7 +119,6 @@ function ConversationPanel({ conversationId, onBack }: { conversationId: string;
   const sendMessage = useSendMessage(conversationId);
   const [text, setText] = useState("");
   const [showTransfer, setShowTransfer] = useState(false);
-  const [transferTarget, setTransferTarget] = useState("");
   const [showQuality, setShowQuality] = useState(false);
   const [showQuickMessages, setShowQuickMessages] = useState(false);
   const [assumeConflict, setAssumeConflict] = useState<{ responsavelNome: string | null } | null>(null);
@@ -293,26 +294,11 @@ function ConversationPanel({ conversationId, onBack }: { conversationId: string;
       )}
 
       {showTransfer && (
-        <form
-          className="flex items-center gap-2 border-b border-line bg-surface-alt p-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            transfer.mutate({ id: conversationId, body: { tenantUserId: transferTarget } });
-            setShowTransfer(false);
-            setTransferTarget("");
-          }}
-        >
-          <input
-            type="text"
-            placeholder={t("atendimento.inbox.transferTo")}
-            value={transferTarget}
-            onChange={(e) => setTransferTarget(e.target.value)}
-            className="flex-1 rounded-md border border-line bg-surface px-2 py-1 text-sm"
-          />
-          <Button type="submit" variant="secondary">
-            {t("atendimento.inbox.transferSubmit")}
-          </Button>
-        </form>
+        <TransferPanel
+          conversationId={conversationId}
+          currentResponsavelId={data.responsavel?.id}
+          onDone={() => setShowTransfer(false)}
+        />
       )}
 
       {!data.queue && (
@@ -395,6 +381,102 @@ function QuickMessagesPanel({ conversationId, onPick }: { conversationId: string
         ))}
       </div>
     </div>
+  );
+}
+
+type TransferType = "responsavel" | "equipe" | "fila";
+
+/**
+ * Painel de transferência com três destinos possíveis (pedido do usuário): Responsável (um
+ * atendente específico), Equipe (resolvida no backend para a fila de maior prioridade dela — ver
+ * InboxService.transfer) ou Fila diretamente. O campo de busca filtra a lista carregada — não é
+ * uma busca no servidor, mas resolve o mesmo problema (achar o destino sem rolar uma lista longa).
+ */
+function TransferPanel({
+  conversationId,
+  currentResponsavelId,
+  onDone,
+}: {
+  conversationId: string;
+  currentResponsavelId: string | undefined;
+  onDone: () => void;
+}) {
+  const { t } = useI18n();
+  const transfer = useTransfer();
+  const tenantUsers = useTenantUsers();
+  const teams = useTeams();
+  const queues = useQueues();
+  const [type, setType] = useState<TransferType>("responsavel");
+  const [search, setSearch] = useState("");
+  const [target, setTarget] = useState("");
+
+  function onTypeChange(next: TransferType) {
+    setType(next);
+    setSearch("");
+    setTarget("");
+  }
+
+  const options: { id: string; nome: string }[] =
+    type === "responsavel"
+      ? (tenantUsers.data ?? []).filter((u) => u.status === "active" && u.id !== currentResponsavelId).map((u) => ({ id: u.id, nome: u.nome }))
+      : type === "equipe"
+        ? (teams.data ?? []).filter((tm) => tm.ativo).map((tm) => ({ id: tm.id, nome: tm.nome }))
+        : (queues.data ?? []).filter((q) => q.ativo).map((q) => ({ id: q.id, nome: q.nome }));
+
+  const filtered = options.filter((o) => o.nome.toLowerCase().includes(search.trim().toLowerCase()));
+
+  function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!target) return;
+    const body = type === "responsavel" ? { tenantUserId: target } : type === "equipe" ? { teamId: target } : { queueId: target };
+    transfer.mutate({ id: conversationId, body });
+    onDone();
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col gap-2 border-b border-line bg-surface-alt p-2">
+      <div className="flex items-center gap-2">
+        <select
+          value={type}
+          onChange={(e) => onTypeChange(e.target.value as TransferType)}
+          className="rounded-md border border-line bg-surface px-2 py-1 text-sm"
+        >
+          <option value="responsavel">{t("atendimento.inbox.transferType.responsavel")}</option>
+          <option value="equipe">{t("atendimento.inbox.transferType.equipe")}</option>
+          <option value="fila">{t("atendimento.inbox.transferType.fila")}</option>
+        </select>
+        <input
+          type="text"
+          placeholder={t("atendimento.inbox.transferTo")}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="flex-1 rounded-md border border-line bg-surface px-2 py-1 text-sm"
+        />
+      </div>
+      <select
+        required
+        value={target}
+        onChange={(e) => setTarget(e.target.value)}
+        size={Math.min(6, Math.max(2, filtered.length || 1))}
+        className="rounded-md border border-line bg-surface px-2 py-1 text-sm"
+      >
+        {filtered.length === 0 && (
+          <option value="" disabled>
+            {t("atendimento.inbox.transferNoResults")}
+          </option>
+        )}
+        {filtered.map((o) => (
+          <option key={o.id} value={o.id}>
+            {o.nome}
+          </option>
+        ))}
+      </select>
+      <div>
+        <Button type="submit" variant="secondary" disabled={!target} loading={transfer.isPending}>
+          {t("atendimento.inbox.transferSubmit")}
+        </Button>
+      </div>
+    </form>
   );
 }
 

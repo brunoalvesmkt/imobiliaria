@@ -142,6 +142,30 @@ function Select({
   );
 }
 
+/** Teto em segundos (espelha MAX_TYPING_DELAY_MS no motor) — o campo nunca deixa configurar mais que isso. */
+const MAX_DELAY_SECONDS = 15;
+
+/** Pausa "digitando..." antes de enviar o card — ver comentário no topo de flow-definition.types.ts. */
+function DelayField({ delayMs, onChange }: { delayMs: number | undefined; onChange: (delayMs: number | undefined) => void }) {
+  const { t } = useI18n();
+  return (
+    <div className="flex flex-col gap-1">
+      <Field
+        label={t("chatbot.builder.field.delaySeconds")}
+        type="number"
+        min={0}
+        max={MAX_DELAY_SECONDS}
+        value={delayMs ? delayMs / 1000 : ""}
+        onChange={(e) => {
+          const seconds = e.target.value ? Math.min(Math.max(Number(e.target.value), 0), MAX_DELAY_SECONDS) : undefined;
+          onChange(seconds ? seconds * 1000 : undefined);
+        }}
+      />
+      <p className="text-xs text-ink-faint">{t("chatbot.builder.field.delayHint")}</p>
+    </div>
+  );
+}
+
 function MessageFields({ payload, onChange }: { payload: MessageNodeData; onChange: (p: Record<string, unknown>) => void }) {
   const { t } = useI18n();
   const tipo = (payload.tipo ?? "text") as MessageMediaType;
@@ -171,6 +195,7 @@ function MessageFields({ payload, onChange }: { payload: MessageNodeData; onChan
           onUrlChange={(url) => onChange({ ...payload, midiaUrl: url, arquivoId: undefined, arquivoNome: undefined })}
         />
       )}
+      <DelayField delayMs={payload.delayMs} onChange={(delayMs) => onChange({ ...payload, delayMs })} />
     </>
   );
 }
@@ -426,6 +451,7 @@ function QuestionFields({
         timeoutSteps={payload.timeoutSteps}
         onChange={(patch) => onChange({ ...payload, ...patch })}
       />
+      <DelayField delayMs={payload.delayMs} onChange={(delayMs) => onChange({ ...payload, delayMs })} />
     </>
   );
 }
@@ -504,6 +530,7 @@ function MenuFields({
         timeoutSteps={payload.timeoutSteps}
         onChange={(patch) => onChange({ ...payload, ...patch })}
       />
+      <DelayField delayMs={payload.delayMs} onChange={(delayMs) => onChange({ ...payload, delayMs })} />
     </>
   );
 }

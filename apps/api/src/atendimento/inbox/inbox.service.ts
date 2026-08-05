@@ -247,18 +247,33 @@ export class InboxService {
    * atendentes nesta fase, o resumo é sempre gerado e anexado ao evento).
    */
   async transfer(conversationId: string, dto: TransferDto, actorId: string) {
-    if (!dto.tenantUserId && !dto.queueId) {
-      throw new BadRequestException("Informe tenantUserId ou queueId para transferir.");
+    if (!dto.tenantUserId && !dto.queueId && !dto.teamId) {
+      throw new BadRequestException("Informe tenantUserId, queueId ou teamId para transferir.");
     }
 
     await this.getConversation(conversationId);
     const summary = await this.summary.generate(conversationId);
 
+    // Conversation não tem campo de equipe próprio — transferir "para uma equipe" resolve para a
+    // fila de maior prioridade dessa equipe e deixa a distribuição normal da fila decidir o
+    // atendente (mesmo mecanismo de pickNextMember usado no auto-assign).
+    let queueId = dto.queueId;
+    if (dto.teamId) {
+      const teamQueue = await this.tenantPrisma.queue.findFirst({
+        where: { teamId: dto.teamId, ativo: true },
+        orderBy: { prioridade: "desc" },
+      });
+      if (!teamQueue) {
+        throw new BadRequestException("Esta equipe não tem nenhuma fila ativa para receber a transferência.");
+      }
+      queueId = teamQueue.id;
+    }
+
     const updated = await this.tenantPrisma.conversation.update({
       where: { id: conversationId },
       data: {
         responsavelId: dto.tenantUserId ?? null,
-        ...(dto.queueId ? { queueId: dto.queueId } : {}),
+        ...(queueId ? { queueId } : {}),
       },
     });
 
@@ -267,7 +282,7 @@ export class InboxService {
         conversationId,
         tipo: "transfer",
         actorId,
-        payload: { para: dto.tenantUserId ?? dto.queueId, resumo: summary.texto },
+        payload: { para: dto.tenantUserId ?? queueId, resumo: summary.texto },
       },
     });
 
@@ -277,14 +292,14 @@ export class InboxService {
       action: "conversation.transfer",
       entity: "Conversation",
       entityId: conversationId,
-      newData: { tenantUserId: dto.tenantUserId, queueId: dto.queueId },
+      newData: { tenantUserId: dto.tenantUserId, queueId },
     });
 
     this.domainEvents.emit("conversation.transferred", {
       tenantId: requireCurrentTenantId(),
       conversationId,
       contactId: updated.contactId ?? undefined,
-      data: { conversationId, responsavelId: dto.tenantUserId ?? null, queueId: dto.queueId ?? null },
+      data: { conversationId, responsavelId: dto.tenantUserId ?? null, queueId: queueId ?? null },
     });
 
     this.notify(conversationId);

@@ -12,6 +12,8 @@ export interface MessageNodeData {
   arquivoId?: string;
   /** Só para exibição no card/inspetor — o nome original do arquivo enviado. */
   arquivoNome?: string;
+  /** Pausa (ms) simulando "digitando..." antes de enviar — ver flow-definition.types.ts no backend. */
+  delayMs?: number;
 }
 
 export type TimeoutUnit = "minutes" | "hours" | "days";
@@ -33,6 +35,7 @@ export interface QuestionNodeData {
   timeoutEnabled?: boolean;
   timeoutMaxTentativas?: number;
   timeoutSteps?: TimeoutStep[];
+  delayMs?: number;
 }
 
 export interface MenuOption {
@@ -50,6 +53,7 @@ export interface MenuNodeData {
   timeoutEnabled?: boolean;
   timeoutMaxTentativas?: number;
   timeoutSteps?: TimeoutStep[];
+  delayMs?: number;
 }
 
 /** Saídas reservadas (`FlowEdge.sourceHandle`) da reativação por falta de resposta — ver flow-definition.types.ts no backend. */

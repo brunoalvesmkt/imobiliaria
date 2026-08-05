@@ -51,6 +51,10 @@ export class BaileysUnofficialProvider implements WhatsAppProvider {
     return this.manager.sendMessage(number, to, content);
   }
 
+  sendPresenceUpdate(number: ProviderNumberContext, to: string, state: "composing" | "paused"): Promise<void> {
+    return this.manager.sendPresenceUpdate(number, to, state);
+  }
+
   /** Não há webhook externo neste provedor — as mensagens chegam pelo socket persistente (ver BaileysConnectionManagerService). */
   verifyWebhookSignature(): boolean {
     return true;

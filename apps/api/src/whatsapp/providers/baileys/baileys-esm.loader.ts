@@ -34,6 +34,7 @@ export interface BaileysSocket {
     on(event: "messages.upsert", handler: (payload: BaileysMessagesUpsert) => void): void;
   };
   sendMessage(jid: string, content: Record<string, unknown>): Promise<{ key?: { id?: string } } | undefined>;
+  sendPresenceUpdate(type: "composing" | "paused", toJid?: string): Promise<void>;
   logout(): Promise<void>;
   end(error?: Error): void;
 }

@@ -34,6 +34,8 @@ import { TIMEOUT_NODE_TYPES, TIMEOUT_HANDLE, TIMEOUT_LIMIT_HANDLE, timeoutUnitTo
 const MAX_STEPS_PER_ADVANCE = 25;
 const DEFAULT_MAX_TENTATIVAS = 3;
 const DEFAULT_TIMEOUT_MAX_TENTATIVAS = 1;
+/** Teto da pausa "digitando..." simulada antes de enviar um card — nunca segura por tempo demais o pipeline que aguarda esta cadeia (ver sendNodeMessage). */
+const MAX_TYPING_DELAY_MS = 15_000;
 
 interface CallStackFrame {
   flowId: string;
@@ -156,7 +158,8 @@ export class ChatbotEngineService {
         }
 
         case "question": {
-          await this.sendText(current, (node.data as unknown as QuestionNodeData).texto);
+          const data = node.data as unknown as QuestionNodeData;
+          await this.sendText(current, data.texto, data.delayMs);
           const persisted = await this.persist(current, node.id, "running", context);
           await this.scheduleTimeoutIfConfigured(persisted, node);
           return persisted;
@@ -165,7 +168,7 @@ export class ChatbotEngineService {
         case "menu": {
           const data = node.data as unknown as MenuNodeData;
           const opcoesTexto = data.opcoes.map((o) => `${o.chave}) ${o.texto}`).join("\n");
-          await this.sendText(current, `${data.texto}\n${opcoesTexto}`);
+          await this.sendText(current, `${data.texto}\n${opcoesTexto}`, data.delayMs);
           const persisted = await this.persist(current, node.id, "running", context);
           await this.scheduleTimeoutIfConfigured(persisted, node);
           return persisted;
@@ -529,13 +532,13 @@ export class ChatbotEngineService {
     return updated;
   }
 
-  private async sendText(execution: ChatbotExecution, texto: string): Promise<void> {
-    await this.sendNodeMessage(execution, { texto });
+  private async sendText(execution: ChatbotExecution, texto: string, delayMs?: number): Promise<void> {
+    await this.sendNodeMessage(execution, { texto, ...(delayMs !== undefined ? { delayMs } : {}) });
   }
 
   private async sendNodeMessage(
     execution: ChatbotExecution,
-    data: Pick<MessageNodeData, "texto" | "tipo" | "midiaUrl" | "arquivoId">,
+    data: Pick<MessageNodeData, "texto" | "tipo" | "midiaUrl" | "arquivoId" | "delayMs">,
   ): Promise<void> {
     const conversation = await this.prisma.conversation.findUniqueOrThrow({ where: { id: execution.conversationId } });
     const number = await this.prisma.whatsAppNumber.findUniqueOrThrow({ where: { id: conversation.whatsAppNumberId } });
@@ -571,6 +574,17 @@ export class ChatbotEngineService {
     }
 
     const provider = this.providers.resolve(number.provider);
+    const numberCtx = { id: number.id, tenantId: number.tenantId, numero: number.numero, externalAccountId: number.externalAccountId };
+
+    // Pausa "digitando..." antes de enviar — deixa a conversa mais natural (pedido do usuário).
+    // Limitada a MAX_TYPING_DELAY_MS para nunca segurar por muito tempo o pipeline que chamou até
+    // aqui (webhook da Meta aguarda esta cadeia terminar para responder 200 — ver WebhooksController).
+    const delayMs = Math.min(Math.max(data.delayMs ?? 0, 0), MAX_TYPING_DELAY_MS);
+    if (delayMs > 0) {
+      await provider.sendPresenceUpdate?.(numberCtx, conversation.contatoNumero, "composing").catch(() => undefined);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+
     const result = await provider.sendMessage(
       { id: number.id, tenantId: number.tenantId, numero: number.numero, externalAccountId: number.externalAccountId },
       conversation.contatoNumero,

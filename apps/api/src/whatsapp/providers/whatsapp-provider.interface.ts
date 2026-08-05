@@ -71,6 +71,13 @@ export interface WhatsAppProvider {
     content: OutgoingMessageContent,
   ): Promise<SendMessageResult>;
 
+  /**
+   * Indicador de "digitando" real no WhatsApp do contato — só provedores com socket persistente
+   * (Baileys) conseguem oferecer isso; ausência do método é tratada como sem-op pelo motor do
+   * chatbot (ver ChatbotEngineService.sendNodeMessage).
+   */
+  sendPresenceUpdate?(number: ProviderNumberContext, to: string, state: "composing" | "paused"): Promise<void>;
+
   /** Valida a assinatura de um webhook recebido (ver SECURITY.md §3). */
   verifyWebhookSignature(rawBody: string, signatureHeader: string | undefined): boolean;
 

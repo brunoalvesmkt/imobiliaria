@@ -6,7 +6,10 @@
  * Cobertura de tipos de card do prompt mestre (seção 11.3): "resposta" e
  * "captura de dados" são propriedades do node `question` (não cards
  * separados); "mídia"/"documento"/"localização" são o campo `tipo` do node
- * `message`; "espera curta" é `delayMs` em `message`; "retorno" acontece
+ * `message`; "espera curta" é `delayMs` em `message`/`question`/`menu` — antes de enviar a
+ * mensagem do card, o motor simula "digitando..." no WhatsApp do contato pela duração
+ * configurada (só em provedores com socket persistente, ex.: Baileys — ver
+ * ChatbotEngineService.sendNodeMessage); "retorno" acontece
  * automaticamente quando um `end` é alcançado dentro de um subfluxo. `ai`
  * (rotulado "IA" na UI) e `knowledge_query` ("Consulta à Base") chamam um
  * provedor de IA real (Claude/ChatGPT/Gemini, ver apps/api/src/ai/) — só
@@ -87,6 +90,8 @@ export interface QuestionNodeData {
   timeoutMaxTentativas?: number;
   /** Um passo por tentativa (`timeoutSteps[0]` = espera antes da 1ª reativação, `timeoutSteps[1]` = antes da 2ª, ...) — tamanho normalmente igual a `timeoutMaxTentativas`. */
   timeoutSteps?: TimeoutStep[];
+  /** Pausa (ms) simulando "digitando..." antes de enviar a pergunta — ver comentário no topo do arquivo. */
+  delayMs?: number;
 }
 
 export interface MenuOption {
@@ -106,6 +111,8 @@ export interface MenuNodeData {
   timeoutEnabled?: boolean;
   timeoutMaxTentativas?: number;
   timeoutSteps?: TimeoutStep[];
+  /** Pausa (ms) simulando "digitando..." antes de enviar o menu — ver comentário no topo do arquivo. */
+  delayMs?: number;
 }
 
 export interface ConditionNodeData {

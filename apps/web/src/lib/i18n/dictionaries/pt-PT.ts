@@ -683,6 +683,7 @@ const dictionary: Record<DictionaryKey, string> = {
   "whatsapp.errorGeneric": "Não foi possível criar o número.",
 
   "atendimento.title": "Atendimento",
+  "atendimento.settings": "Configurações",
   "atendimento.tabs.inbox": "Caixa de entrada",
   "atendimento.tabs.teams": "Equipas e filas",
   "atendimento.inbox.filter.open": "Abertas",

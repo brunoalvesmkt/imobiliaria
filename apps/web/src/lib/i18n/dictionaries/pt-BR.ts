@@ -681,6 +681,7 @@ const dictionary = {
   "whatsapp.errorGeneric": "Não foi possível criar o número.",
 
   "atendimento.title": "Atendimento",
+  "atendimento.settings": "Configurações",
   "atendimento.tabs.inbox": "Caixa de entrada",
   "atendimento.tabs.teams": "Equipes e filas",
   "atendimento.inbox.filter.open": "Abertas",

@@ -25,3 +25,17 @@ export function useMasterBranding(enabled = true) {
     staleTime: 5 * 60 * 1000,
   });
 }
+
+/** `GET /branding/site` — sem autenticação, título da aba e favicon aparecem inclusive na tela de login. */
+export interface SiteBranding {
+  browserTitle: string | null;
+  faviconUrl: string | null;
+}
+
+export function useSiteBranding() {
+  return useQuery({
+    queryKey: ["branding", "site"],
+    queryFn: () => apiGet<SiteBranding>("/branding/site"),
+    staleTime: 5 * 60 * 1000,
+  });
+}

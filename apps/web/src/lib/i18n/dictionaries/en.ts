@@ -1209,6 +1209,10 @@ const dictionary: Record<DictionaryKey, string> = {
   "branding.errorFormat": "The file must be a PNG.",
   "branding.errorSize": "The file exceeds the 200KB size limit.",
   "branding.errorGeneric": "Couldn't load the image. Please try again.",
+  "branding.tabTitle": "Browser tab",
+  "branding.tabSubtitle": "Title and favicon shown in the browser tab, across the whole platform (tenant panel and Master panel).",
+  "branding.tabTitleLabel": "Tab title",
+  "branding.favicon": "Favicon",
 
   "master.tenants.title": "Companies",
   "master.tenants.columnName": "Company",

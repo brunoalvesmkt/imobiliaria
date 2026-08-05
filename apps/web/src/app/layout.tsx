@@ -5,6 +5,7 @@ import { QueryProvider } from "@/lib/query-provider";
 import { ThemeProvider, THEME_INIT_SCRIPT } from "@/lib/theme";
 import { MenuLayoutProvider } from "@/lib/menu-layout";
 import { I18nProvider } from "@/lib/i18n";
+import { SiteMetadata } from "@/components/layout/site-metadata";
 
 export const metadata = {
   title: "Chatbot SaaS Platform",
@@ -23,7 +24,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <ThemeProvider>
           <MenuLayoutProvider>
             <I18nProvider>
-              <QueryProvider>{children}</QueryProvider>
+              <QueryProvider>
+                <SiteMetadata />
+                {children}
+              </QueryProvider>
             </I18nProvider>
           </MenuLayoutProvider>
         </ThemeProvider>

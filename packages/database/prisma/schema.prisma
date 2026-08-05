@@ -1227,6 +1227,14 @@ model PlatformSettings {
   masterLogoDarkUrl     String? @db.Text
   masterLogoSizePercent Int     @default(100)
 
+  // Título da aba do navegador e favicon — únicos para toda a plataforma
+  // (painel de empresa e painel Master compartilham a mesma aba/janela do
+  // navegador), lidos publicamente via GET /branding/site (sem autenticação,
+  // já que aparecem inclusive na tela de login). faviconUrl segue o mesmo
+  // formato de data URI em base64 dos logos acima.
+  browserTitle String? @db.Text
+  faviconUrl   String? @db.Text
+
   updatedAt DateTime @updatedAt
 
   @@map("platform_settings")

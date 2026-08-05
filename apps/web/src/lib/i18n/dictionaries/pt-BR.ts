@@ -1207,6 +1207,10 @@ const dictionary = {
   "branding.errorFormat": "O arquivo precisa estar no formato PNG.",
   "branding.errorSize": "O arquivo excede o tamanho máximo de 200KB.",
   "branding.errorGeneric": "Não foi possível carregar a imagem. Tente novamente.",
+  "branding.tabTitle": "Aba do navegador",
+  "branding.tabSubtitle": "Título e favicon exibidos na aba do navegador, em toda a plataforma (painel de empresa e painel Master).",
+  "branding.tabTitleLabel": "Título da aba",
+  "branding.favicon": "Favicon",
 
   "master.tenants.title": "Empresas",
   "master.tenants.columnName": "Empresa",

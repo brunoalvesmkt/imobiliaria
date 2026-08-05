@@ -103,4 +103,15 @@ export class UpdatePlatformSettingsDto {
   @Min(50)
   @Max(200)
   masterLogoSizePercent?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(70)
+  browserTitle?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^data:image\/png;base64,/)
+  @MaxLength(MAX_LOGO_DATA_URI_LENGTH)
+  faviconUrl?: string | null;
 }

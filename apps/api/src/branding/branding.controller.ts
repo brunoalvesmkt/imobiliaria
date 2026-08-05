@@ -18,4 +18,10 @@ export class BrandingController {
   getMasterBranding() {
     return this.service.getMasterBranding();
   }
+
+  // Sem guard — precisa estar acessível na tela de login, antes de qualquer autenticação.
+  @Get("site")
+  getSiteBranding() {
+    return this.service.getSiteBranding();
+  }
 }

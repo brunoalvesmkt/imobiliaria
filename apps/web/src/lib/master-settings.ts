@@ -28,6 +28,8 @@ export interface PlatformSettings {
   masterLogoLightUrl: string | null;
   masterLogoDarkUrl: string | null;
   masterLogoSizePercent: number;
+  browserTitle: string | null;
+  faviconUrl: string | null;
   updatedAt: string;
 }
 
@@ -41,6 +43,10 @@ export function useUpdateMasterSettings() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: UpdatePlatformSettingsInput) => apiPatch<PlatformSettings>("/master/settings", input),
-    onSuccess: (settings) => queryClient.setQueryData(["master", "settings"], settings),
+    onSuccess: (settings) => {
+      queryClient.setQueryData(["master", "settings"], settings);
+      // Título/favicon são lidos publicamente por SiteMetadata — refletir mudança sem esperar o staleTime.
+      queryClient.invalidateQueries({ queryKey: ["branding", "site"] });
+    },
   });
 }

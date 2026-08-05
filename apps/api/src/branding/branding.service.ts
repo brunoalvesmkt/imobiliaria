@@ -45,4 +45,10 @@ export class BrandingService {
       sizePercent: settings.masterLogoSizePercent,
     };
   }
+
+  /** Sem guard (ver BrandingController) — título e favicon aparecem inclusive na tela de login, antes de qualquer autenticação. */
+  async getSiteBranding(): Promise<{ browserTitle: string | null; faviconUrl: string | null }> {
+    const settings = await this.getSettings();
+    return { browserTitle: settings.browserTitle, faviconUrl: settings.faviconUrl };
+  }
 }

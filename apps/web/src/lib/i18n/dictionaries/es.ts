@@ -1209,6 +1209,10 @@ const dictionary: Record<DictionaryKey, string> = {
   "branding.errorFormat": "El archivo debe estar en formato PNG.",
   "branding.errorSize": "El archivo excede el tamaño máximo de 200KB.",
   "branding.errorGeneric": "No se pudo cargar la imagen. Intenta de nuevo.",
+  "branding.tabTitle": "Pestaña del navegador",
+  "branding.tabSubtitle": "Título y favicon mostrados en la pestaña del navegador, en toda la plataforma (panel de empresa y panel Master).",
+  "branding.tabTitleLabel": "Título de la pestaña",
+  "branding.favicon": "Favicon",
 
   "master.tenants.title": "Empresas",
   "master.tenants.columnName": "Empresa",

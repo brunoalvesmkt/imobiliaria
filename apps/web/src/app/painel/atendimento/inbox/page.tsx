@@ -406,7 +406,7 @@ function QueuePicker({ onSelect }: { onSelect: (queueId: string) => void }) {
     <select
       onChange={(e) => e.target.value && onSelect(e.target.value)}
       defaultValue=""
-      className="rounded-md border border-line bg-surface px-2 py-1 text-xs"
+      className="w-full max-w-xs rounded-md border border-line bg-surface px-2 py-1 text-xs sm:w-56"
     >
       <option value="" disabled>
         {t("atendimento.inbox.columnQueue")}…

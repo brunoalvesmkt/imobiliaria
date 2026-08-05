@@ -110,14 +110,16 @@ export class ChatbotEngineService {
       return execution;
     }
 
-    const { definition } = await this.resolveActiveDefinition(execution);
+    const context = (execution.contextData as ExecutionContext | null) ?? {};
+    const { definition } = await this.resolveActiveDefinition(execution, context);
     const node = definition.nodes.find((n) => n.id === execution.currentNodeId);
     if (!node) {
       return execution;
     }
 
-    // Qualquer resposta do cliente cancela o timeout de reengajamento pendente deste card, se houver.
-    await this.timeoutProducer.cancel(execution.id);
+    // Qualquer resposta do cliente cancela o timeout de reengajamento pendente deste card, se
+    // houver — mesmo cálculo de `attempt` usado ao agendar (ver scheduleTimeoutIfConfigured).
+    await this.timeoutProducer.cancel(execution.id, node.id, context.timeoutAttempts?.[node.id] ?? 0);
 
     if (node.type === "question") {
       return this.handleQuestionReply(execution, node, incomingText);
@@ -378,7 +380,7 @@ export class ChatbotEngineService {
       return;
     }
     const delayMs = timeoutUnitToMs(step.quantidade, step.unidade ?? "minutes");
-    await this.timeoutProducer.schedule(execution.id, node.id, delayMs);
+    await this.timeoutProducer.schedule(execution.id, node.id, attempts, delayMs);
   }
 
   /**

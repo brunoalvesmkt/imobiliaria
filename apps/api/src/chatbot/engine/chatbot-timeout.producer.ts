@@ -10,28 +10,35 @@ export interface ChatbotTimeoutJobData {
 /**
  * Reativação por falta de resposta dos cards "question"/"menu" (ver
  * ChatbotEngineService.scheduleTimeoutIfConfigured) — um job atrasado por
- * execução. `jobId` fixo por execução garante que agendar um novo timeout
- * (ex.: o cliente respondeu e o fluxo avançou para outra pergunta com
- * timeout configurado) sempre substitui o anterior, nunca acumula. O
- * destino ("Não respondeu"/"Limite atingido") é resolvido pelas conexões do
- * fluxo só na hora do disparo (ChatbotEngineService.triggerTimeout), nunca
- * gravado no job — evita destino desatualizado se o fluxo for republicado.
+ * execução. `jobId` inclui o nº de tentativas já registradas (`attempt`) —
+ * NUNCA um id fixo por execução: quando um timeout dispara e reagenda o
+ * próximo (self-loop de reativação), isso acontece de DENTRO do próprio
+ * processamento do job anterior, que continua "ativo" no BullMQ até essa
+ * cadeia terminar. Um `jobId` fixo faria o novo `queue.add()` colidir com o
+ * job ainda ativo (o BullMQ ignora silenciosamente um id já existente), e
+ * nenhuma reativação seguinte seria de fato agendada — a execução ficava
+ * presa esperando para sempre, sem nunca atingir o limite de tentativas.
+ * `attempt` sempre difere do job que está processando (é o valor já
+ * incrementado), então nunca há colisão.
  */
 @Injectable()
 export class ChatbotTimeoutProducer {
   constructor(@InjectQueue("chatbot-timeouts") private readonly queue: Queue) {}
 
-  async schedule(executionId: string, nodeId: string, delayMs: number): Promise<void> {
-    await this.cancel(executionId);
+  private jobId(executionId: string, nodeId: string, attempt: number): string {
+    return `chatbot-timeout-${executionId}-${nodeId}-${attempt}`;
+  }
+
+  async schedule(executionId: string, nodeId: string, attempt: number, delayMs: number): Promise<void> {
     await this.queue.add(
       "node_timeout",
       { executionId, nodeId } satisfies ChatbotTimeoutJobData,
-      { jobId: `chatbot-timeout-${executionId}`, delay: delayMs, removeOnComplete: true, removeOnFail: true },
+      { jobId: this.jobId(executionId, nodeId, attempt), delay: delayMs, removeOnComplete: true, removeOnFail: true },
     );
   }
 
-  async cancel(executionId: string): Promise<void> {
-    const job = await this.queue.getJob(`chatbot-timeout-${executionId}`);
+  async cancel(executionId: string, nodeId: string, attempt: number): Promise<void> {
+    const job = await this.queue.getJob(this.jobId(executionId, nodeId, attempt));
     if (job) {
       await job.remove();
     }

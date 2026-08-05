@@ -63,7 +63,9 @@ function PlanosContent() {
             fallbackLetter="C"
             fallbackClassName="flex h-8 w-8 items-center justify-center rounded-md bg-brand-500 text-sm font-bold text-white"
           />
-          <span className="text-sm font-semibold text-ink">{branding.data?.browserTitle || t("nav.brand")}</span>
+          {!branding.data?.tenantLoginLogo.logoLightUrl && !branding.data?.tenantLoginLogo.logoDarkUrl && (
+            <span className="text-sm font-semibold text-ink">{branding.data?.browserTitle || t("nav.brand")}</span>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <LanguageSwitcher />

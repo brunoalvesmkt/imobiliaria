@@ -3,6 +3,9 @@ import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 
 export type MessageMediaType = "text" | "image" | "audio" | "video" | "document" | "location";
 
+/** Padrão do campo "Aguardar antes de enviar" para cards novos — continua editável (inclusive removível). */
+export const DEFAULT_DELAY_MS = 4000;
+
 export interface MessageNodeData {
   tipo?: MessageMediaType;
   texto: string;
@@ -177,11 +180,11 @@ export const NODE_COLORS: Record<FlowNodeType, string> = {
 export function defaultDataFor(type: FlowNodeType, presetTipo?: MessageMediaType): Record<string, unknown> {
   switch (type) {
     case "message":
-      return { tipo: presetTipo ?? "text", texto: "" } satisfies MessageNodeData;
+      return { tipo: presetTipo ?? "text", texto: "", delayMs: DEFAULT_DELAY_MS } satisfies MessageNodeData;
     case "question":
-      return { texto: "", variavel: "" } satisfies QuestionNodeData;
+      return { texto: "", variavel: "", delayMs: DEFAULT_DELAY_MS } satisfies QuestionNodeData;
     case "menu":
-      return { texto: "", opcoes: [{ chave: "1", texto: "" }] } satisfies MenuNodeData;
+      return { texto: "", opcoes: [{ chave: "1", texto: "" }], delayMs: DEFAULT_DELAY_MS } satisfies MenuNodeData;
     case "condition":
       return { campo: "", operador: "equals" } satisfies ConditionNodeData;
     case "subflow":

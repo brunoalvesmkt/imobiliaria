@@ -10,8 +10,7 @@ import { AutomationDataTriggersScheduler } from "../automation/automation-data-t
 import { DomainEventsService } from "../common/events/domain-events.service";
 
 /**
- * Fase C (cobertura de gatilhos/condições/ações): categorização "posvenda"
- * dos eventos de billing, operadores de condição numéricos, 5 eventos de
+ * Fase C (cobertura de gatilhos/condições/ações): operadores de condição numéricos, 5 eventos de
  * domínio novos em métodos já existentes, os 2 gatilhos baseados em tempo
  * (categoria "Data", varredura via `AutomationDataTriggersScheduler`), a
  * ação `create_opportunity` e o método configurável de `send_webhook`.
@@ -104,16 +103,14 @@ describe("Automação — Fase C (cobertura de gatilhos/condições/ações)", (
     await app.close();
   });
 
-  it("categorização: gatilhos de billing aparecem no catálogo com category 'posvenda'", async () => {
+  it("categorização: gatilhos de billing não aparecem no catálogo (Automação é só atendimento/CRM/tarefas/data)", async () => {
     const catalog = await tenant.agent.get("/automation/rules/catalog");
     expect(catalog.status).toBe(200);
     const billingTriggers = catalog.body.triggers.filter((t: { event: string }) =>
       ["invoice.paid", "invoice.overdue", "subscription.activated", "subscription.cancelled"].includes(t.event),
     );
-    expect(billingTriggers).toHaveLength(4);
-    for (const trig of billingTriggers) {
-      expect(trig.category).toBe("posvenda");
-    }
+    expect(billingTriggers).toHaveLength(0);
+    expect(catalog.body.categories).not.toContain("posvenda");
   });
 
   it("operador numérico: condição 'valor > X' só dispara quando o valor da oportunidade bate", async () => {

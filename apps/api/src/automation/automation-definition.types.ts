@@ -138,18 +138,20 @@ export function evaluateConditions(data: Record<string, unknown>, condicoes: Aut
 /** Limite de profundidade na corrente de automações que se disparam entre si (ver automation-chain-context.ts) — acima disso, a execução é bloqueada como "loop_blocked" em vez de enfileirada. */
 export const MAX_AUTOMATION_CHAIN_DEPTH = 5;
 
-export const AUTOMATION_CATEGORIES = ["atendimento", "crm", "tarefas", "posvenda", "data"] as const;
+export const AUTOMATION_CATEGORIES = ["atendimento", "crm", "tarefas", "data"] as const;
 export type AutomationCategory = (typeof AUTOMATION_CATEGORIES)[number];
 
 /**
- * Categoria de organização de cada gatilho existente hoje — usada para
- * filtrar o seletor de gatilho quando o usuário escolhe um "tipo de
- * automação" no formulário. Os gatilhos de billing (`invoice.*`/`subscription.*`)
- * se encaixam em "posvenda"; os dois gatilhos baseados em varredura por
- * tempo (`crm_task.due_soon`, `opportunity.stage_stagnant`, ver
+ * Categoria de organização de cada gatilho disponível como automação — usada
+ * para filtrar o seletor de gatilho quando o usuário escolhe um "tipo de
+ * automação" no formulário. Só entram aqui os gatilhos que o módulo
+ * Automação realmente expõe — os eventos de billing (`invoice.*`/
+ * `subscription.*`) não entram: a plataforma usa Automação só para
+ * atendimento/CRM/tarefas, não para cobrança. Os dois gatilhos baseados em
+ * varredura por tempo (`crm_task.due_soon`, `opportunity.stage_stagnant`, ver
  * automation-data-triggers.scheduler.ts) ficam em "data".
  */
-export const TRIGGER_CATEGORY: Record<DomainEventName, AutomationCategory | null> = {
+export const TRIGGER_CATEGORY: Partial<Record<DomainEventName, AutomationCategory>> = {
   "conversation.created": "atendimento",
   "conversation.closed": "atendimento",
   "conversation.transferred": "atendimento",
@@ -172,10 +174,6 @@ export const TRIGGER_CATEGORY: Record<DomainEventName, AutomationCategory | null
   "chatbot.flow.completed": "atendimento",
   "chatbot.flow.abandoned": "atendimento",
   "chatbot.flow.transferred": "atendimento",
-  "invoice.paid": "posvenda",
-  "invoice.overdue": "posvenda",
-  "subscription.activated": "posvenda",
-  "subscription.cancelled": "posvenda",
   "crm_task.due_soon": "data",
   "opportunity.stage_stagnant": "data",
 };
@@ -285,7 +283,7 @@ export function buildAutomationCatalog(activeModules: Set<string>): {
     const requiredModule = TRIGGER_REQUIRED_MODULE[event] ?? null;
     return {
       event,
-      category: TRIGGER_CATEGORY[event],
+      category: TRIGGER_CATEGORY[event] ?? null,
       requiredModule,
       fields: TRIGGER_FIELDS[event] ?? [],
       available: !requiredModule || activeModules.has(requiredModule),

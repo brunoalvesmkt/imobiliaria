@@ -46,16 +46,6 @@ export const AUTOMATION_TEMPLATES: AutomationTemplate[] = [
     gatilhoParametros: { horasAntecedencia: 4 },
     acoes: [{ tipo: "apply_tag", tag: "tarefa-urgente" }],
   },
-  {
-    id: "overdue_invoice_task",
-    gatilhoTipo: "invoice.overdue",
-    acoes: [{ tipo: "create_task", titulo: "Cobrar fatura vencida", tipoTarefa: "cobranca", horasParaVencer: 4 }],
-  },
-  {
-    id: "thank_you_payment",
-    gatilhoTipo: "invoice.paid",
-    acoes: [{ tipo: "schedule_followup", delayMinutes: 60, texto: "Muito obrigado pelo pagamento! Qualquer dúvida, estamos à disposição." }],
-  },
 ];
 
 export interface AutomationTemplateCatalogEntry extends AutomationTemplate {
@@ -69,7 +59,7 @@ export function buildAutomationTemplateCatalog(activeModules: Set<string>): Auto
     const requiredModule = TRIGGER_REQUIRED_MODULE[template.gatilhoTipo] ?? null;
     return {
       ...template,
-      categoria: TRIGGER_CATEGORY[template.gatilhoTipo],
+      categoria: TRIGGER_CATEGORY[template.gatilhoTipo] ?? null,
       available: !requiredModule || activeModules.has(requiredModule),
     };
   });

@@ -170,8 +170,6 @@ describe("Automação — Fase D (modelos, simulado, histórico)", () => {
     expect(byId.get("welcome_message")?.available).toBe(false);
     // "hot_lead_followup" depende só de "crm", que está ativo.
     expect(byId.get("hot_lead_followup")?.available).toBe(true);
-    // "overdue_invoice_task" não depende de nenhum módulo específico.
-    expect(byId.get("overdue_invoice_task")?.available).toBe(true);
 
     const activate = await tenant.agent.post("/automation/rules/templates/hot_lead_followup/activate").send({ nome: "Cobrar lead quente (modelo)" });
     expect(activate.status).toBe(201);

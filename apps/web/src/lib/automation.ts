@@ -19,10 +19,6 @@ export type DomainEventName =
   | "chatbot.flow.completed"
   | "chatbot.flow.abandoned"
   | "chatbot.flow.transferred"
-  | "invoice.paid"
-  | "invoice.overdue"
-  | "subscription.activated"
-  | "subscription.cancelled"
   | "crm_task.completed"
   | "crm_task.reassigned"
   | "opportunity.responsavel_changed"
@@ -86,7 +82,7 @@ export interface AutomationAction {
 
 export type AutomationStatus = "active" | "paused" | "archived";
 
-export const AUTOMATION_CATEGORIES = ["atendimento", "crm", "tarefas", "posvenda", "data"] as const;
+export const AUTOMATION_CATEGORIES = ["atendimento", "crm", "tarefas", "data"] as const;
 export type AutomationCategory = (typeof AUTOMATION_CATEGORIES)[number];
 
 export interface Automation {

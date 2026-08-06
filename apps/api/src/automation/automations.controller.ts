@@ -23,6 +23,12 @@ export class AutomationsController {
     return this.service.list();
   }
 
+  @Get("catalog")
+  @RequirePermission("automacao", "view")
+  getCatalog() {
+    return this.service.getCatalog();
+  }
+
   @Get(":id")
   @RequirePermission("automacao", "view")
   get(@Param("id") id: string) {

@@ -2,10 +2,8 @@
 
 import {
   ID_FIELD_KIND,
-  TRIGGER_FIELDS,
   type AutomationCondition,
   type ConditionOperator,
-  type DomainEventName,
 } from "@/lib/automation";
 import { useFlows } from "@/lib/chatbot";
 import { useI18n } from "@/lib/i18n";
@@ -15,16 +13,15 @@ import { FunnelStagePicker } from "./funnel-stage-picker";
 const OPERATORS: ConditionOperator[] = ["equals", "contains", "exists", "not_exists"];
 
 export function ConditionsEditor({
-  gatilhoTipo,
+  fields,
   conditions,
   onChange,
 }: {
-  gatilhoTipo: DomainEventName;
+  fields: string[];
   conditions: AutomationCondition[];
   onChange: (conditions: AutomationCondition[]) => void;
 }) {
   const { t } = useI18n();
-  const fields = TRIGGER_FIELDS[gatilhoTipo] ?? [];
 
   function update(index: number, condition: AutomationCondition) {
     onChange(conditions.map((c, i) => (i === index ? condition : c)));

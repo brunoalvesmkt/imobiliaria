@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
+  AUTOMATION_CATEGORIES,
   DEFAULT_DOMAIN_EVENT,
-  DOMAIN_EVENTS,
   useAutomation,
+  useAutomationCatalog,
   useUpdateAutomation,
   type AutomationAction,
+  type AutomationCategory,
   type AutomationCondition,
   type DomainEventName,
 } from "@/lib/automation";
@@ -26,9 +28,11 @@ export default function EditAutomationPage() {
   const { t } = useI18n();
   const automation = useAutomation(id);
   const update = useUpdateAutomation(id);
+  const catalog = useAutomationCatalog();
 
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
+  const [tipoAutomacao, setTipoAutomacao] = useState<AutomationCategory | "">("");
   const [gatilhoTipo, setGatilhoTipo] = useState<DomainEventName>(DEFAULT_DOMAIN_EVENT);
   const [condicoes, setCondicoes] = useState<AutomationCondition[]>([]);
   const [acoes, setAcoes] = useState<AutomationAction[]>([]);
@@ -40,18 +44,32 @@ export default function EditAutomationPage() {
     if (!automation.data || loaded) return;
     setNome(automation.data.nome);
     setDescricao(automation.data.descricao ?? "");
+    setTipoAutomacao(automation.data.tipoAutomacao ?? "");
     setGatilhoTipo(automation.data.gatilhoTipo);
     setCondicoes(automation.data.condicoes ?? []);
     setAcoes(automation.data.acoes);
     setLoaded(true);
   }, [automation.data, loaded]);
 
+  const availableTriggers = (catalog.data?.triggers ?? []).filter(
+    (trig) => trig.available && (!tipoAutomacao || trig.category === tipoAutomacao),
+  );
+  const availableActions = (catalog.data?.actions ?? []).filter((a) => a.available).map((a) => a.tipo);
+  const fields = catalog.data?.triggers.find((trig) => trig.event === gatilhoTipo)?.fields ?? [];
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErrors(null);
     setSaved(false);
     try {
-      await update.mutateAsync({ nome, descricao, gatilhoTipo, condicoes, acoes });
+      await update.mutateAsync({
+        nome,
+        descricao,
+        ...(tipoAutomacao ? { tipoAutomacao } : {}),
+        gatilhoTipo,
+        condicoes,
+        acoes,
+      });
       setSaved(true);
     } catch (err) {
       const body = (err as { body?: { errors?: { message: string }[] } }).body;
@@ -88,6 +106,23 @@ export default function EditAutomationPage() {
           <Field label={t("automation.description")} value={descricao} onChange={(e) => setDescricao(e.target.value)} />
         </div>
         <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-ink">{t("automation.columnType")}</label>
+          <select
+            value={tipoAutomacao}
+            onChange={(e) => {
+              setTipoAutomacao(e.target.value as AutomationCategory | "");
+            }}
+            className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
+          >
+            <option value="">{t("automation.filterAllTypes")}</option>
+            {AUTOMATION_CATEGORIES.map((cat) => (
+              <option key={cat} value={cat}>
+                {t(`automation.category.${cat}` as DictionaryKey)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-ink">{t("automation.trigger")}</label>
           <select
             value={gatilhoTipo}
@@ -97,15 +132,15 @@ export default function EditAutomationPage() {
             }}
             className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
           >
-            {DOMAIN_EVENTS.map((event) => (
-              <option key={event} value={event}>
-                {t(`automation.trigger.${event}` as DictionaryKey)}
+            {availableTriggers.map((trig) => (
+              <option key={trig.event} value={trig.event}>
+                {t(`automation.trigger.${trig.event}` as DictionaryKey)}
               </option>
             ))}
           </select>
         </div>
-        <ConditionsEditor gatilhoTipo={gatilhoTipo} conditions={condicoes} onChange={setCondicoes} />
-        <ActionsEditor actions={acoes} onChange={setAcoes} />
+        <ConditionsEditor fields={fields} conditions={condicoes} onChange={setCondicoes} />
+        <ActionsEditor actionTypes={availableActions} actions={acoes} onChange={setAcoes} />
         <div className="flex items-center gap-3">
           <Button type="submit" loading={update.isPending}>
             {t("automation.save")}

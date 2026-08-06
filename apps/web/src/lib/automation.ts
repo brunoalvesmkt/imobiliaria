@@ -3,11 +3,19 @@ import { apiDelete, apiGet, apiPatch, apiPost } from "./api-client";
 
 export type DomainEventName =
   | "conversation.created"
+  | "conversation.closed"
+  | "conversation.transferred"
+  | "conversation.analysis_completed"
   | "message.received"
+  | "whatsapp_number.connected"
+  | "whatsapp_number.disconnected"
+  | "contact.created"
+  | "contact.lead_hot"
   | "opportunity.stage_changed"
   | "opportunity.won"
   | "opportunity.lost"
   | "crm_task.created"
+  | "crm_task.overdue"
   | "chatbot.flow.completed"
   | "chatbot.flow.abandoned"
   | "chatbot.flow.transferred"
@@ -17,44 +25,6 @@ export type DomainEventName =
   | "subscription.cancelled";
 
 export const DEFAULT_DOMAIN_EVENT: DomainEventName = "conversation.created";
-
-export const DOMAIN_EVENTS: DomainEventName[] = [
-  "conversation.created",
-  "message.received",
-  "opportunity.stage_changed",
-  "opportunity.won",
-  "opportunity.lost",
-  "crm_task.created",
-  "chatbot.flow.completed",
-  "chatbot.flow.abandoned",
-  "chatbot.flow.transferred",
-  "invoice.paid",
-  "invoice.overdue",
-  "subscription.activated",
-  "subscription.cancelled",
-];
-
-/**
- * Campos disponíveis em `data` para cada gatilho (ver domainEvents.emit correspondente no
- * backend) — a Automação só sabe filtrar por esses nomes técnicos exatos, nunca por frases
- * livres. Usado para popular o seletor de "Campo" da condição, escopado ao gatilho escolhido, em
- * vez de deixar o usuário adivinhar/digitar um nome que não existe (e a condição nunca bater).
- */
-export const TRIGGER_FIELDS: Record<DomainEventName, string[]> = {
-  "conversation.created": ["conversationId", "origem", "contatoNumero"],
-  "message.received": ["conversationId", "conteudo", "direction"],
-  "opportunity.stage_changed": ["opportunityId", "stageId", "stageIdAnterior"],
-  "opportunity.won": ["opportunityId", "motivo", "valor"],
-  "opportunity.lost": ["opportunityId", "motivo", "valor"],
-  "crm_task.created": ["taskId", "tipo", "titulo"],
-  "chatbot.flow.completed": ["chatbotExecutionId", "chatbotFlowId"],
-  "chatbot.flow.abandoned": ["chatbotExecutionId", "chatbotFlowId"],
-  "chatbot.flow.transferred": ["chatbotExecutionId", "chatbotFlowId"],
-  "invoice.paid": ["invoiceId", "subscriptionId", "planId", "valor"],
-  "invoice.overdue": ["invoiceId", "subscriptionId"],
-  "subscription.activated": ["subscriptionId", "planId"],
-  "subscription.cancelled": ["subscriptionId", "motivo"],
-};
 
 /** Campos cujo valor é o ID de uma entidade com nome — a condição mostra um seletor por nome em vez de um campo de texto para o "Valor" (ver ConditionsEditor). */
 export const ID_FIELD_KIND: Record<string, "stage" | "flow"> = {
@@ -82,18 +52,6 @@ export type ActionType =
   | "send_webhook"
   | "schedule_followup";
 
-export const ACTION_TYPES: ActionType[] = [
-  "send_message",
-  "create_task",
-  "apply_tag",
-  "remove_tag",
-  "update_field",
-  "move_opportunity_stage",
-  "start_chatbot",
-  "send_webhook",
-  "schedule_followup",
-];
-
 export interface AutomationAction {
   tipo: ActionType;
   texto?: string;
@@ -112,10 +70,14 @@ export interface AutomationAction {
 
 export type AutomationStatus = "active" | "paused" | "archived";
 
+export const AUTOMATION_CATEGORIES = ["atendimento", "crm", "tarefas", "posvenda", "data"] as const;
+export type AutomationCategory = (typeof AUTOMATION_CATEGORIES)[number];
+
 export interface Automation {
   id: string;
   nome: string;
   descricao: string | null;
+  tipoAutomacao: AutomationCategory | null;
   gatilhoTipo: DomainEventName;
   condicoes: AutomationCondition[] | null;
   acoes: AutomationAction[];
@@ -139,6 +101,35 @@ export interface AutomationExecution {
   erro: string | null;
   executedAt: string | null;
   createdAt: string;
+}
+
+export interface AutomationCatalogTrigger {
+  event: DomainEventName;
+  category: AutomationCategory | null;
+  requiredModule: string | null;
+  fields: string[];
+  available: boolean;
+}
+
+export interface AutomationCatalogAction {
+  tipo: ActionType;
+  requiredModule: string | null;
+  available: boolean;
+}
+
+export interface AutomationCatalog {
+  categories: AutomationCategory[];
+  triggers: AutomationCatalogTrigger[];
+  actions: AutomationCatalogAction[];
+}
+
+/** Catálogo de gatilhos/ações disponíveis para o tenant, já filtrado pelos módulos ativos — fonte única servida pelo backend (ver automation-definition.types.ts), evita duplicar/desatualizar essa lista aqui. */
+export function useAutomationCatalog() {
+  return useQuery({
+    queryKey: ["automation", "rules", "catalog"],
+    queryFn: () => apiGet<AutomationCatalog>("/automation/rules/catalog"),
+    staleTime: 60_000,
+  });
 }
 
 export function useAutomations() {
@@ -175,6 +166,7 @@ export function useCreateAutomation() {
     mutationFn: (input: {
       nome: string;
       descricao?: string;
+      tipoAutomacao?: AutomationCategory;
       gatilhoTipo: DomainEventName;
       condicoes?: AutomationCondition[];
       acoes: AutomationAction[];
@@ -189,6 +181,7 @@ export function useUpdateAutomation(id: string) {
     mutationFn: (input: Partial<{
       nome: string;
       descricao: string;
+      tipoAutomacao: AutomationCategory;
       gatilhoTipo: DomainEventName;
       condicoes: AutomationCondition[];
       acoes: AutomationAction[];

@@ -3,14 +3,15 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  DEFAULT_DOMAIN_EVENT,
-  DOMAIN_EVENTS,
+  AUTOMATION_CATEGORIES,
+  useAutomationCatalog,
   useAutomations,
   useCreateAutomation,
   useUpdateAutomation,
   useDeleteAutomation,
   type Automation,
   type AutomationAction,
+  type AutomationCategory,
   type AutomationCondition,
   type DomainEventName,
 } from "@/lib/automation";
@@ -26,7 +27,10 @@ import { ActionsEditor } from "./action-fields";
 export default function AutomationPage() {
   const { t } = useI18n();
   const [showForm, setShowForm] = useState(false);
+  const [filterTipo, setFilterTipo] = useState<AutomationCategory | "">("");
   const automations = useAutomations();
+
+  const filtered = automations.data?.filter((a) => !filterTipo || a.tipoAutomacao === filterTipo);
 
   return (
     <div className="flex flex-col gap-4">
@@ -37,23 +41,40 @@ export default function AutomationPage() {
 
       {showForm && <NewAutomationForm onDone={() => setShowForm(false)} />}
 
+      <div className="flex items-center gap-2">
+        <label className="text-xs font-medium text-ink-dim">{t("automation.columnType")}</label>
+        <select
+          value={filterTipo}
+          onChange={(e) => setFilterTipo(e.target.value as AutomationCategory | "")}
+          className="rounded-md border border-line bg-surface px-2 py-1.5 text-sm"
+        >
+          <option value="">{t("automation.filterAllTypes")}</option>
+          {AUTOMATION_CATEGORIES.map((cat) => (
+            <option key={cat} value={cat}>
+              {t(`automation.category.${cat}` as DictionaryKey)}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div className="overflow-x-auto rounded-lg border border-line bg-surface">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-line bg-surface-alt text-left text-xs font-medium uppercase tracking-wide text-ink-faint">
               <th className="px-4 py-2">{t("automation.columnName")}</th>
+              <th className="px-4 py-2">{t("automation.columnType")}</th>
               <th className="px-4 py-2">{t("automation.columnTrigger")}</th>
               <th className="px-4 py-2">{t("automation.columnStatus")}</th>
               <th className="px-4 py-2" />
             </tr>
           </thead>
           <tbody>
-            {automations.data?.map((automation) => (
+            {filtered?.map((automation) => (
               <AutomationRow key={automation.id} automation={automation} />
             ))}
-            {automations.data?.length === 0 && (
+            {filtered?.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-6 text-center text-ink-faint">
+                <td colSpan={5} className="px-4 py-6 text-center text-ink-faint">
                   {t("automation.empty")}
                 </td>
               </tr>
@@ -89,6 +110,9 @@ function AutomationRow({ automation }: { automation: Automation }) {
         <Link href={`/painel/automacao/${automation.id}`} className="hover:underline">
           {automation.nome}
         </Link>
+      </td>
+      <td className="px-4 py-2 text-ink-dim">
+        {automation.tipoAutomacao ? t(`automation.category.${automation.tipoAutomacao}` as DictionaryKey) : "—"}
       </td>
       <td className="px-4 py-2 text-ink-dim">{t(`automation.trigger.${automation.gatilhoTipo}` as DictionaryKey)}</td>
       <td className="px-4 py-2">
@@ -146,7 +170,7 @@ function AutomationRow({ automation }: { automation: Automation }) {
       </tr>
       {deleteError && (
         <tr>
-          <td colSpan={4} className="px-4 pb-2">
+          <td colSpan={5} className="px-4 pb-2">
             <Alert tone="error">{deleteError}</Alert>
           </td>
         </tr>
@@ -172,20 +196,33 @@ function StatusBadge({ status }: { status: Automation["status"] }) {
 function NewAutomationForm({ onDone }: { onDone: () => void }) {
   const { t } = useI18n();
   const createAutomation = useCreateAutomation();
+  const catalog = useAutomationCatalog();
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
-  const [gatilhoTipo, setGatilhoTipo] = useState<DomainEventName>(DEFAULT_DOMAIN_EVENT);
+  const [tipoAutomacao, setTipoAutomacao] = useState<AutomationCategory | "">("");
+  const [gatilhoTipo, setGatilhoTipo] = useState<DomainEventName | "">("");
   const [condicoes, setCondicoes] = useState<AutomationCondition[]>([]);
   const [acoes, setAcoes] = useState<AutomationAction[]>([{ tipo: "send_message", texto: "" }]);
   const [errors, setErrors] = useState<string[] | null>(null);
 
+  const availableTriggers = (catalog.data?.triggers ?? []).filter(
+    (trig) => trig.available && (!tipoAutomacao || trig.category === tipoAutomacao),
+  );
+  const availableActions = (catalog.data?.actions ?? []).filter((a) => a.available).map((a) => a.tipo);
+  const fields = catalog.data?.triggers.find((trig) => trig.event === gatilhoTipo)?.fields ?? [];
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErrors(null);
+    if (!gatilhoTipo) {
+      setErrors([t("automation.errorGeneric")]);
+      return;
+    }
     try {
       await createAutomation.mutateAsync({
         nome,
         ...(descricao ? { descricao } : {}),
+        ...(tipoAutomacao ? { tipoAutomacao } : {}),
         gatilhoTipo,
         condicoes,
         acoes,
@@ -214,6 +251,25 @@ function NewAutomationForm({ onDone }: { onDone: () => void }) {
         <Field label={t("automation.description")} value={descricao} onChange={(e) => setDescricao(e.target.value)} />
       </div>
       <div className="flex flex-col gap-1.5">
+        <label className="text-sm font-medium text-ink">{t("automation.columnType")}</label>
+        <select
+          value={tipoAutomacao}
+          onChange={(e) => {
+            setTipoAutomacao(e.target.value as AutomationCategory | "");
+            setGatilhoTipo("");
+            setCondicoes([]);
+          }}
+          className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
+        >
+          <option value="">{t("automation.filterAllTypes")}</option>
+          {AUTOMATION_CATEGORIES.map((cat) => (
+            <option key={cat} value={cat}>
+              {t(`automation.category.${cat}` as DictionaryKey)}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="flex flex-col gap-1.5">
         <label className="text-sm font-medium text-ink">{t("automation.trigger")}</label>
         <select
           value={gatilhoTipo}
@@ -223,15 +279,16 @@ function NewAutomationForm({ onDone }: { onDone: () => void }) {
           }}
           className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
         >
-          {DOMAIN_EVENTS.map((event) => (
-            <option key={event} value={event}>
-              {t(`automation.trigger.${event}` as DictionaryKey)}
+          <option value="" />
+          {availableTriggers.map((trig) => (
+            <option key={trig.event} value={trig.event}>
+              {t(`automation.trigger.${trig.event}` as DictionaryKey)}
             </option>
           ))}
         </select>
       </div>
-      <ConditionsEditor gatilhoTipo={gatilhoTipo} conditions={condicoes} onChange={setCondicoes} />
-      <ActionsEditor actions={acoes} onChange={setAcoes} />
+      <ConditionsEditor fields={fields} conditions={condicoes} onChange={setCondicoes} />
+      <ActionsEditor actionTypes={availableActions} actions={acoes} onChange={setAcoes} />
       <div>
         <Button type="submit" loading={createAutomation.isPending}>
           {t("automation.create")}

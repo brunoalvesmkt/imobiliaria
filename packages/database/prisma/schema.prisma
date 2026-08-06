@@ -1329,6 +1329,10 @@ model Automation {
   tenantId    String
   nome        String
   descricao   String?
+  // Categoria de organização/filtro na UI (Atendimento/CRM/Tarefas/Pós-venda/Data)
+  // — nula em automações antigas (criadas antes desse campo existir, ou cujo
+  // gatilho é de billing e não se encaixa nas 5 categorias); não bloqueia nada.
+  tipoAutomacao String?
   gatilhoTipo String
   condicoes   Json?
   acoes       Json

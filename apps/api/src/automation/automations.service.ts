@@ -4,7 +4,7 @@ import type { Prisma } from "@chatbot-saas/database";
 import { TenantScopedPrismaService } from "../prisma/tenant-scoped-prisma.service";
 import { AuditService } from "../common/audit/audit.service";
 import { requireCurrentTenantId } from "../common/tenant/tenant-context";
-import { validateAutomationActions } from "./automation-definition.types";
+import { buildAutomationCatalog, validateAutomationActions } from "./automation-definition.types";
 import { AutomationProducer } from "./automation.producer";
 import type { CreateAutomationDto } from "./dto/create-automation.dto";
 import type { UpdateAutomationDto } from "./dto/update-automation.dto";
@@ -19,6 +19,13 @@ export class AutomationsService {
 
   list() {
     return this.tenantPrisma.automation.findMany({ orderBy: { createdAt: "desc" } });
+  }
+
+  /** Catálogo de gatilhos/ações disponíveis para este tenant, já filtrado pelos módulos ativos (ver `buildAutomationCatalog`). Fonte única consumida pelo formulário de criação/edição no frontend. */
+  async getCatalog() {
+    const flags = await this.tenantPrisma.featureFlag.findMany({ where: { enabled: true } });
+    const activeModules = new Set(flags.map((f) => f.module));
+    return buildAutomationCatalog(activeModules);
   }
 
   async get(id: string) {
@@ -43,6 +50,7 @@ export class AutomationsService {
       data: {
         nome: dto.nome,
         descricao: dto.descricao ?? null,
+        tipoAutomacao: dto.tipoAutomacao ?? null,
         gatilhoTipo: dto.gatilhoTipo,
         condicoes: (dto.condicoes ?? null) as unknown as Prisma.InputJsonValue,
         acoes: dto.acoes as unknown as Prisma.InputJsonValue,
@@ -113,6 +121,7 @@ export class AutomationsService {
     const data: Prisma.AutomationUncheckedUpdateInput = {};
     if (dto.nome !== undefined) data.nome = dto.nome;
     if (dto.descricao !== undefined) data.descricao = dto.descricao;
+    if (dto.tipoAutomacao !== undefined) data.tipoAutomacao = dto.tipoAutomacao;
     if (dto.gatilhoTipo !== undefined) data.gatilhoTipo = dto.gatilhoTipo;
     if (dto.condicoes !== undefined) data.condicoes = dto.condicoes as unknown as Prisma.InputJsonValue;
     if (dto.acoes !== undefined) data.acoes = dto.acoes as unknown as Prisma.InputJsonValue;

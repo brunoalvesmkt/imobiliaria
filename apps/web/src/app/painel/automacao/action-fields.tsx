@@ -1,6 +1,6 @@
 "use client";
 
-import { ACTION_TYPES, type ActionType, type AutomationAction } from "@/lib/automation";
+import type { ActionType, AutomationAction } from "@/lib/automation";
 import { useFlows } from "@/lib/chatbot";
 import { Field } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n";
@@ -8,9 +8,11 @@ import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 import { FunnelStagePicker } from "./funnel-stage-picker";
 
 export function ActionsEditor({
+  actionTypes,
   actions,
   onChange,
 }: {
+  actionTypes: ActionType[];
   actions: AutomationAction[];
   onChange: (actions: AutomationAction[]) => void;
 }) {
@@ -37,7 +39,7 @@ export function ActionsEditor({
               onChange={(e) => update(i, { tipo: e.target.value as ActionType })}
               className="flex-1 rounded-md border border-line bg-surface px-2 py-1.5 text-sm"
             >
-              {ACTION_TYPES.map((type) => (
+              {actionTypes.map((type) => (
                 <option key={type} value={type}>
                   {t(`automation.actions.type.${type}` as DictionaryKey)}
                 </option>

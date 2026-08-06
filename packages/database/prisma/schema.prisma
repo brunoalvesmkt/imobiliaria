@@ -1288,6 +1288,27 @@ model PlatformSettings {
   /// Cor do texto do botão do link. Nulo = branco.
   announcementButtonTextColor String?
 
+  // Mesma funcionalidade de aviso acima, só que exibida no topo do próprio
+  // painel Master (não do painel das empresas) — linha separada de campos
+  // porque os dois avisos são independentes (podem ter texto/cor/estado
+  // diferentes ao mesmo tempo). Lido via GET /branding/master.
+  masterAnnouncementEnabled     Boolean  @default(false)
+  masterAnnouncementText        String?  @db.Text
+  masterAnnouncementLinkUrl     String?  @db.Text
+  masterAnnouncementLinkText    String?  @db.Text
+  masterAnnouncementBgColor     String?
+  masterAnnouncementTextColor   String?
+  /// "left" | "center" | "right"
+  masterAnnouncementAlign       String   @default("left")
+  masterAnnouncementBold        Boolean  @default(false)
+  masterAnnouncementButtonColor String?
+  /// "rounded" | "square"
+  masterAnnouncementButtonShape String   @default("rounded")
+  masterAnnouncementButtonBold  Boolean  @default(false)
+  /// "session" (fecha e não mostra mais até o próximo login) | "always" (sempre mostra de novo).
+  masterAnnouncementDismissMode String   @default("always")
+  masterAnnouncementButtonTextColor String?
+
   updatedAt DateTime @updatedAt
 
   @@map("platform_settings")

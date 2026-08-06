@@ -7,6 +7,7 @@ import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 
 const TABS: { href: string; labelKey: DictionaryKey }[] = [
   { href: "/master/painel/configuracoes/personalizacao", labelKey: "branding.title" },
+  { href: "/master/painel/configuracoes/aviso", labelKey: "master.settings.announcement.title" },
   { href: "/master/painel/configuracoes/idioma", labelKey: "language.label" },
 ];
 

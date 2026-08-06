@@ -9,6 +9,22 @@ export interface BrandingConfig {
   sizePercent: number;
 }
 
+export interface AnnouncementConfig {
+  enabled: boolean;
+  text: string | null;
+  linkUrl: string | null;
+  linkText: string | null;
+  bgColor: string | null;
+  textColor: string | null;
+  align: string;
+  bold: boolean;
+  buttonBold: boolean;
+  buttonColor: string | null;
+  buttonTextColor: string | null;
+  buttonShape: string;
+  dismissMode: string;
+}
+
 /**
  * Leitura pública (a qualquer usuário autenticado, tenant ou master) da
  * personalização de logotipo definida pelo Master em `PlatformSettings` —
@@ -28,25 +44,7 @@ export class BrandingService {
     });
   }
 
-  async getTenantBranding(): Promise<
-    BrandingConfig & {
-      announcement: {
-        enabled: boolean;
-        text: string | null;
-        linkUrl: string | null;
-        linkText: string | null;
-        bgColor: string | null;
-        textColor: string | null;
-        align: string;
-        bold: boolean;
-        buttonBold: boolean;
-        buttonColor: string | null;
-        buttonTextColor: string | null;
-        buttonShape: string;
-        dismissMode: string;
-      };
-    }
-  > {
+  async getTenantBranding(): Promise<BrandingConfig & { announcement: AnnouncementConfig }> {
     const settings = await this.getSettings();
     return {
       logoLightUrl: settings.tenantLogoLightUrl,
@@ -70,12 +68,32 @@ export class BrandingService {
     };
   }
 
-  async getMasterBranding(): Promise<BrandingConfig> {
+  /**
+   * Mesmo aviso configurável do painel das empresas (`getTenantBranding`),
+   * só que com campos `masterAnnouncement*` próprios — os dois avisos são
+   * independentes entre si.
+   */
+  async getMasterBranding(): Promise<BrandingConfig & { announcement: AnnouncementConfig }> {
     const settings = await this.getSettings();
     return {
       logoLightUrl: settings.masterLogoLightUrl,
       logoDarkUrl: settings.masterLogoDarkUrl,
       sizePercent: settings.masterLogoSizePercent,
+      announcement: {
+        enabled: settings.masterAnnouncementEnabled,
+        text: settings.masterAnnouncementText,
+        linkUrl: settings.masterAnnouncementLinkUrl,
+        linkText: settings.masterAnnouncementLinkText,
+        bgColor: settings.masterAnnouncementBgColor,
+        textColor: settings.masterAnnouncementTextColor,
+        align: settings.masterAnnouncementAlign,
+        bold: settings.masterAnnouncementBold,
+        buttonBold: settings.masterAnnouncementButtonBold,
+        buttonColor: settings.masterAnnouncementButtonColor,
+        buttonTextColor: settings.masterAnnouncementButtonTextColor,
+        buttonShape: settings.masterAnnouncementButtonShape,
+        dismissMode: settings.masterAnnouncementDismissMode,
+      },
     };
   }
 

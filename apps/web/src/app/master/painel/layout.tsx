@@ -12,6 +12,7 @@ import type { MasterRole } from "@/lib/master-auth";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { MenuLayoutToggle } from "@/components/layout/menu-layout-toggle";
 import { LogoImage } from "@/components/layout/logo-image";
+import { MasterAnnouncementBanner } from "@/components/layout/master-announcement-banner";
 import { useMasterBranding } from "@/lib/branding";
 
 const NAV_ITEMS: { labelKey: DictionaryKey; href: string; roles?: ("super_admin" | "financeiro" | "suporte")[] }[] = [
@@ -214,6 +215,7 @@ export default function MasterPainelLayout({ children }: { children: React.React
           </div>
           <MasterActions onLogout={onLogout} nome={currentUser.data?.nome} masterRole={currentUser.data?.masterRole} />
         </nav>
+        <MasterAnnouncementBanner />
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>
       </div>
     );
@@ -270,6 +272,7 @@ export default function MasterPainelLayout({ children }: { children: React.React
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {mobileHeader}
+        <MasterAnnouncementBanner />
         <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>
       </div>
     </div>

@@ -472,6 +472,8 @@ const dictionary: Record<DictionaryKey, string> = {
   "crm.funnel.activate": "Reativar funil",
   "crm.funnel.confirmDeactivate": "Inativar este funil? Continua com os dados intactos, mas deixa de aparecer para escolha em novas oportunidades.",
   "crm.funnel.inactiveTag": "inativo",
+  "crm.funnel.toggleActiveMenu": "Inativar/Reativar funil",
+  "crm.funnel.selectFunnel": "Selecione o funil",
   "crm.funnel.transferTo": "Transferir para outro funil…",
   "crm.funnel.removeStage": "Remover etapa",
   "crm.funnel.chooseTargetStage": "Mover oportunidades para…",
@@ -1218,6 +1220,8 @@ const dictionary: Record<DictionaryKey, string> = {
 
   "master.settings.announcement.title": "Aviso",
   "master.settings.announcement.subtitle": "Faixa exibida no topo do painel das empresas. Ative quando quiser comunicar algo e desative quando já não precisar.",
+  "master.settings.ownAnnouncement.subtitle": "Faixa exibida no topo do próprio painel Master. Ative quando quiser comunicar algo à equipa interna e desative quando já não precisar.",
+  "master.settings.ownAnnouncement.enabled": "Mostrar aviso no painel Master",
   "master.settings.announcement.enabled": "Mostrar aviso no painel das empresas",
   "master.settings.announcement.text": "Texto do aviso",
   "master.settings.announcement.linkUrl": "Hiperligação (opcional)",

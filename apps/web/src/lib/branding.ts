@@ -46,7 +46,7 @@ export function useTenantBranding(enabled = true) {
 export function useMasterBranding(enabled = true) {
   return useQuery({
     queryKey: ["branding", "master"],
-    queryFn: () => apiGet<BrandingConfig>("/branding/master"),
+    queryFn: () => apiGet<BrandingConfig & { announcement: AnnouncementConfig }>("/branding/master"),
     enabled,
     staleTime: 5 * 60 * 1000,
     retry: BRANDING_RETRY,

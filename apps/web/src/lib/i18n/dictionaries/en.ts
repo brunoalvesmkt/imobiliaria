@@ -472,6 +472,8 @@ const dictionary: Record<DictionaryKey, string> = {
   "crm.funnel.activate": "Reactivate pipeline",
   "crm.funnel.confirmDeactivate": "Deactivate this pipeline? Its data stays intact, but it stops showing up when choosing a pipeline for new opportunities.",
   "crm.funnel.inactiveTag": "inactive",
+  "crm.funnel.toggleActiveMenu": "Deactivate/Reactivate pipeline",
+  "crm.funnel.selectFunnel": "Select the pipeline",
   "crm.funnel.transferTo": "Transfer to another pipeline…",
   "crm.funnel.removeStage": "Remove stage",
   "crm.funnel.chooseTargetStage": "Move opportunities to…",
@@ -1218,6 +1220,8 @@ const dictionary: Record<DictionaryKey, string> = {
 
   "master.settings.announcement.title": "Announcement",
   "master.settings.announcement.subtitle": "Banner shown at the top of the tenant panel. Turn it on whenever you need to communicate something and off when you don't.",
+  "master.settings.ownAnnouncement.subtitle": "Banner shown at the top of the Master panel itself. Turn it on whenever you need to communicate something to the internal team and off when you don't.",
+  "master.settings.ownAnnouncement.enabled": "Show announcement in the Master panel",
   "master.settings.announcement.enabled": "Show announcement in the tenant panel",
   "master.settings.announcement.text": "Announcement text",
   "master.settings.announcement.linkUrl": "Link (optional)",

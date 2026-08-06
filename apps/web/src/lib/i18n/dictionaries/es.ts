@@ -472,6 +472,8 @@ const dictionary: Record<DictionaryKey, string> = {
   "crm.funnel.activate": "Reactivar embudo",
   "crm.funnel.confirmDeactivate": "¿Desactivar este embudo? Los datos permanecen intactos, pero deja de aparecer para elegir en nuevas oportunidades.",
   "crm.funnel.inactiveTag": "inactivo",
+  "crm.funnel.toggleActiveMenu": "Desactivar/Reactivar embudo",
+  "crm.funnel.selectFunnel": "Selecciona el embudo",
   "crm.funnel.transferTo": "Transferir a otro embudo…",
   "crm.funnel.removeStage": "Eliminar etapa",
   "crm.funnel.chooseTargetStage": "Mover oportunidades a…",
@@ -1218,6 +1220,8 @@ const dictionary: Record<DictionaryKey, string> = {
 
   "master.settings.announcement.title": "Aviso",
   "master.settings.announcement.subtitle": "Banner mostrado en la parte superior del panel de las empresas. Actívelo cuando quiera comunicar algo y desactívelo cuando ya no lo necesite.",
+  "master.settings.ownAnnouncement.subtitle": "Banner mostrado en la parte superior del propio panel Master. Actívelo cuando quiera comunicar algo al equipo interno y desactívelo cuando ya no lo necesite.",
+  "master.settings.ownAnnouncement.enabled": "Mostrar aviso en el panel Master",
   "master.settings.announcement.enabled": "Mostrar aviso en el panel de las empresas",
   "master.settings.announcement.text": "Texto del aviso",
   "master.settings.announcement.linkUrl": "Enlace (opcional)",

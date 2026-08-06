@@ -209,4 +209,63 @@ export class UpdatePlatformSettingsDto {
   @IsString()
   @Matches(/^#[0-9a-fA-F]{6}$/)
   announcementButtonTextColor?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  masterAnnouncementEnabled?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  masterAnnouncementText?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  masterAnnouncementLinkUrl?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  masterAnnouncementLinkText?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^#[0-9a-fA-F]{6}$/)
+  masterAnnouncementBgColor?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^#[0-9a-fA-F]{6}$/)
+  masterAnnouncementTextColor?: string | null;
+
+  @IsOptional()
+  @IsIn(["left", "center", "right"])
+  masterAnnouncementAlign?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  masterAnnouncementBold?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^#[0-9a-fA-F]{6}$/)
+  masterAnnouncementButtonColor?: string | null;
+
+  @IsOptional()
+  @IsIn(["rounded", "square"])
+  masterAnnouncementButtonShape?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  masterAnnouncementButtonBold?: boolean;
+
+  @IsOptional()
+  @IsIn(["session", "always"])
+  masterAnnouncementDismissMode?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^#[0-9a-fA-F]{6}$/)
+  masterAnnouncementButtonTextColor?: string | null;
 }

@@ -25,10 +25,17 @@ const API_URL = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http:
  * (débito registrado desde a Fase de branding, fechado aqui). Best-effort,
  * mesmo raciocínio do `middleware.ts`: se a API estiver indisponível na hora
  * do build/request, cai no título padrão em vez de quebrar a página.
+ *
+ * `revalidate` (não `no-store`): o Next re-resolve os metadados do layout
+ * raiz em toda navegação, inclusive as internas do SPA — com `no-store`,
+ * cada clique refazia essa busca do zero, e o favicon piscava para o padrão
+ * enquanto a resposta não chegava. Com cache de 60s, navegações repetidas
+ * pegam o resultado já resolvido na hora; a marca do Master raramente muda,
+ * então até um minuto de defasagem é aceitável.
  */
 export async function generateMetadata(): Promise<Metadata> {
   try {
-    const res = await fetch(`${API_URL}/branding/site`, { cache: "no-store" });
+    const res = await fetch(`${API_URL}/branding/site`, { next: { revalidate: 60 } });
     if (!res.ok) throw new Error(`status ${res.status}`);
     const data = (await res.json()) as { browserTitle?: string | null; faviconUrl?: string | null };
     return {

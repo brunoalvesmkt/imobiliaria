@@ -1,0 +1,13 @@
+ALTER TABLE "platform_settings" ADD COLUMN     "masterAnnouncementEnabled" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "masterAnnouncementText" TEXT,
+ADD COLUMN     "masterAnnouncementLinkUrl" TEXT,
+ADD COLUMN     "masterAnnouncementLinkText" TEXT,
+ADD COLUMN     "masterAnnouncementBgColor" TEXT,
+ADD COLUMN     "masterAnnouncementTextColor" TEXT,
+ADD COLUMN     "masterAnnouncementAlign" TEXT NOT NULL DEFAULT 'left',
+ADD COLUMN     "masterAnnouncementBold" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "masterAnnouncementButtonColor" TEXT,
+ADD COLUMN     "masterAnnouncementButtonShape" TEXT NOT NULL DEFAULT 'rounded',
+ADD COLUMN     "masterAnnouncementButtonBold" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "masterAnnouncementDismissMode" TEXT NOT NULL DEFAULT 'always',
+ADD COLUMN     "masterAnnouncementButtonTextColor" TEXT;

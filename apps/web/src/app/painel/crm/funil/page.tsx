@@ -66,6 +66,7 @@ export default function FunilPage() {
             {isAdmin && (
               <FunnelSettingsMenu
                 funnel={funnel}
+                funnels={funnels.data}
                 onFunnelCreated={setSelectedFunnelId}
                 onFunnelDeleted={() => setSelectedFunnelId("")}
                 onError={setFunnelError}
@@ -125,46 +126,31 @@ function FunnelToolbar({
   );
 }
 
-type SettingsPanelKind = "createFunnel" | "editFunnel" | "newStage" | "editStage" | "deleteStage" | "reorderStages";
+type SettingsPanelKind =
+  | "createFunnel"
+  | "editFunnel"
+  | "newStage"
+  | "editStage"
+  | "deleteStage"
+  | "reorderStages"
+  | "toggleActive"
+  | "deleteFunnel";
 
 function FunnelSettingsMenu({
   funnel,
+  funnels,
   onFunnelCreated,
   onFunnelDeleted,
   onError,
 }: {
   funnel: Funnel;
+  funnels: Funnel[];
   onFunnelCreated: (id: string) => void;
   onFunnelDeleted: () => void;
   onError: (message: string | null) => void;
 }) {
   const { t } = useI18n();
   const [panel, setPanel] = useState<SettingsPanelKind | null>(null);
-  const deleteFunnel = useDeleteFunnel();
-  const updateFunnel = useUpdateFunnel(funnel.id);
-
-  async function onDeleteFunnel() {
-    onError(null);
-    if (!window.confirm(t("crm.funnel.confirmDelete"))) return;
-    try {
-      await deleteFunnel.mutateAsync(funnel.id);
-      onFunnelDeleted();
-    } catch (err) {
-      onError(err instanceof ApiError ? err.message : t("crm.funnel.errorGeneric"));
-    }
-  }
-
-  const isActive = funnel.status !== "inactive";
-
-  async function onToggleActive() {
-    onError(null);
-    if (isActive && !window.confirm(t("crm.funnel.confirmDeactivate"))) return;
-    try {
-      await updateFunnel.mutateAsync({ status: isActive ? "inactive" : "active" });
-    } catch (err) {
-      onError(err instanceof ApiError ? err.message : t("crm.funnel.errorGeneric"));
-    }
-  }
 
   const items: DropdownMenuItem[] = [
     { label: t("crm.funnel.settingsMenu.createFunnel"), onClick: () => setPanel("createFunnel") },
@@ -173,8 +159,8 @@ function FunnelSettingsMenu({
     { label: t("crm.funnel.settingsMenu.editStage"), onClick: () => setPanel("editStage") },
     { label: t("crm.funnel.settingsMenu.deleteStage"), onClick: () => setPanel("deleteStage") },
     { label: t("crm.funnel.settingsMenu.reorderStages"), onClick: () => setPanel("reorderStages") },
-    { label: isActive ? t("crm.funnel.deactivate") : t("crm.funnel.activate"), onClick: onToggleActive, disabled: updateFunnel.isPending },
-    { label: t("crm.funnel.delete"), onClick: onDeleteFunnel, disabled: deleteFunnel.isPending },
+    { label: t("crm.funnel.toggleActiveMenu"), onClick: () => setPanel("toggleActive") },
+    { label: t("crm.funnel.delete"), onClick: () => setPanel("deleteFunnel") },
   ];
 
   return (
@@ -215,7 +201,124 @@ function FunnelSettingsMenu({
           <ReorderStagesPanel funnel={funnel} />
         </SettingsPanel>
       )}
+      {panel === "toggleActive" && (
+        <SettingsPanel title={t("crm.funnel.toggleActiveMenu")} onClose={() => setPanel(null)}>
+          <ToggleFunnelActivePanel funnels={funnels} onDone={() => setPanel(null)} onError={onError} />
+        </SettingsPanel>
+      )}
+      {panel === "deleteFunnel" && (
+        <SettingsPanel title={t("crm.funnel.delete")} onClose={() => setPanel(null)}>
+          <DeleteFunnelPanel
+            funnels={funnels}
+            onDone={(deletedCurrent) => {
+              setPanel(null);
+              if (deletedCurrent) onFunnelDeleted();
+            }}
+            onError={onError}
+          />
+        </SettingsPanel>
+      )}
     </>
+  );
+}
+
+function ToggleFunnelActivePanel({
+  funnels,
+  onDone,
+  onError,
+}: {
+  funnels: Funnel[];
+  onDone: () => void;
+  onError: (message: string | null) => void;
+}) {
+  const { t } = useI18n();
+  const [funnelId, setFunnelId] = useState("");
+  const selected = funnels.find((f) => f.id === funnelId);
+  const updateFunnel = useUpdateFunnel(funnelId);
+  const isActive = selected?.status !== "inactive";
+
+  async function onToggle() {
+    if (!selected) return;
+    onError(null);
+    try {
+      await updateFunnel.mutateAsync({ status: isActive ? "inactive" : "active" });
+      onDone();
+    } catch (err) {
+      onError(err instanceof ApiError ? err.message : t("crm.funnel.errorGeneric"));
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <select
+        value={funnelId}
+        onChange={(e) => setFunnelId(e.target.value)}
+        className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
+      >
+        <option value="">{t("crm.funnel.selectFunnel")}</option>
+        {funnels.map((f) => (
+          <option key={f.id} value={f.id}>
+            {f.status === "inactive" ? `${f.nome} (${t("crm.funnel.inactiveTag")})` : f.nome}
+          </option>
+        ))}
+      </select>
+      {selected && (
+        <div>
+          <Button variant="secondary" onClick={onToggle} loading={updateFunnel.isPending}>
+            {isActive ? t("crm.funnel.deactivate") : t("crm.funnel.activate")}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DeleteFunnelPanel({
+  funnels,
+  onDone,
+  onError,
+}: {
+  funnels: Funnel[];
+  onDone: (deletedCurrent: boolean) => void;
+  onError: (message: string | null) => void;
+}) {
+  const { t } = useI18n();
+  const [funnelId, setFunnelId] = useState("");
+  const deleteFunnel = useDeleteFunnel();
+
+  async function onDelete() {
+    if (!funnelId) return;
+    onError(null);
+    try {
+      await deleteFunnel.mutateAsync(funnelId);
+      onDone(true);
+    } catch (err) {
+      onError(err instanceof ApiError ? err.message : t("crm.funnel.errorGeneric"));
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <select
+        value={funnelId}
+        onChange={(e) => setFunnelId(e.target.value)}
+        className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
+      >
+        <option value="">{t("crm.funnel.selectFunnel")}</option>
+        {funnels.map((f) => (
+          <option key={f.id} value={f.id}>
+            {f.status === "inactive" ? `${f.nome} (${t("crm.funnel.inactiveTag")})` : f.nome}
+          </option>
+        ))}
+      </select>
+      {funnelId && (
+        <div>
+          <Button variant="secondary" onClick={onDelete} loading={deleteFunnel.isPending}>
+            {t("crm.funnel.delete")}
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }
 

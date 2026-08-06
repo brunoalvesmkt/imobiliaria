@@ -49,6 +49,19 @@ export interface PlatformSettings {
   announcementButtonTextColor: string | null;
   announcementButtonShape: "rounded" | "square";
   announcementDismissMode: "session" | "always";
+  masterAnnouncementEnabled: boolean;
+  masterAnnouncementText: string | null;
+  masterAnnouncementLinkUrl: string | null;
+  masterAnnouncementLinkText: string | null;
+  masterAnnouncementBgColor: string | null;
+  masterAnnouncementTextColor: string | null;
+  masterAnnouncementAlign: "left" | "center" | "right";
+  masterAnnouncementBold: boolean;
+  masterAnnouncementButtonBold: boolean;
+  masterAnnouncementButtonColor: string | null;
+  masterAnnouncementButtonTextColor: string | null;
+  masterAnnouncementButtonShape: "rounded" | "square";
+  masterAnnouncementDismissMode: "session" | "always";
   updatedAt: string;
 }
 

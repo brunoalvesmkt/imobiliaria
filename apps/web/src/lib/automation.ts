@@ -82,12 +82,14 @@ export interface Automation {
   condicoes: AutomationCondition[] | null;
   acoes: AutomationAction[];
   status: AutomationStatus;
+  /** Intervalo mínimo (minutos) entre disparos desta automação para o mesmo contato/conversa — nulo = sem limite. */
+  cooldownMinutos: number | null;
   versao: number;
   createdAt: string;
   updatedAt: string;
 }
 
-export type ExecutionStatus = "pending" | "running" | "success" | "failed" | "dead_letter";
+export type ExecutionStatus = "pending" | "running" | "success" | "failed" | "dead_letter" | "throttled" | "loop_blocked";
 
 export interface AutomationExecution {
   id: string;
@@ -170,6 +172,7 @@ export function useCreateAutomation() {
       gatilhoTipo: DomainEventName;
       condicoes?: AutomationCondition[];
       acoes: AutomationAction[];
+      cooldownMinutos?: number;
     }) => apiPost<Automation>("/automation/rules", input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["automation", "rules"] }),
   });
@@ -186,6 +189,7 @@ export function useUpdateAutomation(id: string) {
       condicoes: AutomationCondition[];
       acoes: AutomationAction[];
       status: AutomationStatus;
+      cooldownMinutos: number | null;
     }>) => apiPatch<Automation>(`/automation/rules/${id}`, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["automation", "rules"] });

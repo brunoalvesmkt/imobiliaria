@@ -36,6 +36,7 @@ export default function EditAutomationPage() {
   const [gatilhoTipo, setGatilhoTipo] = useState<DomainEventName>(DEFAULT_DOMAIN_EVENT);
   const [condicoes, setCondicoes] = useState<AutomationCondition[]>([]);
   const [acoes, setAcoes] = useState<AutomationAction[]>([]);
+  const [cooldownMinutos, setCooldownMinutos] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [errors, setErrors] = useState<string[] | null>(null);
   const [saved, setSaved] = useState(false);
@@ -48,6 +49,7 @@ export default function EditAutomationPage() {
     setGatilhoTipo(automation.data.gatilhoTipo);
     setCondicoes(automation.data.condicoes ?? []);
     setAcoes(automation.data.acoes);
+    setCooldownMinutos(automation.data.cooldownMinutos ? String(automation.data.cooldownMinutos) : "");
     setLoaded(true);
   }, [automation.data, loaded]);
 
@@ -69,6 +71,7 @@ export default function EditAutomationPage() {
         gatilhoTipo,
         condicoes,
         acoes,
+        cooldownMinutos: cooldownMinutos ? Number(cooldownMinutos) : null,
       });
       setSaved(true);
     } catch (err) {
@@ -141,6 +144,14 @@ export default function EditAutomationPage() {
         </div>
         <ConditionsEditor fields={fields} conditions={condicoes} onChange={setCondicoes} />
         <ActionsEditor actionTypes={availableActions} actions={acoes} onChange={setAcoes} />
+        <Field
+          label={t("automation.cooldownMinutos")}
+          type="number"
+          min={1}
+          value={cooldownMinutos}
+          onChange={(e) => setCooldownMinutos(e.target.value)}
+          className="max-w-xs"
+        />
         <div className="flex items-center gap-3">
           <Button type="submit" loading={update.isPending}>
             {t("automation.save")}

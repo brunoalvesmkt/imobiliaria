@@ -1,4 +1,4 @@
-import { IsArray, IsIn, IsOptional, IsString, MinLength } from "class-validator";
+import { IsArray, IsIn, IsInt, IsOptional, IsString, Min, MinLength, ValidateIf } from "class-validator";
 import { ALL_DOMAIN_EVENTS, type DomainEventName } from "../../common/events/domain-event.types";
 import { AUTOMATION_CATEGORIES, type AutomationCategory } from "../automation-definition.types";
 import type { AutomationCondition, AutomationAction } from "../automation-definition.types";
@@ -18,6 +18,12 @@ export class CreateAutomationDto {
 
   @IsIn(ALL_DOMAIN_EVENTS)
   gatilhoTipo!: DomainEventName;
+
+  @IsOptional()
+  @ValidateIf((o: CreateAutomationDto) => o.cooldownMinutos !== null)
+  @IsInt()
+  @Min(1)
+  cooldownMinutos?: number | null;
 
   @IsOptional()
   @IsArray()

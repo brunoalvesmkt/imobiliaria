@@ -1086,6 +1086,9 @@ const dictionary = {
   "automation.executions.status.success": "Sucesso",
   "automation.executions.status.failed": "Falhou",
   "automation.executions.status.dead_letter": "Falha definitiva",
+  "automation.executions.status.throttled": "Bloqueada por frequência",
+  "automation.executions.status.loop_blocked": "Bloqueada por loop",
+  "automation.cooldownMinutos": "Intervalo mínimo entre disparos (minutos, opcional)",
 
   "financeiro.title": "Financeiro",
   "financeiro.summary.title": "Resumo",

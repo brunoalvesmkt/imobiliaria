@@ -6,11 +6,11 @@ import type { Queue } from "bullmq";
 export class AutomationProducer {
   constructor(@InjectQueue("automations") private readonly queue: Queue) {}
 
-  /** jobId = executionId — dedupe estrutural no próprio BullMQ contra enfileiramento duplicado (ver ACCEPTANCE_CRITERIA.md, caso crítico #8). */
-  enqueueExecution(executionId: string): Promise<unknown> {
+  /** jobId = executionId — dedupe estrutural no próprio BullMQ contra enfileiramento duplicado (ver ACCEPTANCE_CRITERIA.md, caso crítico #8). `chainDepth` propaga a profundidade na corrente de automações (ver automation-chain-context.ts) para o processor reconstituir o contexto ao rodar esse job. */
+  enqueueExecution(executionId: string, chainDepth = 0): Promise<unknown> {
     return this.queue.add(
       "run_execution",
-      { executionId },
+      { executionId, chainDepth },
       {
         jobId: `execution-${executionId}`,
         attempts: 3,

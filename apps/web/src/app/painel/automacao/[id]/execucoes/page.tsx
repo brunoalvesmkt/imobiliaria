@@ -61,6 +61,8 @@ function ExecutionRow({ execution, locale }: { execution: AutomationExecution; l
     success: "bg-brand-50 text-brand-700",
     failed: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
     dead_letter: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300",
+    throttled: "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300",
+    loop_blocked: "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200",
   };
   return (
     <tr className="border-b border-line last:border-0">

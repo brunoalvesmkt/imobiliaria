@@ -1088,6 +1088,9 @@ const dictionary: Record<DictionaryKey, string> = {
   "automation.executions.status.success": "Success",
   "automation.executions.status.failed": "Failed",
   "automation.executions.status.dead_letter": "Dead letter",
+  "automation.executions.status.throttled": "Blocked by frequency limit",
+  "automation.executions.status.loop_blocked": "Blocked by loop",
+  "automation.cooldownMinutos": "Minimum interval between runs (minutes, optional)",
 
   "financeiro.title": "Billing",
   "financeiro.summary.title": "Summary",

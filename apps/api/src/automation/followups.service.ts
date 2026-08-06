@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { Prisma } from "@chatbot-saas/database";
 import { PrismaService } from "../prisma/prisma.service";
 import { AutomationProducer } from "./automation.producer";
 
@@ -10,6 +11,8 @@ export interface ScheduleFollowUpInput {
   delayMinutes: number;
   texto: string;
   sequenciaIndex?: number;
+  /** Snapshot do payload.data do evento que originou a execução — usado para revalidar as condições da automação quando o follow-up dispara (ver AutomationProcessor.sendFollowUp). */
+  dadosGatilho?: Prisma.InputJsonValue | null;
 }
 
 /**
@@ -38,6 +41,7 @@ export class FollowUpsService {
         sequenciaIndex: input.sequenciaIndex ?? 0,
         agendadoPara: new Date(Date.now() + delayMs),
         status: "scheduled",
+        ...(input.dadosGatilho !== undefined ? { dadosGatilho: input.dadosGatilho ?? Prisma.JsonNull } : {}),
       },
     });
 

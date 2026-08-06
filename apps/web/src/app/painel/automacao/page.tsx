@@ -203,6 +203,7 @@ function NewAutomationForm({ onDone }: { onDone: () => void }) {
   const [gatilhoTipo, setGatilhoTipo] = useState<DomainEventName | "">("");
   const [condicoes, setCondicoes] = useState<AutomationCondition[]>([]);
   const [acoes, setAcoes] = useState<AutomationAction[]>([{ tipo: "send_message", texto: "" }]);
+  const [cooldownMinutos, setCooldownMinutos] = useState("");
   const [errors, setErrors] = useState<string[] | null>(null);
 
   const availableTriggers = (catalog.data?.triggers ?? []).filter(
@@ -226,6 +227,7 @@ function NewAutomationForm({ onDone }: { onDone: () => void }) {
         gatilhoTipo,
         condicoes,
         acoes,
+        ...(cooldownMinutos ? { cooldownMinutos: Number(cooldownMinutos) } : {}),
       });
       onDone();
     } catch (err) {
@@ -289,6 +291,14 @@ function NewAutomationForm({ onDone }: { onDone: () => void }) {
       </div>
       <ConditionsEditor fields={fields} conditions={condicoes} onChange={setCondicoes} />
       <ActionsEditor actionTypes={availableActions} actions={acoes} onChange={setAcoes} />
+      <Field
+        label={t("automation.cooldownMinutos")}
+        type="number"
+        min={1}
+        value={cooldownMinutos}
+        onChange={(e) => setCooldownMinutos(e.target.value)}
+        className="max-w-xs"
+      />
       <div>
         <Button type="submit" loading={createAutomation.isPending}>
           {t("automation.create")}

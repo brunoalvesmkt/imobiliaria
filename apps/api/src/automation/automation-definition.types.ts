@@ -98,6 +98,9 @@ export function evaluateConditions(data: Record<string, unknown>, condicoes: Aut
 // reconstruir o módulo.
 // ---------------------------------------------------------------------------
 
+/** Limite de profundidade na corrente de automações que se disparam entre si (ver automation-chain-context.ts) — acima disso, a execução é bloqueada como "loop_blocked" em vez de enfileirada. */
+export const MAX_AUTOMATION_CHAIN_DEPTH = 5;
+
 export const AUTOMATION_CATEGORIES = ["atendimento", "crm", "tarefas", "posvenda", "data"] as const;
 export type AutomationCategory = (typeof AUTOMATION_CATEGORIES)[number];
 

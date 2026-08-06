@@ -1338,6 +1338,9 @@ model Automation {
   acoes       Json
   status      String   @default("active") // active | paused | archived
   versao      Int      @default(1)
+  // Intervalo mínimo (minutos) entre execuções desta automação para o mesmo
+  // contato/conversa — nulo = sem limite. Ver AutomationEngineService.dispatch.
+  cooldownMinutos Int?
   // Segredo usado para assinar (HMAC-SHA256) o corpo de requisições da ação
   // "send_webhook" desta automação — o destino externo usa para verificar
   // autenticidade, mesmo princípio dos webhooks que a própria plataforma
@@ -1362,12 +1365,21 @@ model AutomationExecution {
   contactId        String?
   conversationId   String?
   gatilhoDisparado String
+  // Snapshot do payload.data do evento que disparou esta execução — usado
+  // para revalidar condições quando um schedule_followup criado por esta
+  // execução dispara depois da espera (ver AutomationProcessor.sendFollowUp).
+  dadosGatilho     Json?
   acoesExecutadas  Json?
   tentativas       Int       @default(0)
-  status           String    @default("pending") // pending | running | success | failed | dead_letter
+  status           String    @default("pending") // pending | running | success | failed | dead_letter | throttled | loop_blocked
   erro             String?
   executedAt       DateTime?
   createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  // Profundidade na corrente de automações que se disparam entre si (ex.:
+  // start_chatbot conclui um fluxo que emite outro evento de domínio) — 0
+  // para disparos por evento externo genuíno. Ver automation-chain-context.ts.
+  chainDepth       Int       @default(0)
 
   tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   automation Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
@@ -1387,6 +1399,10 @@ model FollowUpSchedule {
   agendadoPara       DateTime
   status             String    @default("scheduled") // scheduled | sent | cancelled
   canceladoPorEvento String?
+  // Snapshot do payload.data do evento que originou a execução que agendou
+  // este follow-up — usado para revalidar as condições da automação quando
+  // o follow-up dispara (ver AutomationProcessor.sendFollowUp).
+  dadosGatilho       Json?
   createdAt          DateTime  @default(now())
 
   tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)

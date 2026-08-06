@@ -51,6 +51,7 @@ export class AutomationsService {
         nome: dto.nome,
         descricao: dto.descricao ?? null,
         tipoAutomacao: dto.tipoAutomacao ?? null,
+        cooldownMinutos: dto.cooldownMinutos ?? null,
         gatilhoTipo: dto.gatilhoTipo,
         condicoes: (dto.condicoes ?? null) as unknown as Prisma.InputJsonValue,
         acoes: dto.acoes as unknown as Prisma.InputJsonValue,
@@ -122,6 +123,7 @@ export class AutomationsService {
     if (dto.nome !== undefined) data.nome = dto.nome;
     if (dto.descricao !== undefined) data.descricao = dto.descricao;
     if (dto.tipoAutomacao !== undefined) data.tipoAutomacao = dto.tipoAutomacao;
+    if (dto.cooldownMinutos !== undefined) data.cooldownMinutos = dto.cooldownMinutos;
     if (dto.gatilhoTipo !== undefined) data.gatilhoTipo = dto.gatilhoTipo;
     if (dto.condicoes !== undefined) data.condicoes = dto.condicoes as unknown as Prisma.InputJsonValue;
     if (dto.acoes !== undefined) data.acoes = dto.acoes as unknown as Prisma.InputJsonValue;

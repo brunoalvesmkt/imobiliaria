@@ -9,11 +9,16 @@ import { RealtimeGateway } from "../realtime/realtime.gateway";
 import { ChatbotEngineService } from "../chatbot/engine/chatbot-engine.service";
 import { FollowUpsService } from "./followups.service";
 import { stripDddiBrasil } from "../crm/contacts/phone.util";
-import type { AutomationAction } from "./automation-definition.types";
+import { evaluateConditions, type AutomationAction, type AutomationCondition } from "./automation-definition.types";
+import { runWithAutomationChain } from "./automation-chain-context";
 
 interface RunExecutionJobData {
   executionId: string;
+  chainDepth?: number;
 }
+
+/** Acima desta idade, uma execução travada em "running" é considerada órfã (worker derrubado no meio) e pode ser reprocessada — folga confortável acima do lock padrão do BullMQ. */
+const STALE_RUNNING_MS = 120_000;
 
 interface SendFollowUpJobData {
   followUpId: string;
@@ -53,8 +58,12 @@ export class AutomationProcessor extends WorkerHost {
 
   private async runExecution(job: Job<RunExecutionJobData>): Promise<void> {
     const execution = await this.prisma.automationExecution.findUnique({ where: { id: job.data.executionId } });
-    if (!execution || execution.status === "success" || execution.status === "dead_letter") {
+    if (!execution) return;
+    if (execution.status === "success" || execution.status === "dead_letter") {
       return; // já processada com sucesso ou definitivamente falhou — idempotência (caso crítico #8)
+    }
+    if (execution.status === "running" && Date.now() - execution.updatedAt.getTime() < STALE_RUNNING_MS) {
+      return; // outra execução deste mesmo job já está em andamento — duplicata concorrente legítima
     }
 
     await this.prisma.automationExecution.update({
@@ -71,37 +80,63 @@ export class AutomationProcessor extends WorkerHost {
     // algo vincula o contato) e reaproveitado por todas as ações desta automação que precisam dele.
     const contactId = await this.resolveContactId(automation.tenantId, execution);
 
-    try {
-      for (const acao of acoes) {
-        const result = await this.executeAction(automation.tenantId, execution, acao, automation.webhookSecret, contactId);
-        executed.push({ tipo: acao.tipo, result });
+    // A profundidade da corrente (ver automation-chain-context.ts) fica disponível dentro deste
+    // contexto assíncrono para o AutomationEngineService.dispatch, caso uma ação (ex.: start_chatbot)
+    // dispare sincronamente um novo evento de domínio que reentre no motor de automações.
+    await runWithAutomationChain({ executionId: execution.id, depth: job.data.chainDepth ?? 0 }, async () => {
+      try {
+        for (const acao of acoes) {
+          const result = await this.executeAction(automation.tenantId, execution, acao, automation.webhookSecret, contactId);
+          executed.push({ tipo: acao.tipo, result });
+        }
+
+        await this.prisma.automationExecution.update({
+          where: { id: execution.id },
+          data: { status: "success", executedAt: new Date(), acoesExecutadas: executed as Prisma.InputJsonValue },
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        const attemptsMax = job.opts.attempts ?? 1;
+        const isFinalAttempt = job.attemptsMade + 1 >= attemptsMax;
+
+        await this.prisma.automationExecution.update({
+          where: { id: execution.id },
+          data: { status: isFinalAttempt ? "dead_letter" : "failed", erro: message },
+        });
+
+        if (isFinalAttempt) {
+          this.logger.error(`Automação ${automation.id} foi para dead-letter: ${message}`);
+        }
+        throw error; // deixa o BullMQ decidir o retry conforme attempts/backoff
       }
-
-      await this.prisma.automationExecution.update({
-        where: { id: execution.id },
-        data: { status: "success", executedAt: new Date(), acoesExecutadas: executed as Prisma.InputJsonValue },
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      const attemptsMax = job.opts.attempts ?? 1;
-      const isFinalAttempt = job.attemptsMade + 1 >= attemptsMax;
-
-      await this.prisma.automationExecution.update({
-        where: { id: execution.id },
-        data: { status: isFinalAttempt ? "dead_letter" : "failed", erro: message },
-      });
-
-      if (isFinalAttempt) {
-        this.logger.error(`Automação ${automation.id} foi para dead-letter: ${message}`);
-      }
-      throw error; // deixa o BullMQ decidir o retry conforme attempts/backoff
-    }
+    });
   }
 
   private async sendFollowUp(job: Job<SendFollowUpJobData>): Promise<void> {
     const followUp = await this.prisma.followUpSchedule.findUnique({ where: { id: job.data.followUpId } });
     if (!followUp || followUp.status !== "scheduled") {
       return; // cancelado ou já enviado
+    }
+
+    // Espera com revalidação: o tempo entre agendar e disparar pode ter tornado a automação inativa
+    // ou as condições que a originaram não valem mais — sem isso, um follow-up seguia enviando mesmo
+    // depois de o usuário pausar/arquivar a automação ou o estado mudar.
+    const automation = await this.prisma.automation.findUnique({ where: { id: followUp.automationId } });
+    if (!automation || automation.status !== "active") {
+      await this.prisma.followUpSchedule.update({
+        where: { id: followUp.id },
+        data: { status: "cancelled", canceladoPorEvento: "automation_inactive" },
+      });
+      return;
+    }
+
+    const condicoes = automation.condicoes as unknown as AutomationCondition[] | null;
+    if (!evaluateConditions((followUp.dadosGatilho as Record<string, unknown> | null) ?? {}, condicoes)) {
+      await this.prisma.followUpSchedule.update({
+        where: { id: followUp.id },
+        data: { status: "cancelled", canceladoPorEvento: "condition_no_longer_met" },
+      });
+      return;
     }
 
     await this.prisma.followUpSchedule.update({ where: { id: followUp.id }, data: { status: "sent" } });
@@ -236,6 +271,7 @@ export class AutomationProcessor extends WorkerHost {
           delayMinutes: acao.delayMinutes,
           texto: acao.texto,
           sequenciaIndex: acao.sequenciaIndex ?? 0,
+          dadosGatilho: execution.dadosGatilho as Prisma.InputJsonValue | null,
         });
         return { followUpId: followUp.id };
       }

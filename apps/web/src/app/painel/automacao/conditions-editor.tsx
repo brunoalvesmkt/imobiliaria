@@ -6,6 +6,7 @@ import {
   type ConditionOperator,
 } from "@/lib/automation";
 import { useFlows } from "@/lib/chatbot";
+import { useContactOrigins } from "@/lib/crm";
 import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 import { FunnelStagePicker } from "./funnel-stage-picker";
@@ -96,6 +97,9 @@ function ConditionValueField({
   if (kind === "stage") {
     return <FunnelStagePicker value={condition.valor ?? ""} onChange={onChange} />;
   }
+  if (kind === "origin") {
+    return <OriginValuePicker value={condition.valor ?? ""} onChange={onChange} />;
+  }
   return (
     <input
       value={condition.valor ?? ""}
@@ -114,6 +118,21 @@ function FlowValuePicker({ value, onChange }: { value: string; onChange: (v: str
       {flows.data?.map((flow) => (
         <option key={flow.id} value={flow.id}>
           {flow.nome}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+/** Seletor da origem configurada em CRM > Configurações > Origens — sempre busca a lista atual do tenant, então origens novas aparecem aqui automaticamente. */
+function OriginValuePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const origins = useContactOrigins();
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)} className="flex-1 rounded-md border border-line bg-surface px-2 py-1.5 text-sm">
+      <option value="" />
+      {origins.data?.map((origin) => (
+        <option key={origin.id} value={origin.id}>
+          {origin.nome}
         </option>
       ))}
     </select>

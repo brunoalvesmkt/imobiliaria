@@ -318,7 +318,10 @@ export class ContactsService {
     this.domainEvents.emit("contact.created", {
       tenantId: requireCurrentTenantId(),
       contactId: contact.id,
-      data: { contactId: contact.id, origem: contact.origem },
+      // `origemId` referencia a lista configurável em CRM > Configurações > Origens — é o que a
+      // condição "Origem" da Automação deve comparar. `origem` (texto livre antigo) continua
+      // disponível para automações já existentes que dependiam dele.
+      data: { contactId: contact.id, origem: contact.origem, origemId: contact.origemId },
     });
 
     return contact;

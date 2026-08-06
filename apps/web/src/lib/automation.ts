@@ -30,10 +30,11 @@ export type DomainEventName =
 export const DEFAULT_DOMAIN_EVENT: DomainEventName = "conversation.created";
 
 /** Campos cujo valor é o ID de uma entidade com nome — a condição mostra um seletor por nome em vez de um campo de texto para o "Valor" (ver ConditionsEditor). */
-export const ID_FIELD_KIND: Record<string, "stage" | "flow"> = {
+export const ID_FIELD_KIND: Record<string, "stage" | "flow" | "origin"> = {
   stageId: "stage",
   stageIdAnterior: "stage",
   chatbotFlowId: "flow",
+  origemId: "origin",
 };
 
 export type ConditionOperator = "equals" | "contains" | "exists" | "not_exists" | "greater_than" | "less_than";

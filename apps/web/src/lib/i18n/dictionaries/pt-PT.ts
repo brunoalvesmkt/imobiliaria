@@ -1048,6 +1048,7 @@ const dictionary: Record<DictionaryKey, string> = {
   "automation.conditions.operator.greater_than": "É maior que",
   "automation.conditions.operator.less_than": "É menor que",
   "automation.conditions.fieldOption.contactId": "ID do contacto",
+  "automation.conditions.fieldOption.origemId": "Origem do contacto",
   "automation.conditions.fieldOption.score": "Pontuação do lead",
   "automation.conditions.fieldOption.conversationId": "ID da conversa",
   "automation.conditions.fieldOption.origem": "Origem da conversa",

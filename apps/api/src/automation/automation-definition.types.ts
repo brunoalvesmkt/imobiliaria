@@ -235,7 +235,7 @@ export const TRIGGER_FIELDS: Record<DomainEventName, string[]> = {
   "invoice.overdue": ["invoiceId", "subscriptionId"],
   "subscription.activated": ["subscriptionId", "planId"],
   "subscription.cancelled": ["subscriptionId", "motivo"],
-  "contact.created": ["contactId", "origem"],
+  "contact.created": ["contactId", "origemId"],
   "conversation.closed": ["conversationId"],
   "conversation.transferred": ["conversationId", "filaId", "atendenteId"],
   "whatsapp_number.connected": ["whatsAppNumberId"],
@@ -253,10 +253,11 @@ export const TRIGGER_FIELDS: Record<DomainEventName, string[]> = {
 };
 
 /** Campos cujo valor é o ID de uma entidade com nome — o frontend mostra um seletor por nome em vez de um campo de texto livre. */
-export const ID_FIELD_KIND: Record<string, "stage" | "flow"> = {
+export const ID_FIELD_KIND: Record<string, "stage" | "flow" | "origin"> = {
   stageId: "stage",
   stageIdAnterior: "stage",
   chatbotFlowId: "flow",
+  origemId: "origin",
 };
 
 export interface AutomationCatalogTrigger {

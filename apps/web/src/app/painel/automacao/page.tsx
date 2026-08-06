@@ -5,8 +5,10 @@ import Link from "next/link";
 import {
   AUTOMATION_CATEGORIES,
   TRIGGER_PARAM_KEY,
+  useActivateTemplate,
   useAutomationCatalog,
   useAutomations,
+  useAutomationTemplates,
   useCreateAutomation,
   useUpdateAutomation,
   useDeleteAutomation,
@@ -14,6 +16,7 @@ import {
   type AutomationAction,
   type AutomationCategory,
   type AutomationCondition,
+  type AutomationTemplate,
   type DomainEventName,
 } from "@/lib/automation";
 import { Button } from "@/components/ui/button";
@@ -28,6 +31,7 @@ import { ActionsEditor } from "./action-fields";
 export default function AutomationPage() {
   const { t } = useI18n();
   const [showForm, setShowForm] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
   const [filterTipo, setFilterTipo] = useState<AutomationCategory | "">("");
   const automations = useAutomations();
 
@@ -37,9 +41,28 @@ export default function AutomationPage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold text-ink">{t("automation.title")}</h1>
-        <Button onClick={() => setShowForm((v) => !v)}>{showForm ? t("common.cancel") : t("automation.newAutomation")}</Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setShowTemplates((v) => !v);
+              setShowForm(false);
+            }}
+          >
+            {showTemplates ? t("common.cancel") : t("automation.templates.useTemplate")}
+          </Button>
+          <Button
+            onClick={() => {
+              setShowForm((v) => !v);
+              setShowTemplates(false);
+            }}
+          >
+            {showForm ? t("common.cancel") : t("automation.newAutomation")}
+          </Button>
+        </div>
       </div>
 
+      {showTemplates && <TemplatesPanel onDone={() => setShowTemplates(false)} />}
       {showForm && <NewAutomationForm onDone={() => setShowForm(false)} />}
 
       <div className="flex items-center gap-2">
@@ -191,6 +214,75 @@ function StatusBadge({ status }: { status: Automation["status"] }) {
     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${classes[status]}`}>
       {t(`automation.status.${status}` as DictionaryKey)}
     </span>
+  );
+}
+
+function TemplatesPanel({ onDone }: { onDone: () => void }) {
+  const { t } = useI18n();
+  const templates = useAutomationTemplates();
+  const activate = useActivateTemplate();
+  const [activatingId, setActivatingId] = useState<string | null>(null);
+  const [activatedId, setActivatedId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onActivate(template: AutomationTemplate) {
+    setError(null);
+    setActivatingId(template.id);
+    try {
+      await activate.mutateAsync({
+        templateId: template.id,
+        nome: t(`automation.templates.${template.id}.nome` as DictionaryKey),
+      });
+      setActivatedId(template.id);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t("automation.errorGeneric"));
+    } finally {
+      setActivatingId(null);
+    }
+  }
+
+  const available = (templates.data ?? []).filter((tpl) => tpl.available);
+
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4">
+      <div>
+        <h2 className="text-sm font-semibold text-ink">{t("automation.templates.title")}</h2>
+        <p className="mt-1 text-xs text-ink-dim">{t("automation.templates.subtitle")}</p>
+      </div>
+      {error && <Alert tone="error">{error}</Alert>}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {available.map((tpl) => (
+          <div key={tpl.id} className="flex flex-col gap-2 rounded-md border border-line bg-surface-alt p-3">
+            <div>
+              <p className="text-sm font-medium text-ink">{t(`automation.templates.${tpl.id}.nome` as DictionaryKey)}</p>
+              <p className="mt-1 text-xs text-ink-dim">{t(`automation.templates.${tpl.id}.descricao` as DictionaryKey)}</p>
+            </div>
+            {tpl.categoria && (
+              <span className="w-fit rounded-full bg-surface px-2 py-0.5 text-[11px] font-medium text-ink-faint">
+                {t(`automation.category.${tpl.categoria}` as DictionaryKey)}
+              </span>
+            )}
+            <div>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => onActivate(tpl)}
+                loading={activatingId === tpl.id}
+                disabled={activatedId === tpl.id}
+              >
+                {activatedId === tpl.id ? t("automation.templates.activated") : t("automation.templates.activate")}
+              </Button>
+            </div>
+          </div>
+        ))}
+        {available.length === 0 && <p className="text-xs text-ink-faint">{t("automation.templates.empty")}</p>}
+      </div>
+      <div>
+        <button type="button" onClick={onDone} className="text-xs font-medium text-ink-dim hover:underline">
+          {t("common.cancel")}
+        </button>
+      </div>
+    </div>
   );
 }
 

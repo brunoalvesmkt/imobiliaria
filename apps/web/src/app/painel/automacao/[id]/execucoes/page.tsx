@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAutomation, useAutomationExecutions, type AutomationExecution } from "@/lib/automation";
 import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
+import { ExecutionSteps } from "../../execution-steps";
 
 export default function AutomationExecutionsPage() {
   const params = useParams<{ id: string }>();
@@ -33,6 +35,7 @@ export default function AutomationExecutionsPage() {
               <th className="px-4 py-2">{t("automation.executions.columnAttempts")}</th>
               <th className="px-4 py-2">{t("automation.executions.columnError")}</th>
               <th className="px-4 py-2">{t("automation.executions.columnDate")}</th>
+              <th className="px-4 py-2" />
             </tr>
           </thead>
           <tbody>
@@ -41,7 +44,7 @@ export default function AutomationExecutionsPage() {
             ))}
             {executions.data?.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-ink-faint">
+                <td colSpan={6} className="px-4 py-6 text-center text-ink-faint">
                   {t("automation.executions.empty")}
                 </td>
               </tr>
@@ -55,6 +58,8 @@ export default function AutomationExecutionsPage() {
 
 function ExecutionRow({ execution, locale }: { execution: AutomationExecution; locale: string }) {
   const { t } = useI18n();
+  const [expanded, setExpanded] = useState(false);
+  const hasSteps = !!execution.acoesExecutadas && execution.acoesExecutadas.length > 0;
   const classes: Record<AutomationExecution["status"], string> = {
     pending: "bg-surface-muted text-ink-dim",
     running: "bg-brand-50 text-brand-700",
@@ -65,16 +70,31 @@ function ExecutionRow({ execution, locale }: { execution: AutomationExecution; l
     loop_blocked: "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200",
   };
   return (
-    <tr className="border-b border-line last:border-0">
-      <td className="px-4 py-2">
-        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${classes[execution.status]}`}>
-          {t(`automation.executions.status.${execution.status}` as DictionaryKey)}
-        </span>
-      </td>
-      <td className="px-4 py-2 text-ink-dim">{execution.gatilhoDisparado}</td>
-      <td className="px-4 py-2 text-ink-dim">{execution.tentativas}</td>
-      <td className="px-4 py-2 text-ink-dim">{execution.erro ?? "—"}</td>
-      <td className="px-4 py-2 text-ink-faint">{new Date(execution.createdAt).toLocaleString(locale)}</td>
-    </tr>
+    <>
+      <tr
+        className={`border-b border-line last:border-0 ${hasSteps ? "cursor-pointer hover:bg-surface-alt" : ""}`}
+        onClick={() => hasSteps && setExpanded((v) => !v)}
+      >
+        <td className="px-4 py-2">
+          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${classes[execution.status]}`}>
+            {t(`automation.executions.status.${execution.status}` as DictionaryKey)}
+          </span>
+        </td>
+        <td className="px-4 py-2 text-ink-dim">{execution.gatilhoDisparado}</td>
+        <td className="px-4 py-2 text-ink-dim">{execution.tentativas}</td>
+        <td className="px-4 py-2 text-ink-dim">{execution.erro ?? "—"}</td>
+        <td className="px-4 py-2 text-ink-faint">{new Date(execution.createdAt).toLocaleString(locale)}</td>
+        <td className="px-4 py-2 text-right">
+          {hasSteps && <span className="text-xs font-medium text-brand-700">{expanded ? t("automation.executions.hideSteps") : t("automation.executions.showSteps")}</span>}
+        </td>
+      </tr>
+      {expanded && hasSteps && (
+        <tr className="border-b border-line last:border-0 bg-surface-alt/50">
+          <td colSpan={6} className="px-4 py-3">
+            <ExecutionSteps passos={execution.acoesExecutadas ?? []} />
+          </td>
+        </tr>
+      )}
+    </>
   );
 }

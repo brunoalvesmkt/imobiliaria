@@ -10,6 +10,7 @@ import { AutomationsService } from "./automations.service";
 import { CreateAutomationDto } from "./dto/create-automation.dto";
 import { UpdateAutomationDto } from "./dto/update-automation.dto";
 import { TestAutomationDto } from "./dto/test-automation.dto";
+import { ActivateTemplateDto } from "./dto/activate-template.dto";
 
 @Controller("automation/rules")
 @UseGuards(TenantAuthGuard, ModuleActiveGuard, PermissionsGuard)
@@ -27,6 +28,22 @@ export class AutomationsController {
   @RequirePermission("automacao", "view")
   getCatalog() {
     return this.service.getCatalog();
+  }
+
+  @Get("templates")
+  @RequirePermission("automacao", "view")
+  listTemplates() {
+    return this.service.listTemplates();
+  }
+
+  @Post("templates/:templateId/activate")
+  @RequirePermission("automacao", "create")
+  activateTemplate(
+    @Param("templateId") templateId: string,
+    @Body() dto: ActivateTemplateDto,
+    @CurrentUser() user: AuthenticatedRequestUser,
+  ) {
+    return this.service.activateTemplate(templateId, user.id, dto.nome);
   }
 
   @Get(":id")
@@ -63,5 +80,11 @@ export class AutomationsController {
   @RequirePermission("automacao", "edit")
   test(@Param("id") id: string, @Body() dto: TestAutomationDto, @CurrentUser() user: AuthenticatedRequestUser) {
     return this.service.test(id, dto.contactId, dto.conversationId, user.id);
+  }
+
+  @Post(":id/simulate")
+  @RequirePermission("automacao", "edit")
+  simulate(@Param("id") id: string, @Body() dto: TestAutomationDto) {
+    return this.service.simulate(id, dto.contactId, dto.conversationId);
   }
 }

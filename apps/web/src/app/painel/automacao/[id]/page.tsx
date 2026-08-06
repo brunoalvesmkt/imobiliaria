@@ -9,11 +9,13 @@ import {
   TRIGGER_PARAM_KEY,
   useAutomation,
   useAutomationCatalog,
+  useSimulateAutomation,
   useUpdateAutomation,
   type AutomationAction,
   type AutomationCategory,
   type AutomationCondition,
   type DomainEventName,
+  type ExecutedStep,
 } from "@/lib/automation";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
@@ -22,6 +24,7 @@ import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 import { ConditionsEditor } from "../conditions-editor";
 import { ActionsEditor } from "../action-fields";
+import { ExecutionSteps } from "../execution-steps";
 
 export default function EditAutomationPage() {
   const params = useParams<{ id: string }>();
@@ -30,6 +33,7 @@ export default function EditAutomationPage() {
   const automation = useAutomation(id);
   const update = useUpdateAutomation(id);
   const catalog = useAutomationCatalog();
+  const simulate = useSimulateAutomation(id);
 
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
@@ -42,6 +46,9 @@ export default function EditAutomationPage() {
   const [loaded, setLoaded] = useState(false);
   const [errors, setErrors] = useState<string[] | null>(null);
   const [saved, setSaved] = useState(false);
+  const [simContactId, setSimContactId] = useState("");
+  const [simConversationId, setSimConversationId] = useState("");
+  const [simPassos, setSimPassos] = useState<ExecutedStep[] | null>(null);
 
   useEffect(() => {
     if (!automation.data || loaded) return;
@@ -85,6 +92,15 @@ export default function EditAutomationPage() {
       const body = (err as { body?: { errors?: { message: string }[] } }).body;
       setErrors(body?.errors ? body.errors.map((e2) => e2.message) : [t("automation.errorGeneric")]);
     }
+  }
+
+  async function onSimulate() {
+    setSimPassos(null);
+    const resultado = await simulate.mutateAsync({
+      ...(simContactId ? { contactId: simContactId } : {}),
+      ...(simConversationId ? { conversationId: simConversationId } : {}),
+    });
+    setSimPassos(resultado.passos);
   }
 
   if (!loaded) return <p className="text-sm text-ink-faint">{t("common.loading")}</p>;
@@ -181,6 +197,27 @@ export default function EditAutomationPage() {
           {saved && <span className="text-xs text-brand-700">{t("chatbot.builder.saved")}</span>}
         </div>
       </form>
+
+      <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4">
+        <div>
+          <h2 className="text-sm font-semibold text-ink">{t("automation.simulate.title")}</h2>
+          <p className="mt-1 text-xs text-ink-dim">{t("automation.simulate.subtitle")}</p>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label={t("automation.simulate.contactId")} value={simContactId} onChange={(e) => setSimContactId(e.target.value)} />
+          <Field
+            label={t("automation.simulate.conversationId")}
+            value={simConversationId}
+            onChange={(e) => setSimConversationId(e.target.value)}
+          />
+        </div>
+        <div>
+          <Button type="button" variant="secondary" onClick={onSimulate} loading={simulate.isPending}>
+            {t("automation.simulate.run")}
+          </Button>
+        </div>
+        {simPassos && <ExecutionSteps passos={simPassos} />}
+      </div>
     </div>
   );
 }

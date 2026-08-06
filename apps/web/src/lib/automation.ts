@@ -107,13 +107,23 @@ export interface Automation {
 
 export type ExecutionStatus = "pending" | "running" | "success" | "failed" | "dead_letter" | "throttled" | "loop_blocked";
 
+/** Um passo do histórico detalhado — gravado tanto no sucesso quanto na falha (Fase D), e também devolvido (sem persistir) pelo teste simulado. */
+export interface ExecutedStep {
+  tipo: ActionType;
+  status: "success" | "error";
+  result?: unknown;
+  erro?: string;
+  iniciadoEm: string;
+  concluidoEm: string;
+}
+
 export interface AutomationExecution {
   id: string;
   automationId: string;
   contactId: string | null;
   conversationId: string | null;
   gatilhoDisparado: string;
-  acoesExecutadas: unknown;
+  acoesExecutadas: ExecutedStep[] | null;
   tentativas: number;
   status: ExecutionStatus;
   erro: string | null;
@@ -213,5 +223,40 @@ export function useUpdateAutomation(id: string) {
       queryClient.invalidateQueries({ queryKey: ["automation", "rules"] });
       queryClient.invalidateQueries({ queryKey: ["automation", "rules", id] });
     },
+  });
+}
+
+/** Teste simulado (Fase D) — roda as ações sem nenhum efeito real (sem mensagem/tarefa/webhook de verdade) e devolve o resultado passo a passo, sem criar execução nenhuma. */
+export function useSimulateAutomation(id: string) {
+  return useMutation({
+    mutationFn: (input: { contactId?: string; conversationId?: string }) =>
+      apiPost<{ passos: ExecutedStep[] }>(`/automation/rules/${id}/simulate`, input),
+  });
+}
+
+export interface AutomationTemplate {
+  id: string;
+  gatilhoTipo: DomainEventName;
+  gatilhoParametros: Record<string, number> | null;
+  acoes: AutomationAction[];
+  categoria: AutomationCategory | null;
+  available: boolean;
+}
+
+/** Biblioteca de modelos prontos (Fase D) — nome/descrição de cada modelo vêm da i18n (`automation.templates.<id>.nome`/`.descricao`), o backend só manda os campos técnicos. */
+export function useAutomationTemplates() {
+  return useQuery({
+    queryKey: ["automation", "rules", "templates"],
+    queryFn: () => apiGet<AutomationTemplate[]>("/automation/rules/templates"),
+    staleTime: 60_000,
+  });
+}
+
+export function useActivateTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ templateId, nome }: { templateId: string; nome?: string }) =>
+      apiPost<Automation>(`/automation/rules/templates/${templateId}/activate`, { nome }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["automation", "rules"] }),
   });
 }

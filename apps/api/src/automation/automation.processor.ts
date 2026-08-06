@@ -24,6 +24,16 @@ interface SendFollowUpJobData {
   followUpId: string;
 }
 
+/** Um passo do histórico detalhado (`AutomationExecution.acoesExecutadas`) — gravado tanto no sucesso quanto na falha, para que as ações que rodaram antes de um erro não se percam (ver Fase D). */
+export interface ExecutedStep {
+  tipo: string;
+  status: "success" | "error";
+  result?: unknown;
+  erro?: string;
+  iniciadoEm: string;
+  concluidoEm: string;
+}
+
 /**
  * Consumidor real da fila "automations" — roda no processo da API (não em
  * `apps/worker`) porque as ações reutilizam serviços já existentes
@@ -73,7 +83,7 @@ export class AutomationProcessor extends WorkerHost {
 
     const automation = await this.prisma.automation.findUniqueOrThrow({ where: { id: execution.automationId } });
     const acoes = automation.acoes as unknown as AutomationAction[];
-    const executed: unknown[] = [];
+    const executed: ExecutedStep[] = [];
 
     // Resolvido uma única vez por execução (mesmo quando o gatilho não tinha contactId — ex.:
     // "Mensagem recebida" na primeira conversa de um número novo, contactId só existe depois que
@@ -86,22 +96,36 @@ export class AutomationProcessor extends WorkerHost {
     await runWithAutomationChain({ executionId: execution.id, depth: job.data.chainDepth ?? 0 }, async () => {
       try {
         for (const acao of acoes) {
-          const result = await this.executeAction(automation.tenantId, execution, acao, automation.webhookSecret, contactId);
-          executed.push({ tipo: acao.tipo, result });
+          const iniciadoEm = new Date().toISOString();
+          try {
+            const result = await this.executeAction(automation.tenantId, execution, acao, automation.webhookSecret, contactId);
+            executed.push({ tipo: acao.tipo, status: "success", result, iniciadoEm, concluidoEm: new Date().toISOString() });
+          } catch (actionError) {
+            executed.push({
+              tipo: acao.tipo,
+              status: "error",
+              erro: actionError instanceof Error ? actionError.message : String(actionError),
+              iniciadoEm,
+              concluidoEm: new Date().toISOString(),
+            });
+            throw actionError; // propaga pro catch externo, que decide failed/dead_letter conforme attempts
+          }
         }
 
         await this.prisma.automationExecution.update({
           where: { id: execution.id },
-          data: { status: "success", executedAt: new Date(), acoesExecutadas: executed as Prisma.InputJsonValue },
+          data: { status: "success", executedAt: new Date(), acoesExecutadas: executed as unknown as Prisma.InputJsonValue },
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         const attemptsMax = job.opts.attempts ?? 1;
         const isFinalAttempt = job.attemptsMade + 1 >= attemptsMax;
 
+        // Grava o que já rodou até aqui (Fase D) — antes só o sucesso persistia acoesExecutadas,
+        // então uma falha na 2ª ação de 3 escondia o resultado real da 1ª.
         await this.prisma.automationExecution.update({
           where: { id: execution.id },
-          data: { status: isFinalAttempt ? "dead_letter" : "failed", erro: message },
+          data: { status: isFinalAttempt ? "dead_letter" : "failed", erro: message, acoesExecutadas: executed as unknown as Prisma.InputJsonValue },
         });
 
         if (isFinalAttempt) {
@@ -155,22 +179,68 @@ export class AutomationProcessor extends WorkerHost {
 
   // ---------------------------------------------------------------------
 
+  /**
+   * Roda todas as ações de uma automação em modo simulado (nenhuma escrita real, nenhuma chamada
+   * externa) e devolve o resultado passo-a-passo — usado por `AutomationsService.simulate()`, que
+   * roda síncrono na resposta HTTP (sem fila, sem `AutomationExecution` criada: não é uma execução
+   * de verdade, é só "o que aconteceria"). Uma ação simulada com erro não impede as seguintes de
+   * rodar (diferente da execução real) — o objetivo aqui é mostrar o cenário completo de uma vez.
+   */
+  async simulateActions(
+    tenantId: string,
+    acoes: AutomationAction[],
+    webhookSecret: string | null,
+    contactId: string | null,
+    conversationId: string | null,
+    automationId: string,
+    gatilhoDisparado: string,
+  ): Promise<ExecutedStep[]> {
+    const fakeExecution: Pick<AutomationExecution, "conversationId" | "contactId" | "automationId" | "gatilhoDisparado" | "dadosGatilho"> = {
+      conversationId,
+      contactId,
+      automationId,
+      gatilhoDisparado,
+      dadosGatilho: null,
+    };
+
+    const executed: ExecutedStep[] = [];
+    for (const acao of acoes) {
+      const iniciadoEm = new Date().toISOString();
+      try {
+        const result = await this.executeAction(tenantId, fakeExecution, acao, webhookSecret, contactId, true);
+        executed.push({ tipo: acao.tipo, status: "success", result, iniciadoEm, concluidoEm: new Date().toISOString() });
+      } catch (error) {
+        executed.push({
+          tipo: acao.tipo,
+          status: "error",
+          erro: error instanceof Error ? error.message : String(error),
+          iniciadoEm,
+          concluidoEm: new Date().toISOString(),
+        });
+      }
+    }
+    return executed;
+  }
+
   private async executeAction(
     tenantId: string,
-    execution: AutomationExecution,
+    execution: Pick<AutomationExecution, "conversationId" | "contactId" | "automationId" | "gatilhoDisparado" | "dadosGatilho">,
     acao: AutomationAction,
     webhookSecret: string | null,
     contactId: string | null,
+    simulate = false,
   ): Promise<unknown> {
     switch (acao.tipo) {
       case "send_message": {
         if (!execution.conversationId) return { skipped: "sem conversationId" };
+        if (simulate) return { simulado: true, enviariaMensagem: acao.texto };
         return this.sendConversationMessage(tenantId, execution.conversationId, acao.texto, "system");
       }
 
       case "create_task": {
         if (!contactId) return { skipped: "sem contato vinculável (sem conversationId nem contactId)" };
         const dataHora = new Date(Date.now() + (acao.horasParaVencer ?? 24) * 3_600_000);
+        if (simulate) return { simulado: true, criariaTarefa: { titulo: acao.titulo, tipo: acao.tipoTarefa, dataHora } };
         const task = await this.prisma.crmTask.create({
           data: {
             tenantId,
@@ -192,6 +262,7 @@ export class AutomationProcessor extends WorkerHost {
           acao.tipo === "apply_tag"
             ? Array.from(new Set([...contact.tags, acao.tag]))
             : contact.tags.filter((t) => t !== acao.tag);
+        if (simulate) return { simulado: true, deixariaTagsComo: tags };
         await this.prisma.contact.update({ where: { id: contact.id }, data: { tags } });
         return { tags };
       }
@@ -200,6 +271,7 @@ export class AutomationProcessor extends WorkerHost {
         if (!contactId) return { skipped: "sem contato vinculável (sem conversationId nem contactId)" };
         const contact = await this.prisma.contact.findUniqueOrThrow({ where: { id: contactId } });
         const customFields = { ...((contact.customFields as Record<string, unknown> | null) ?? {}), [acao.campo]: acao.valor };
+        if (simulate) return { simulado: true, campo: acao.campo, definiriaComo: acao.valor };
         await this.prisma.contact.update({ where: { id: contact.id }, data: { customFields: customFields as Prisma.InputJsonValue } });
         return { campo: acao.campo };
       }
@@ -218,6 +290,7 @@ export class AutomationProcessor extends WorkerHost {
         const existing = await this.prisma.opportunity.findFirst({
           where: { tenantId, contactId, funnelId: stage.funnelId, status: "open", deletedAt: null },
         });
+        if (simulate) return { simulado: true, moveriaParaEtapa: stage.nome, criariaOportunidade: !existing };
         if (existing) {
           if (existing.stageId === acao.stageId) return { opportunityId: existing.id };
           await this.prisma.opportunity.update({
@@ -243,6 +316,7 @@ export class AutomationProcessor extends WorkerHost {
 
         const stage = await this.prisma.funnelStage.findFirst({ where: { id: acao.stageId, funnel: { tenantId } } });
         if (!stage) return { skipped: "etapa não encontrada" };
+        if (simulate) return { simulado: true, criariaOportunidadeNaEtapa: stage.nome };
 
         // Ao contrário de move_opportunity_stage (que reaproveita a oportunidade aberta no mesmo
         // funil se existir), esta ação SEMPRE cria uma nova — é o pedido explícito de "criar
@@ -256,12 +330,14 @@ export class AutomationProcessor extends WorkerHost {
 
       case "start_chatbot": {
         if (!execution.conversationId) return { skipped: "sem conversationId" };
+        if (simulate) return { simulado: true, iniciariaFluxo: acao.flowId };
         const chatbotExecution = await this.chatbotEngine.startFlow(acao.flowId, execution.conversationId);
         return { chatbotExecutionId: chatbotExecution.id };
       }
 
       case "send_webhook": {
         const metodo = acao.metodo ?? "POST";
+        if (simulate) return { simulado: true, chamariaWebhook: acao.url, metodo };
         if (metodo === "GET") {
           // Requisição GET não carrega corpo — não faz sentido assinar (HMAC) um body vazio.
           const response = await fetch(acao.url, { method: "GET" });
@@ -288,6 +364,7 @@ export class AutomationProcessor extends WorkerHost {
       }
 
       case "schedule_followup": {
+        if (simulate) return { simulado: true, agendariaFollowUp: { delayMinutes: acao.delayMinutes, texto: acao.texto } };
         const followUp = await this.followUps.schedule({
           tenantId,
           automationId: execution.automationId,

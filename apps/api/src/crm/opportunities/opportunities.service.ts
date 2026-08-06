@@ -6,6 +6,7 @@ import { AuditService } from "../../common/audit/audit.service";
 import { requireCurrentTenantId } from "../../common/tenant/tenant-context";
 import { DomainEventsService } from "../../common/events/domain-events.service";
 import { FollowUpsService } from "../../automation/followups.service";
+import { CrmVisibilityConfigService } from "../crm-visibility-config.service";
 import type { CreateOpportunityDto } from "./dto/create-opportunity.dto";
 import type { UpdateOpportunityDto } from "./dto/update-opportunity.dto";
 import type { MoveStageDto } from "./dto/move-stage.dto";
@@ -20,7 +21,27 @@ export class OpportunitiesService {
     private readonly audit: AuditService,
     private readonly domainEvents: DomainEventsService,
     private readonly followUps: FollowUpsService,
+    private readonly visibilityConfig: CrmVisibilityConfigService,
   ) {}
+
+  /**
+   * "Administrador", pelo mesmo critério já usado em `tenant-users.service.ts`
+   * (hasPermission): papel com a permissão `crm:administer` — não um nome de
+   * papel fixo. Quem tem essa permissão vê/edita qualquer oportunidade,
+   * independente de quem seja o responsável.
+   */
+  private async canSeeAll(roleId: string | undefined): Promise<boolean> {
+    if (!roleId) return false;
+    const permission = await this.prisma.permission.findFirst({ where: { roleId, module: "crm", action: "administer" } });
+    return !!permission;
+  }
+
+  /** Além das próprias, se o usuário deve ver também as oportunidades sem responsável — depende de `CrmVisibilityConfigService` (padrão: todos veem; opcionalmente restrito a uma lista). */
+  private async canSeeUnassigned(actorId: string | undefined): Promise<boolean> {
+    if (!actorId) return false;
+    const config = await this.visibilityConfig.get();
+    return config.semResponsavelModo === "todos" || config.semResponsavelUsuarioIds.includes(actorId);
+  }
 
   /**
    * Opções para o seletor de responsável na tela de detalhes — usuários ativos cujo papel tem
@@ -38,11 +59,19 @@ export class OpportunitiesService {
     });
   }
 
-  async list(funnelId?: string, stageId?: string) {
+  async list(funnelId?: string, stageId?: string, actorId?: string, roleId?: string) {
     const tenantId = requireCurrentTenantId();
     const where: Prisma.OpportunityWhereInput = { deletedAt: null, tenantId };
     if (funnelId) where.funnelId = funnelId;
     if (stageId) where.stageId = stageId;
+
+    // Visibilidade por responsável: quem não tem crm:administer só vê as próprias oportunidades
+    // (mais as sem responsável, a depender de CrmVisibilityConfigService).
+    if (actorId && !(await this.canSeeAll(roleId))) {
+      where.OR = (await this.canSeeUnassigned(actorId))
+        ? [{ responsavelId: actorId }, { responsavelId: null }]
+        : [{ responsavelId: actorId }];
+    }
     // Consulta direta ao PrismaService (em vez do wrapper tenantPrisma.opportunity, cujo
     // tipo fixo de retorno não preserva a relação "include" abaixo) — tenantId já filtrado acima.
     const opportunities = await this.prisma.opportunity.findMany({
@@ -69,7 +98,7 @@ export class OpportunitiesService {
    * movimentações. `tasks` fica de fora do include: a tela busca via `GET /crm/tasks?opportunityId=`
    * (mesmo endpoint que já alimenta a aba geral de Tarefas), evitando duas fontes de verdade.
    */
-  async get(id: string) {
+  async get(id: string, actorId?: string, roleId?: string) {
     const tenantId = requireCurrentTenantId();
     // Consulta direta ao PrismaService (mesmo motivo de list()): o wrapper tenantPrisma.opportunity
     // tem tipo de retorno fixo que não preserva as relações do "include" abaixo.
@@ -86,6 +115,17 @@ export class OpportunitiesService {
     if (!opportunity) {
       throw new NotFoundException("Oportunidade não encontrada.");
     }
+
+    // Visibilidade por responsável (mesma regra de list()) — tratada como "não encontrada" em vez
+    // de 403 para não confirmar a um usuário sem acesso que aquele id existe.
+    if (actorId !== undefined && !(await this.canSeeAll(roleId))) {
+      const isOwner = opportunity.responsavelId === actorId;
+      const isUnassignedAndVisible = opportunity.responsavelId === null && (await this.canSeeUnassigned(actorId));
+      if (!isOwner && !isUnassignedAndVisible) {
+        throw new NotFoundException("Oportunidade não encontrada.");
+      }
+    }
+
     return opportunity;
   }
 
@@ -140,8 +180,8 @@ export class OpportunitiesService {
     return opportunity;
   }
 
-  async update(id: string, dto: UpdateOpportunityDto, actorId: string) {
-    await this.get(id);
+  async update(id: string, dto: UpdateOpportunityDto, actorId: string, roleId?: string) {
+    await this.get(id, actorId, roleId);
 
     const data: Prisma.OpportunityUncheckedUpdateInput = {};
     if (dto.valor !== undefined) data.valor = dto.valor;
@@ -165,7 +205,7 @@ export class OpportunitiesService {
     // o frontend da tela de detalhes grava a resposta direto no cache da query de detalhe
     // (queryClient.setQueryData), então um retorno "raso" (só as colunas da tabela) quebraria a
     // renderização ao sobrescrever os dados aninhados já carregados.
-    return this.get(id);
+    return this.get(id, actorId, roleId);
   }
 
   /**
@@ -175,9 +215,9 @@ export class OpportunitiesService {
    * "depois" (mesmo espírito de `InboxService.transfer`, que também audita a troca de
    * responsável de uma conversa separadamente do resto dos campos).
    */
-  async transferResponsavel(id: string, dto: TransferResponsavelDto, actorId: string) {
+  async transferResponsavel(id: string, dto: TransferResponsavelDto, actorId: string, roleId?: string) {
     const tenantId = requireCurrentTenantId();
-    const opportunity = await this.get(id);
+    const opportunity = await this.get(id, actorId, roleId);
 
     let novoResponsavel: { id: string; nome: string } | null = null;
     if (dto.responsavelId) {
@@ -210,9 +250,9 @@ export class OpportunitiesService {
     return this.get(id);
   }
 
-  async moveStage(id: string, dto: MoveStageDto, actorId: string) {
+  async moveStage(id: string, dto: MoveStageDto, actorId: string, roleId?: string) {
     const tenantId = requireCurrentTenantId();
-    const opportunity = await this.get(id);
+    const opportunity = await this.get(id, actorId, roleId);
 
     if (opportunity.status !== "open") {
       throw new BadRequestException("Oportunidade já encerrada (ganha/perdida) não pode mudar de etapa.");
@@ -289,9 +329,9 @@ export class OpportunitiesService {
     return { status: "ok" as const };
   }
 
-  async close(id: string, dto: CloseOpportunityDto, actorId: string) {
+  async close(id: string, dto: CloseOpportunityDto, actorId: string, roleId?: string) {
     const tenantId = requireCurrentTenantId();
-    const opportunity = await this.get(id);
+    const opportunity = await this.get(id, actorId, roleId);
     if (opportunity.status !== "open") {
       throw new BadRequestException("Oportunidade já está encerrada.");
     }
@@ -328,8 +368,8 @@ export class OpportunitiesService {
   }
 
   /** Exclusão (soft delete) — gated por "crm":"delete" no controller, permissão que só o papel Administrador tem por padrão. */
-  async remove(id: string, actorId: string): Promise<void> {
-    await this.get(id);
+  async remove(id: string, actorId: string, roleId?: string): Promise<void> {
+    await this.get(id, actorId, roleId);
     await this.tenantPrisma.opportunity.update({ where: { id }, data: { deletedAt: new Date() } });
 
     await this.audit.record({

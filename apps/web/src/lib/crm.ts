@@ -154,6 +154,27 @@ export function useUpdateLeadScoreConfig() {
   });
 }
 
+export interface CrmVisibilityConfig {
+  semResponsavelModo: "todos" | "especificos";
+  semResponsavelUsuarioIds: string[];
+}
+
+/** Quem vê oportunidades sem responsável no Kanban, além das próprias — "todos" (padrão) ou uma lista específica de usuários. */
+export function useCrmVisibilityConfig() {
+  return useQuery({
+    queryKey: ["crm", "visibility-config"],
+    queryFn: () => apiGet<CrmVisibilityConfig>("/crm/visibility-config"),
+  });
+}
+
+export function useUpdateCrmVisibilityConfig() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CrmVisibilityConfig) => apiPatch<CrmVisibilityConfig>("/crm/visibility-config", input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["crm", "visibility-config"] }),
+  });
+}
+
 export interface CreateContactInput {
   nome: string;
   sobrenome?: string;

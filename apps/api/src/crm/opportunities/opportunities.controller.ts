@@ -24,8 +24,8 @@ export class OpportunitiesController {
 
   @Get()
   @RequirePermission("crm", "view")
-  list(@Query("funnelId") funnelId?: string, @Query("stageId") stageId?: string) {
-    return this.service.list(funnelId, stageId);
+  list(@Query("funnelId") funnelId: string | undefined, @Query("stageId") stageId: string | undefined, @CurrentUser() user: AuthenticatedRequestUser) {
+    return this.service.list(funnelId, stageId, user.id, user.roleId);
   }
 
   // Precisa vir antes de "@Get(':id')" — senão o Nest tentaria casar "responsavel-options" como um :id.
@@ -37,8 +37,8 @@ export class OpportunitiesController {
 
   @Get(":id")
   @RequirePermission("crm", "view")
-  get(@Param("id") id: string) {
-    return this.service.get(id);
+  get(@Param("id") id: string, @CurrentUser() user: AuthenticatedRequestUser) {
+    return this.service.get(id, user.id, user.roleId);
   }
 
   @Post()
@@ -50,31 +50,31 @@ export class OpportunitiesController {
   @Patch(":id")
   @RequirePermission("crm", "edit")
   update(@Param("id") id: string, @Body() dto: UpdateOpportunityDto, @CurrentUser() user: AuthenticatedRequestUser) {
-    return this.service.update(id, dto, user.id);
+    return this.service.update(id, dto, user.id, user.roleId);
   }
 
   @Patch(":id/responsavel")
   @RequirePermission("crm", "transfer")
   transferResponsavel(@Param("id") id: string, @Body() dto: TransferResponsavelDto, @CurrentUser() user: AuthenticatedRequestUser) {
-    return this.service.transferResponsavel(id, dto, user.id);
+    return this.service.transferResponsavel(id, dto, user.id, user.roleId);
   }
 
   @Patch(":id/stage")
   @RequirePermission("crm", "edit")
   moveStage(@Param("id") id: string, @Body() dto: MoveStageDto, @CurrentUser() user: AuthenticatedRequestUser) {
-    return this.service.moveStage(id, dto, user.id);
+    return this.service.moveStage(id, dto, user.id, user.roleId);
   }
 
   @Patch(":id/close")
   @RequirePermission("crm", "edit")
   close(@Param("id") id: string, @Body() dto: CloseOpportunityDto, @CurrentUser() user: AuthenticatedRequestUser) {
-    return this.service.close(id, dto, user.id);
+    return this.service.close(id, dto, user.id, user.roleId);
   }
 
   @Delete(":id")
   @RequirePermission("crm", "delete")
   remove(@Param("id") id: string, @CurrentUser() user: AuthenticatedRequestUser) {
-    return this.service.remove(id, user.id);
+    return this.service.remove(id, user.id, user.roleId);
   }
 
   @Post("reorder")

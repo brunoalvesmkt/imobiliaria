@@ -15,6 +15,8 @@ import { CrmTasksOverdueScheduler } from "./tasks/crm-tasks-overdue.scheduler";
 import { MasterCrmTasksController } from "./tasks/master-crm-tasks.controller";
 import { LeadScoreConfigController } from "./lead-score-config.controller";
 import { LeadScoreConfigModule } from "./lead-score-config.module";
+import { CrmVisibilityConfigController } from "./crm-visibility-config.controller";
+import { CrmVisibilityConfigService } from "./crm-visibility-config.service";
 import { CustomFieldsController } from "./custom-fields/custom-fields.controller";
 import { CustomFieldsService } from "./custom-fields/custom-fields.service";
 import { ContactOriginsController } from "./contact-origins/contact-origins.controller";
@@ -40,10 +42,21 @@ import { TaskTypesService } from "./task-types/task-types.service";
     CrmTasksController,
     MasterCrmTasksController,
     LeadScoreConfigController,
+    CrmVisibilityConfigController,
     CustomFieldsController,
     ContactOriginsController,
     TaskTypesController,
   ],
-  providers: [ContactsService, FunnelsService, OpportunitiesService, CrmTasksService, CrmTasksOverdueScheduler, CustomFieldsService, ContactOriginsService, TaskTypesService],
+  providers: [
+    ContactsService,
+    FunnelsService,
+    OpportunitiesService,
+    CrmTasksService,
+    CrmTasksOverdueScheduler,
+    CustomFieldsService,
+    ContactOriginsService,
+    TaskTypesService,
+    CrmVisibilityConfigService,
+  ],
 })
 export class CrmModule {}

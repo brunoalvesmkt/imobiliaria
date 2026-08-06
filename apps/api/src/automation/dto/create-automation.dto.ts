@@ -19,6 +19,10 @@ export class CreateAutomationDto {
   @IsIn(ALL_DOMAIN_EVENTS)
   gatilhoTipo!: DomainEventName;
 
+  /** Parâmetro numérico dos gatilhos de tempo (crm_task.due_soon → horasAntecedencia, opportunity.stage_stagnant → diasParado) — validado em AutomationsService via validateTriggerParams. */
+  @IsOptional()
+  gatilhoParametros?: Record<string, number>;
+
   @IsOptional()
   @ValidateIf((o: CreateAutomationDto) => o.cooldownMinutos !== null)
   @IsInt()

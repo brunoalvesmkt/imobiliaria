@@ -236,6 +236,24 @@ export class AutomationProcessor extends WorkerHost {
         return { opportunityId: opportunity.id, created: true };
       }
 
+      case "create_opportunity": {
+        if (!contactId) return { skipped: "sem contato vinculável (sem conversationId nem contactId)" };
+        const crmFlag = await this.prisma.featureFlag.findUnique({ where: { tenantId_module: { tenantId, module: "crm" } } });
+        if (!crmFlag?.enabled) return { skipped: "módulo CRM não habilitado" };
+
+        const stage = await this.prisma.funnelStage.findFirst({ where: { id: acao.stageId, funnel: { tenantId } } });
+        if (!stage) return { skipped: "etapa não encontrada" };
+
+        // Ao contrário de move_opportunity_stage (que reaproveita a oportunidade aberta no mesmo
+        // funil se existir), esta ação SEMPRE cria uma nova — é o pedido explícito de "criar
+        // oportunidade", não "garantir que o contato esteja em alguma etapa deste funil".
+        const opportunity = await this.prisma.opportunity.create({
+          data: { tenantId, contactId, funnelId: stage.funnelId, stageId: acao.stageId, probabilidade: stage.probabilidade, origem: "automacao" },
+        });
+        await this.prisma.opportunityStageHistory.create({ data: { tenantId, opportunityId: opportunity.id, stageId: acao.stageId } });
+        return { opportunityId: opportunity.id };
+      }
+
       case "start_chatbot": {
         if (!execution.conversationId) return { skipped: "sem conversationId" };
         const chatbotExecution = await this.chatbotEngine.startFlow(acao.flowId, execution.conversationId);
@@ -243,6 +261,13 @@ export class AutomationProcessor extends WorkerHost {
       }
 
       case "send_webhook": {
+        const metodo = acao.metodo ?? "POST";
+        if (metodo === "GET") {
+          // Requisição GET não carrega corpo — não faz sentido assinar (HMAC) um body vazio.
+          const response = await fetch(acao.url, { method: "GET" });
+          return { status: response.status };
+        }
+
         const body = JSON.stringify({
           automationId: execution.automationId,
           contactId: execution.contactId,

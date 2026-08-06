@@ -151,6 +151,22 @@ export class CrmTasksService {
       newData: { status: updated.status },
     });
 
+    const tenantId = requireCurrentTenantId();
+    if (dto.status === "done" && before.status !== "done") {
+      this.domainEvents.emit("crm_task.completed", {
+        tenantId,
+        contactId: updated.contactId,
+        data: { taskId: updated.id, tipo: updated.tipo, titulo: updated.titulo },
+      });
+    }
+    if (dto.responsavelId !== undefined && dto.responsavelId !== before.responsavelId) {
+      this.domainEvents.emit("crm_task.reassigned", {
+        tenantId,
+        contactId: updated.contactId,
+        data: { taskId: updated.id, responsavelId: updated.responsavelId, responsavelIdAnterior: before.responsavelId },
+      });
+    }
+
     return updated;
   }
 

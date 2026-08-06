@@ -625,6 +625,12 @@ export class ContactsService {
       newData: { primaryId, duplicateId },
     });
 
+    this.domainEvents.emit("contact.merged", {
+      tenantId,
+      contactId: primaryId,
+      data: { contatoSobrevivente: primaryId, contatoMesclado: duplicateId },
+    });
+
     return this.get(primaryId, undefined);
   }
 
@@ -755,6 +761,13 @@ export class ContactsService {
       entity: "Contact",
       newData: { imported, skipped, errorCount: errors.length },
     });
+
+    if (imported > 0) {
+      this.domainEvents.emit("contact.imported", {
+        tenantId: requireCurrentTenantId(),
+        data: { quantidade: imported, origem: "importacao" },
+      });
+    }
 
     return { imported, skipped, errors };
   }

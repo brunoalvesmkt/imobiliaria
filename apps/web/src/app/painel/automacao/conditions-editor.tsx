@@ -10,7 +10,7 @@ import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 import { FunnelStagePicker } from "./funnel-stage-picker";
 
-const OPERATORS: ConditionOperator[] = ["equals", "contains", "exists", "not_exists"];
+const OPERATORS: ConditionOperator[] = ["equals", "contains", "exists", "not_exists", "greater_than", "less_than"];
 
 export function ConditionsEditor({
   fields,
@@ -33,7 +33,8 @@ export function ConditionsEditor({
     onChange([...conditions, { campo: fields[0] ?? "", operador: "equals" }]);
   }
 
-  const showValue = (operador: ConditionOperator) => operador === "equals" || operador === "contains";
+  const showValue = (operador: ConditionOperator) =>
+    operador === "equals" || operador === "contains" || operador === "greater_than" || operador === "less_than";
 
   return (
     <div className="flex flex-col gap-2">

@@ -38,61 +38,78 @@ export class AutomationEngineService implements OnModuleInit {
       where: { tenantId: payload.tenantId, gatilhoTipo, status: "active" },
     });
 
+    for (const automation of automations) {
+      await this.dispatchToAutomation(automation, gatilhoTipo, payload);
+    }
+  }
+
+  /**
+   * Corpo de despacho para UMA automação específica — extraído de `dispatch()` para ser
+   * reaproveitado também pelo `AutomationDataTriggersScheduler` (gatilhos `crm_task.due_soon`/
+   * `opportunity.stage_stagnant`, categoria "Data"): como esses dois são parametrizados por
+   * automação (`gatilhoParametros`), o scheduler já sabe exatamente qual automação bateu com qual
+   * entidade ao encontrar o match, então chama isto direto em vez de emitir um evento genérico que
+   * seria recebido por TODAS as automações daquele gatilhoTipo no tenant (o que ignoraria o
+   * parâmetro de cada uma).
+   */
+  async dispatchToAutomation(
+    automation: { id: string; tenantId: string; condicoes: unknown; cooldownMinutos: number | null },
+    gatilhoTipo: DomainEventName,
+    payload: DomainEventPayload,
+  ): Promise<void> {
+    const condicoes = automation.condicoes as unknown as AutomationCondition[] | null;
+    if (!evaluateConditions(payload.data, condicoes)) {
+      return;
+    }
+
     // Se este dispatch está acontecendo dentro da execução de OUTRA automação (ex.: a ação
     // start_chatbot concluiu um fluxo sincronamente e emitiu um novo evento de domínio), a
     // profundidade sobe mais um nível — usado para cortar correntes A→B→A antes que virem loop
     // infinito (ver automation-chain-context.ts).
     const nextDepth = isInsideAutomationChain() ? getCurrentAutomationChainDepth() + 1 : 0;
 
-    for (const automation of automations) {
-      const condicoes = automation.condicoes as unknown as AutomationCondition[] | null;
-      if (!evaluateConditions(payload.data, condicoes)) {
-        continue;
-      }
+    const baseData = {
+      tenantId: payload.tenantId,
+      automationId: automation.id,
+      contactId: payload.contactId ?? null,
+      conversationId: payload.conversationId ?? null,
+      gatilhoDisparado: gatilhoTipo,
+      chainDepth: nextDepth,
+    };
 
-      const baseData = {
-        tenantId: payload.tenantId,
-        automationId: automation.id,
-        contactId: payload.contactId ?? null,
-        conversationId: payload.conversationId ?? null,
-        gatilhoDisparado: gatilhoTipo,
-        chainDepth: nextDepth,
-      };
-
-      if (nextDepth > MAX_AUTOMATION_CHAIN_DEPTH) {
-        this.logger.warn(`Automação ${automation.id} bloqueada por profundidade de corrente excedida (${nextDepth}) — possível loop entre automações.`);
-        await this.prisma.automationExecution.create({
-          data: {
-            ...baseData,
-            status: "loop_blocked",
-            erro: `Corrente de automações excedeu a profundidade máxima (${MAX_AUTOMATION_CHAIN_DEPTH}) — bloqueada para evitar loop infinito.`,
-          },
-        });
-        continue;
-      }
-
-      const throttleKey = payload.contactId ?? payload.conversationId ?? null;
-      if (automation.cooldownMinutos && throttleKey) {
-        const since = new Date(Date.now() - automation.cooldownMinutos * 60_000);
-        const recent = await this.prisma.automationExecution.findFirst({
-          where: {
-            automationId: automation.id,
-            createdAt: { gte: since },
-            status: { in: ["pending", "running", "success"] },
-            OR: [{ contactId: throttleKey }, { conversationId: throttleKey }],
-          },
-        });
-        if (recent) {
-          await this.prisma.automationExecution.create({ data: { ...baseData, status: "throttled" } });
-          continue;
-        }
-      }
-
-      const execution = await this.prisma.automationExecution.create({
-        data: { ...baseData, status: "pending", dadosGatilho: payload.data as Prisma.InputJsonValue },
+    if (nextDepth > MAX_AUTOMATION_CHAIN_DEPTH) {
+      this.logger.warn(`Automação ${automation.id} bloqueada por profundidade de corrente excedida (${nextDepth}) — possível loop entre automações.`);
+      await this.prisma.automationExecution.create({
+        data: {
+          ...baseData,
+          status: "loop_blocked",
+          erro: `Corrente de automações excedeu a profundidade máxima (${MAX_AUTOMATION_CHAIN_DEPTH}) — bloqueada para evitar loop infinito.`,
+        },
       });
-
-      await this.producer.enqueueExecution(execution.id, nextDepth);
+      return;
     }
+
+    const throttleKey = payload.contactId ?? payload.conversationId ?? null;
+    if (automation.cooldownMinutos && throttleKey) {
+      const since = new Date(Date.now() - automation.cooldownMinutos * 60_000);
+      const recent = await this.prisma.automationExecution.findFirst({
+        where: {
+          automationId: automation.id,
+          createdAt: { gte: since },
+          status: { in: ["pending", "running", "success"] },
+          OR: [{ contactId: throttleKey }, { conversationId: throttleKey }],
+        },
+      });
+      if (recent) {
+        await this.prisma.automationExecution.create({ data: { ...baseData, status: "throttled" } });
+        return;
+      }
+    }
+
+    const execution = await this.prisma.automationExecution.create({
+      data: { ...baseData, status: "pending", dadosGatilho: payload.data as Prisma.InputJsonValue },
+    });
+
+    await this.producer.enqueueExecution(execution.id, nextDepth);
   }
 }

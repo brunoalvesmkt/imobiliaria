@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import {
   AUTOMATION_CATEGORIES,
   DEFAULT_DOMAIN_EVENT,
+  TRIGGER_PARAM_KEY,
   useAutomation,
   useAutomationCatalog,
   useUpdateAutomation,
@@ -37,6 +38,7 @@ export default function EditAutomationPage() {
   const [condicoes, setCondicoes] = useState<AutomationCondition[]>([]);
   const [acoes, setAcoes] = useState<AutomationAction[]>([]);
   const [cooldownMinutos, setCooldownMinutos] = useState("");
+  const [gatilhoParametroValor, setGatilhoParametroValor] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [errors, setErrors] = useState<string[] | null>(null);
   const [saved, setSaved] = useState(false);
@@ -50,6 +52,9 @@ export default function EditAutomationPage() {
     setCondicoes(automation.data.condicoes ?? []);
     setAcoes(automation.data.acoes);
     setCooldownMinutos(automation.data.cooldownMinutos ? String(automation.data.cooldownMinutos) : "");
+    const paramKeyAtual = TRIGGER_PARAM_KEY[automation.data.gatilhoTipo];
+    const paramValorAtual = paramKeyAtual ? automation.data.gatilhoParametros?.[paramKeyAtual] : undefined;
+    setGatilhoParametroValor(paramValorAtual !== undefined ? String(paramValorAtual) : "");
     setLoaded(true);
   }, [automation.data, loaded]);
 
@@ -58,6 +63,7 @@ export default function EditAutomationPage() {
   );
   const availableActions = (catalog.data?.actions ?? []).filter((a) => a.available).map((a) => a.tipo);
   const fields = catalog.data?.triggers.find((trig) => trig.event === gatilhoTipo)?.fields ?? [];
+  const paramKey = TRIGGER_PARAM_KEY[gatilhoTipo];
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -72,6 +78,7 @@ export default function EditAutomationPage() {
         condicoes,
         acoes,
         cooldownMinutos: cooldownMinutos ? Number(cooldownMinutos) : null,
+        gatilhoParametros: paramKey && gatilhoParametroValor ? { [paramKey]: Number(gatilhoParametroValor) } : null,
       });
       setSaved(true);
     } catch (err) {
@@ -132,6 +139,7 @@ export default function EditAutomationPage() {
             onChange={(e) => {
               setGatilhoTipo(e.target.value as DomainEventName);
               setCondicoes([]);
+              setGatilhoParametroValor("");
             }}
             className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
           >
@@ -142,6 +150,20 @@ export default function EditAutomationPage() {
             ))}
           </select>
         </div>
+        {paramKey && (
+          <div className="flex flex-col gap-1">
+            <Field
+              label={t(`automation.trigger.param.${paramKey}` as DictionaryKey)}
+              type="number"
+              min={1}
+              required
+              value={gatilhoParametroValor}
+              onChange={(e) => setGatilhoParametroValor(e.target.value)}
+              className="max-w-xs"
+            />
+            <p className="text-xs text-ink-faint">{t("automation.trigger.dataHint")}</p>
+          </div>
+        )}
         <ConditionsEditor fields={fields} conditions={condicoes} onChange={setCondicoes} />
         <ActionsEditor actionTypes={availableActions} actions={acoes} onChange={setAcoes} />
         <Field

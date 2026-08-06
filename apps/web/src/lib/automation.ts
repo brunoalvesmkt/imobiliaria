@@ -22,7 +22,14 @@ export type DomainEventName =
   | "invoice.paid"
   | "invoice.overdue"
   | "subscription.activated"
-  | "subscription.cancelled";
+  | "subscription.cancelled"
+  | "crm_task.completed"
+  | "crm_task.reassigned"
+  | "opportunity.responsavel_changed"
+  | "contact.imported"
+  | "contact.merged"
+  | "crm_task.due_soon"
+  | "opportunity.stage_stagnant";
 
 export const DEFAULT_DOMAIN_EVENT: DomainEventName = "conversation.created";
 
@@ -33,7 +40,13 @@ export const ID_FIELD_KIND: Record<string, "stage" | "flow"> = {
   chatbotFlowId: "flow",
 };
 
-export type ConditionOperator = "equals" | "contains" | "exists" | "not_exists";
+export type ConditionOperator = "equals" | "contains" | "exists" | "not_exists" | "greater_than" | "less_than";
+
+/** Chave numérica exigida em `Automation.gatilhoParametros` para cada gatilho baseado em tempo — os demais gatilhos não usam esse campo. */
+export const TRIGGER_PARAM_KEY: Partial<Record<DomainEventName, string>> = {
+  "crm_task.due_soon": "horasAntecedencia",
+  "opportunity.stage_stagnant": "diasParado",
+};
 
 export interface AutomationCondition {
   campo: string;
@@ -48,6 +61,7 @@ export type ActionType =
   | "remove_tag"
   | "update_field"
   | "move_opportunity_stage"
+  | "create_opportunity"
   | "start_chatbot"
   | "send_webhook"
   | "schedule_followup";
@@ -64,6 +78,7 @@ export interface AutomationAction {
   stageId?: string;
   flowId?: string;
   url?: string;
+  metodo?: "GET" | "POST";
   delayMinutes?: number;
   sequenciaIndex?: number;
 }
@@ -79,6 +94,7 @@ export interface Automation {
   descricao: string | null;
   tipoAutomacao: AutomationCategory | null;
   gatilhoTipo: DomainEventName;
+  gatilhoParametros: Record<string, number> | null;
   condicoes: AutomationCondition[] | null;
   acoes: AutomationAction[];
   status: AutomationStatus;
@@ -170,6 +186,7 @@ export function useCreateAutomation() {
       descricao?: string;
       tipoAutomacao?: AutomationCategory;
       gatilhoTipo: DomainEventName;
+      gatilhoParametros?: Record<string, number>;
       condicoes?: AutomationCondition[];
       acoes: AutomationAction[];
       cooldownMinutos?: number;
@@ -186,6 +203,7 @@ export function useUpdateAutomation(id: string) {
       descricao: string;
       tipoAutomacao: AutomationCategory;
       gatilhoTipo: DomainEventName;
+      gatilhoParametros: Record<string, number> | null;
       condicoes: AutomationCondition[];
       acoes: AutomationAction[];
       status: AutomationStatus;

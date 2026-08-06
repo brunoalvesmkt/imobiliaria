@@ -4,7 +4,7 @@ import type { Prisma } from "@chatbot-saas/database";
 import { TenantScopedPrismaService } from "../prisma/tenant-scoped-prisma.service";
 import { AuditService } from "../common/audit/audit.service";
 import { requireCurrentTenantId } from "../common/tenant/tenant-context";
-import { buildAutomationCatalog, validateAutomationActions } from "./automation-definition.types";
+import { buildAutomationCatalog, validateAutomationActions, validateTriggerParams } from "./automation-definition.types";
 import { AutomationProducer } from "./automation.producer";
 import type { CreateAutomationDto } from "./dto/create-automation.dto";
 import type { UpdateAutomationDto } from "./dto/update-automation.dto";
@@ -37,7 +37,7 @@ export class AutomationsService {
   }
 
   async create(dto: CreateAutomationDto, actorId: string) {
-    const errors = validateAutomationActions(dto.acoes);
+    const errors = [...validateAutomationActions(dto.acoes), ...validateTriggerParams(dto.gatilhoTipo, dto.gatilhoParametros)];
     if (errors.length > 0) {
       throw new BadRequestException({ message: "Automação inválida.", errors });
     }
@@ -53,6 +53,7 @@ export class AutomationsService {
         tipoAutomacao: dto.tipoAutomacao ?? null,
         cooldownMinutos: dto.cooldownMinutos ?? null,
         gatilhoTipo: dto.gatilhoTipo,
+        gatilhoParametros: (dto.gatilhoParametros ?? null) as unknown as Prisma.InputJsonValue,
         condicoes: (dto.condicoes ?? null) as unknown as Prisma.InputJsonValue,
         acoes: dto.acoes as unknown as Prisma.InputJsonValue,
         status: "active",
@@ -110,10 +111,19 @@ export class AutomationsService {
   }
 
   async update(id: string, dto: UpdateAutomationDto, actorId: string) {
-    await this.get(id);
+    const current = await this.get(id);
 
     if (dto.acoes !== undefined) {
       const errors = validateAutomationActions(dto.acoes);
+      if (errors.length > 0) {
+        throw new BadRequestException({ message: "Automação inválida.", errors });
+      }
+    }
+
+    if (dto.gatilhoTipo !== undefined || dto.gatilhoParametros !== undefined) {
+      const effectiveGatilhoTipo = dto.gatilhoTipo ?? current.gatilhoTipo;
+      const effectiveParams = dto.gatilhoParametros !== undefined ? dto.gatilhoParametros : current.gatilhoParametros;
+      const errors = validateTriggerParams(effectiveGatilhoTipo as Parameters<typeof validateTriggerParams>[0], effectiveParams);
       if (errors.length > 0) {
         throw new BadRequestException({ message: "Automação inválida.", errors });
       }
@@ -125,6 +135,7 @@ export class AutomationsService {
     if (dto.tipoAutomacao !== undefined) data.tipoAutomacao = dto.tipoAutomacao;
     if (dto.cooldownMinutos !== undefined) data.cooldownMinutos = dto.cooldownMinutos;
     if (dto.gatilhoTipo !== undefined) data.gatilhoTipo = dto.gatilhoTipo;
+    if (dto.gatilhoParametros !== undefined) data.gatilhoParametros = dto.gatilhoParametros as unknown as Prisma.InputJsonValue;
     if (dto.condicoes !== undefined) data.condicoes = dto.condicoes as unknown as Prisma.InputJsonValue;
     if (dto.acoes !== undefined) data.acoes = dto.acoes as unknown as Prisma.InputJsonValue;
     if (dto.status !== undefined) data.status = dto.status;

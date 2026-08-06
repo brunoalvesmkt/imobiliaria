@@ -11,6 +11,7 @@ import { AutomationEngineService } from "./automation-engine.service";
 import { AutomationProducer } from "./automation.producer";
 import { AutomationProcessor } from "./automation.processor";
 import { FollowUpsService } from "./followups.service";
+import { AutomationDataTriggersScheduler } from "./automation-data-triggers.scheduler";
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { FollowUpsService } from "./followups.service";
       useFactory: (config: ConfigService) => ({ connection: createBullRedisConnection(config) }),
     }),
     BullModule.registerQueue({ name: "automations" }),
+    BullModule.registerQueue({ name: "automation-data-triggers" }),
     ProvidersModule,
     RealtimeModule,
     ChatbotModule,
@@ -31,6 +33,7 @@ import { FollowUpsService } from "./followups.service";
     AutomationProducer,
     AutomationProcessor,
     FollowUpsService,
+    AutomationDataTriggersScheduler,
   ],
   exports: [FollowUpsService],
 })

@@ -1334,6 +1334,10 @@ model Automation {
   // gatilho é de billing e não se encaixa nas 5 categorias); não bloqueia nada.
   tipoAutomacao String?
   gatilhoTipo String
+  // Parâmetro numérico dos gatilhos baseados em tempo (crm_task.due_soon →
+  // { horasAntecedencia }, opportunity.stage_stagnant → { diasParado }) —
+  // nulo pros demais gatilhos. Ver automation-data-triggers.scheduler.ts.
+  gatilhoParametros Json?
   condicoes   Json?
   acoes       Json
   status      String   @default("active") // active | paused | archived

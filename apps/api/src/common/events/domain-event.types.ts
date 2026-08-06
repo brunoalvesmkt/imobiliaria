@@ -26,7 +26,14 @@ export type DomainEventName =
   | "whatsapp_number.disconnected"
   | "crm_task.overdue"
   | "contact.lead_hot"
-  | "conversation.analysis_completed";
+  | "conversation.analysis_completed"
+  | "crm_task.completed"
+  | "crm_task.reassigned"
+  | "opportunity.responsavel_changed"
+  | "contact.imported"
+  | "contact.merged"
+  | "crm_task.due_soon"
+  | "opportunity.stage_stagnant";
 
 export interface DomainEventPayload {
   tenantId: string;
@@ -58,4 +65,11 @@ export const ALL_DOMAIN_EVENTS: DomainEventName[] = [
   "crm_task.overdue",
   "contact.lead_hot",
   "conversation.analysis_completed",
+  "crm_task.completed",
+  "crm_task.reassigned",
+  "opportunity.responsavel_changed",
+  "contact.imported",
+  "contact.merged",
+  "crm_task.due_soon",
+  "opportunity.stage_stagnant",
 ];

@@ -123,6 +123,8 @@ function ActionTypeFields({ action, onChange }: { action: AutomationAction; onCh
       );
     case "move_opportunity_stage":
       return <MoveStageFields action={action} onChange={onChange} />;
+    case "create_opportunity":
+      return <FunnelStagePicker value={action.stageId ?? ""} onChange={(stageId) => onChange({ ...action, stageId })} />;
     case "start_chatbot":
       return (
         <div className="flex flex-col gap-1.5">
@@ -143,11 +145,24 @@ function ActionTypeFields({ action, onChange }: { action: AutomationAction; onCh
       );
     case "send_webhook":
       return (
-        <Field
-          label={t("automation.actions.field.url")}
-          value={action.url ?? ""}
-          onChange={(e) => onChange({ ...action, url: e.target.value })}
-        />
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]">
+          <Field
+            label={t("automation.actions.field.url")}
+            value={action.url ?? ""}
+            onChange={(e) => onChange({ ...action, url: e.target.value })}
+          />
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-ink">{t("automation.actions.field.metodo")}</label>
+            <select
+              value={action.metodo ?? "POST"}
+              onChange={(e) => onChange({ ...action, metodo: e.target.value as "GET" | "POST" })}
+              className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
+            >
+              <option value="POST">POST</option>
+              <option value="GET">GET</option>
+            </select>
+          </div>
+        </div>
       );
     case "schedule_followup":
       return (

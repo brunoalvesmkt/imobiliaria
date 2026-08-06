@@ -245,9 +245,16 @@ export class OpportunitiesService {
       newData: { responsavelId: novoResponsavel?.id ?? null, responsavelNome: novoResponsavel?.nome ?? null },
     });
 
+    this.domainEvents.emit("opportunity.responsavel_changed", {
+      tenantId,
+      contactId: opportunity.contactId,
+      opportunityId: id,
+      data: { opportunityId: id, responsavelId: novoResponsavel?.id ?? null, responsavelIdAnterior: opportunity.responsavelId },
+    });
+
     // Ver comentário em update() — o frontend grava o retorno direto no cache da query de
     // detalhe, então precisa vir com os mesmos includes de get().
-    return this.get(id);
+    return this.get(id, actorId, roleId);
   }
 
   async moveStage(id: string, dto: MoveStageDto, actorId: string, roleId?: string) {

@@ -8,7 +8,7 @@ import type { DomainEventName } from "../common/events/domain-event.types";
 
 export interface AutomationCondition {
   campo: string; // caminho dentro do payload do evento (ex.: "opportunity.valor")
-  operador: "equals" | "contains" | "exists" | "not_exists";
+  operador: "equals" | "contains" | "exists" | "not_exists" | "greater_than" | "less_than";
   valor?: string;
 }
 
@@ -19,8 +19,9 @@ export type AutomationAction =
   | { tipo: "remove_tag"; tag: string }
   | { tipo: "update_field"; campo: string; valor: string }
   | { tipo: "move_opportunity_stage"; stageId: string }
+  | { tipo: "create_opportunity"; stageId: string }
   | { tipo: "start_chatbot"; flowId: string }
-  | { tipo: "send_webhook"; url: string }
+  | { tipo: "send_webhook"; url: string; metodo?: "GET" | "POST" }
   | { tipo: "schedule_followup"; delayMinutes: number; texto: string; sequenciaIndex?: number };
 
 export type ActionType = AutomationAction["tipo"];
@@ -32,6 +33,7 @@ const KNOWN_ACTION_TYPES = [
   "remove_tag",
   "update_field",
   "move_opportunity_stage",
+  "create_opportunity",
   "start_chatbot",
   "send_webhook",
   "schedule_followup",
@@ -57,6 +59,25 @@ export function validateAutomationActions(acoes: unknown): AutomationValidationE
   return errors;
 }
 
+/** Chave numérica exigida em `Automation.gatilhoParametros` para cada gatilho baseado em tempo (ver automation-data-triggers.scheduler.ts) — os demais gatilhos não usam esse campo. */
+export const TRIGGER_PARAM_KEY: Partial<Record<DomainEventName, string>> = {
+  "crm_task.due_soon": "horasAntecedencia",
+  "opportunity.stage_stagnant": "diasParado",
+};
+
+export function validateTriggerParams(gatilhoTipo: DomainEventName, gatilhoParametros: unknown): AutomationValidationError[] {
+  const requiredKey = TRIGGER_PARAM_KEY[gatilhoTipo];
+  if (!requiredKey) {
+    return [];
+  }
+  const params = gatilhoParametros as Record<string, unknown> | null | undefined;
+  const value = params?.[requiredKey];
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    return [{ message: `Este gatilho exige o parâmetro "${requiredKey}" (número maior que zero).` }];
+  }
+  return [];
+}
+
 function readPath(data: Record<string, unknown>, path: string): unknown {
   return path.split(".").reduce<unknown>((acc, key) => {
     if (acc && typeof acc === "object" && key in acc) {
@@ -80,6 +101,13 @@ export function evaluateConditions(data: Record<string, unknown>, condicoes: Aut
         return value === undefined || value === null || value === "";
       case "contains":
         return typeof value === "string" && typeof condicao.valor === "string" && value.includes(condicao.valor);
+      case "greater_than":
+      case "less_than": {
+        const numValue = Number(value);
+        const numLimite = Number(condicao.valor);
+        if (Number.isNaN(numValue) || Number.isNaN(numLimite)) return false;
+        return condicao.operador === "greater_than" ? numValue > numLimite : numValue < numLimite;
+      }
       case "equals":
       default:
         return String(value) === condicao.valor;
@@ -107,9 +135,10 @@ export type AutomationCategory = (typeof AUTOMATION_CATEGORIES)[number];
 /**
  * Categoria de organização de cada gatilho existente hoje — usada para
  * filtrar o seletor de gatilho quando o usuário escolhe um "tipo de
- * automação" no formulário. Gatilhos de billing (`invoice.*`/`subscription.*`)
- * não se encaixam nas 5 categorias do spec e ficam com `null` — continuam
- * funcionando normalmente, só não aparecem em nenhum filtro de tipo.
+ * automação" no formulário. Os gatilhos de billing (`invoice.*`/`subscription.*`)
+ * se encaixam em "posvenda"; os dois gatilhos baseados em varredura por
+ * tempo (`crm_task.due_soon`, `opportunity.stage_stagnant`, ver
+ * automation-data-triggers.scheduler.ts) ficam em "data".
  */
 export const TRIGGER_CATEGORY: Record<DomainEventName, AutomationCategory | null> = {
   "conversation.created": "atendimento",
@@ -121,18 +150,25 @@ export const TRIGGER_CATEGORY: Record<DomainEventName, AutomationCategory | null
   "whatsapp_number.disconnected": "atendimento",
   "contact.created": "crm",
   "contact.lead_hot": "crm",
+  "contact.imported": "crm",
+  "contact.merged": "crm",
   "opportunity.stage_changed": "crm",
   "opportunity.won": "crm",
   "opportunity.lost": "crm",
+  "opportunity.responsavel_changed": "crm",
   "crm_task.created": "tarefas",
   "crm_task.overdue": "tarefas",
+  "crm_task.completed": "tarefas",
+  "crm_task.reassigned": "tarefas",
   "chatbot.flow.completed": "atendimento",
   "chatbot.flow.abandoned": "atendimento",
   "chatbot.flow.transferred": "atendimento",
-  "invoice.paid": null,
-  "invoice.overdue": null,
-  "subscription.activated": null,
-  "subscription.cancelled": null,
+  "invoice.paid": "posvenda",
+  "invoice.overdue": "posvenda",
+  "subscription.activated": "posvenda",
+  "subscription.cancelled": "posvenda",
+  "crm_task.due_soon": "data",
+  "opportunity.stage_stagnant": "data",
 };
 
 /** Módulo do tenant que precisa estar ativo para o gatilho aparecer como opção — sem entrada = sempre disponível (ex.: billing). */
@@ -151,6 +187,13 @@ export const TRIGGER_REQUIRED_MODULE: Partial<Record<DomainEventName, string>> =
   "opportunity.lost": "crm",
   "crm_task.created": "crm",
   "crm_task.overdue": "crm",
+  "crm_task.completed": "crm",
+  "crm_task.reassigned": "crm",
+  "crm_task.due_soon": "crm",
+  "contact.imported": "crm",
+  "contact.merged": "crm",
+  "opportunity.responsavel_changed": "crm",
+  "opportunity.stage_stagnant": "crm",
   "chatbot.flow.completed": "chatbot",
   "chatbot.flow.abandoned": "chatbot",
   "chatbot.flow.transferred": "chatbot",
@@ -161,6 +204,7 @@ export const ACTION_REQUIRED_MODULE: Partial<Record<ActionType, string>> = {
   send_message: "whatsapp",
   schedule_followup: "whatsapp",
   move_opportunity_stage: "crm",
+  create_opportunity: "crm",
   start_chatbot: "chatbot",
 };
 
@@ -192,6 +236,13 @@ export const TRIGGER_FIELDS: Record<DomainEventName, string[]> = {
   "crm_task.overdue": ["taskId", "tipo", "titulo"],
   "contact.lead_hot": ["contactId", "score"],
   "conversation.analysis_completed": ["conversationId", "nota"],
+  "crm_task.completed": ["taskId", "tipo", "titulo"],
+  "crm_task.reassigned": ["taskId", "responsavelId", "responsavelIdAnterior"],
+  "opportunity.responsavel_changed": ["opportunityId", "responsavelId", "responsavelIdAnterior"],
+  "contact.imported": ["quantidade", "origem"],
+  "contact.merged": ["contatoSobrevivente", "contatoMesclado"],
+  "crm_task.due_soon": ["taskId", "tipo", "titulo"],
+  "opportunity.stage_stagnant": ["opportunityId", "stageId", "diasParado"],
 };
 
 /** Campos cujo valor é o ID de uma entidade com nome — o frontend mostra um seletor por nome em vez de um campo de texto livre. */

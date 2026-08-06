@@ -158,6 +158,9 @@ export function useDashboardSummary(filter: PeriodFilterState, enabled: boolean)
     enabled,
     // Bloco operacional é tempo real — atualiza sozinho em segundo plano sem exigir F5.
     refetchInterval: 60_000,
+    // Sempre busca dados novos ao entrar no módulo (navegação), mesmo que o cache global (30s)
+    // ainda não tenha expirado — o botão "Atualizar" cobre só o caso de já estar na tela.
+    refetchOnMount: "always",
   });
 }
 

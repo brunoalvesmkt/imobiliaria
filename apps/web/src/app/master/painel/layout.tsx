@@ -10,7 +10,6 @@ import { useMenuLayout } from "@/lib/menu-layout";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 import type { MasterRole } from "@/lib/master-auth";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
-import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { MenuLayoutToggle } from "@/components/layout/menu-layout-toggle";
 import { LogoImage } from "@/components/layout/logo-image";
 import { useMasterBranding } from "@/lib/branding";
@@ -42,7 +41,7 @@ function initials(nome?: string | null): string {
 }
 
 /**
- * Ícones de layout/idioma/tema/avatar — mesmo raciocínio do `TopbarActions`
+ * Ícones de layout/tema/avatar (idioma foi para Configurações) — mesmo raciocínio do `TopbarActions`
  * do painel do tenant: ficam junto do menu (fim da barra horizontal, ou
  * embaixo da barra lateral) em vez de numa faixa de cabeçalho separada.
  * Avatar com nome + papel (super_admin/financeiro/suporte) embaixo, seta
@@ -65,7 +64,6 @@ function MasterActions({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <MenuLayoutToggle />
-      <LanguageSwitcher />
       <ThemeToggle />
 
       <div className="relative">
@@ -227,7 +225,7 @@ export default function MasterPainelLayout({ children }: { children: React.React
         <div className="fixed inset-0 z-30 bg-black/40 md:hidden" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
       )}
       <nav
-        className={`fixed inset-y-0 left-0 z-40 flex w-60 flex-none flex-col gap-1 overflow-y-auto border-r border-line bg-surface p-4 transition-transform md:static md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-60 flex-none flex-col gap-1 border-r border-line bg-surface p-4 transition-transform md:static md:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -241,21 +239,29 @@ export default function MasterPainelLayout({ children }: { children: React.React
             loading={branding.isLoading}
           />
         </div>
-        {visibleItems.map((item) => {
-          const isActive = pathname?.startsWith(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setSidebarOpen(false)}
-              className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                isActive ? "bg-brand-50 text-brand-700" : "text-ink-dim hover:bg-surface-alt hover:text-ink"
-              }`}
-            >
-              {t(item.labelKey)}
-            </Link>
-          );
-        })}
+
+        {/* Rolagem só na lista de itens — se ficasse no <nav> inteiro (como
+            antes), `overflow-y-auto` cortava o menu suspenso do avatar, que
+            abre para cima com `absolute`/`bottom-full` fora da área visível
+            rolada do container (mesma classe de bug do `overflow-x-auto` no
+            HorizontalNav, só que no eixo vertical aqui). */}
+        <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
+          {visibleItems.map((item) => {
+            const isActive = isNavItemActive(pathname, item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setSidebarOpen(false)}
+                className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                  isActive ? "bg-brand-50 text-brand-700" : "text-ink-dim hover:bg-surface-alt hover:text-ink"
+                }`}
+              >
+                {t(item.labelKey)}
+              </Link>
+            );
+          })}
+        </div>
 
         <div className="mt-auto border-t border-line pt-3">
           <MasterActions onLogout={onLogout} nome={currentUser.data?.nome} masterRole={currentUser.data?.masterRole} showName={false} />

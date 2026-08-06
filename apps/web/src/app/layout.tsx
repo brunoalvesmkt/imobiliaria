@@ -10,7 +10,12 @@ import { SiteMetadata } from "@/components/layout/site-metadata";
 
 const DEFAULT_TITLE = "Chatbot SaaS Platform";
 const DEFAULT_DESCRIPTION = "Atendimento, CRM, Chatbot, Automação e WhatsApp em uma plataforma só.";
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+// Ver comentário equivalente em middleware.ts: busca só do servidor, usa
+// `API_URL` (rede interna do Docker em produção) em vez de `NEXT_PUBLIC_API_URL`
+// (domínio público) — essa era a causa do título da aba às vezes cair no
+// padrão em vez do personalizado (fetch server-to-server pelo domínio público
+// falhando silenciosamente dentro do container).
+const API_URL = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
 /**
  * Busca o título/favicon já no servidor (mesmo endpoint público que

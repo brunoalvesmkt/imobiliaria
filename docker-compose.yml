@@ -116,6 +116,12 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    # Buscas feitas pelo próprio servidor Next.js (middleware.ts,
+    # generateMetadata) usam esta URL em vez de NEXT_PUBLIC_API_URL — na rede
+    # interna do Compose, "api" resolve direto pro container da API sem sair
+    # para a internet e voltar pelo Traefik (mais rápido e não falha à toa).
+    environment:
+      API_URL: http://api:3001
     ports:
       - "127.0.0.1:3000:3000"
     depends_on:

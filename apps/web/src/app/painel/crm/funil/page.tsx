@@ -109,6 +109,7 @@ function FunnelToolbar({
   funnel: Funnel;
   onSelect: (id: string) => void;
 }) {
+  const { t } = useI18n();
   return (
     <select
       value={funnel.id}
@@ -117,7 +118,7 @@ function FunnelToolbar({
     >
       {funnels.map((f) => (
         <option key={f.id} value={f.id}>
-          {f.nome}
+          {f.status === "inactive" ? `${f.nome} (${t("crm.funnel.inactiveTag")})` : f.nome}
         </option>
       ))}
     </select>
@@ -140,6 +141,7 @@ function FunnelSettingsMenu({
   const { t } = useI18n();
   const [panel, setPanel] = useState<SettingsPanelKind | null>(null);
   const deleteFunnel = useDeleteFunnel();
+  const updateFunnel = useUpdateFunnel(funnel.id);
 
   async function onDeleteFunnel() {
     onError(null);
@@ -152,6 +154,18 @@ function FunnelSettingsMenu({
     }
   }
 
+  const isActive = funnel.status !== "inactive";
+
+  async function onToggleActive() {
+    onError(null);
+    if (isActive && !window.confirm(t("crm.funnel.confirmDeactivate"))) return;
+    try {
+      await updateFunnel.mutateAsync({ status: isActive ? "inactive" : "active" });
+    } catch (err) {
+      onError(err instanceof ApiError ? err.message : t("crm.funnel.errorGeneric"));
+    }
+  }
+
   const items: DropdownMenuItem[] = [
     { label: t("crm.funnel.settingsMenu.createFunnel"), onClick: () => setPanel("createFunnel") },
     { label: t("crm.funnel.settingsMenu.editFunnel"), onClick: () => setPanel("editFunnel") },
@@ -159,6 +173,7 @@ function FunnelSettingsMenu({
     { label: t("crm.funnel.settingsMenu.editStage"), onClick: () => setPanel("editStage") },
     { label: t("crm.funnel.settingsMenu.deleteStage"), onClick: () => setPanel("deleteStage") },
     { label: t("crm.funnel.settingsMenu.reorderStages"), onClick: () => setPanel("reorderStages") },
+    { label: isActive ? t("crm.funnel.deactivate") : t("crm.funnel.activate"), onClick: onToggleActive, disabled: updateFunnel.isPending },
     { label: t("crm.funnel.delete"), onClick: onDeleteFunnel, disabled: deleteFunnel.isPending },
   ];
 

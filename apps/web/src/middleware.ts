@@ -1,6 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+// `API_URL` (sem NEXT_PUBLIC_) é lida só no servidor — em produção (Docker
+// Compose) aponta para o serviço "api" na rede interna do container
+// (ex.: http://api:3001), evitando que essa checagem em toda navegação
+// precise sair para a internet e voltar pelo Traefik só para falar com o
+// próprio backend (lento e instável dentro do container). `NEXT_PUBLIC_API_URL`
+// continua sendo o único usado pelo navegador (cliente).
+const API_URL = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
 interface PanelGuard {
   accessCookie: string;

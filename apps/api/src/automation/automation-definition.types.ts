@@ -22,7 +22,8 @@ export type AutomationAction =
   | { tipo: "create_opportunity"; stageId: string }
   | { tipo: "start_chatbot"; flowId: string }
   | { tipo: "send_webhook"; url: string; metodo?: "GET" | "POST" }
-  | { tipo: "schedule_followup"; delayMinutes: number; texto: string; sequenciaIndex?: number };
+  | { tipo: "schedule_followup"; delayMinutes: number; texto: string; sequenciaIndex?: number }
+  | { tipo: "wait"; delayMinutes: number };
 
 export type ActionType = AutomationAction["tipo"];
 
@@ -37,6 +38,7 @@ const KNOWN_ACTION_TYPES = [
   "start_chatbot",
   "send_webhook",
   "schedule_followup",
+  "wait",
 ];
 
 export interface AutomationValidationError {
@@ -53,6 +55,13 @@ export function validateAutomationActions(acoes: unknown): AutomationValidationE
     const tipo = (acao as { tipo?: unknown }).tipo;
     if (typeof tipo !== "string" || !KNOWN_ACTION_TYPES.includes(tipo)) {
       errors.push({ message: `Ação #${index + 1}: tipo "${String(tipo)}" desconhecido.` });
+      continue;
+    }
+    if (tipo === "wait") {
+      const delayMinutes = (acao as { delayMinutes?: unknown }).delayMinutes;
+      if (typeof delayMinutes !== "number" || !Number.isFinite(delayMinutes) || delayMinutes <= 0) {
+        errors.push({ message: `Ação #${index + 1}: "Esperar" exige um tempo de espera (minutos) maior que zero.` });
+      }
     }
   }
 

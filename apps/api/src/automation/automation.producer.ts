@@ -21,6 +21,22 @@ export class AutomationProducer {
     );
   }
 
+  /** Reenfileira o mesmo job "run_execution" para retomar uma execução pausada por um passo "wait" (Fase E) — `jobId` determinístico por índice evita duplicar a retomada em caso de reentrega do BullMQ. */
+  enqueueResume(executionId: string, resumeFromIndex: number, delayMs: number): Promise<unknown> {
+    return this.queue.add(
+      "run_execution",
+      { executionId, resumeFromIndex },
+      {
+        jobId: `resume-${executionId}-${resumeFromIndex}`,
+        delay: delayMs,
+        attempts: 3,
+        backoff: { type: "exponential", delay: 5_000 },
+        removeOnComplete: true,
+        removeOnFail: false,
+      },
+    );
+  }
+
   enqueueFollowUp(followUpId: string, delayMs: number): Promise<unknown> {
     return this.queue.add(
       "send_followup",

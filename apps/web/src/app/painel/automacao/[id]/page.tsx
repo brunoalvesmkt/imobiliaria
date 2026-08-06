@@ -22,8 +22,7 @@ import { Field } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
 import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
-import { ConditionsEditor } from "../conditions-editor";
-import { ActionsEditor } from "../action-fields";
+import { StepFlow } from "../step-flow";
 import { ExecutionSteps } from "../execution-steps";
 
 export default function EditAutomationPage() {
@@ -65,11 +64,6 @@ export default function EditAutomationPage() {
     setLoaded(true);
   }, [automation.data, loaded]);
 
-  const availableTriggers = (catalog.data?.triggers ?? []).filter(
-    (trig) => trig.available && (!tipoAutomacao || trig.category === tipoAutomacao),
-  );
-  const availableActions = (catalog.data?.actions ?? []).filter((a) => a.available).map((a) => a.tipo);
-  const fields = catalog.data?.triggers.find((trig) => trig.event === gatilhoTipo)?.fields ?? [];
   const paramKey = TRIGGER_PARAM_KEY[gatilhoTipo];
 
   async function onSubmit(e: React.FormEvent) {
@@ -148,40 +142,22 @@ export default function EditAutomationPage() {
             ))}
           </select>
         </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-ink">{t("automation.trigger")}</label>
-          <select
-            value={gatilhoTipo}
-            onChange={(e) => {
-              setGatilhoTipo(e.target.value as DomainEventName);
-              setCondicoes([]);
-              setGatilhoParametroValor("");
-            }}
-            className="rounded-md border border-line bg-surface px-3 py-2 text-sm"
-          >
-            {availableTriggers.map((trig) => (
-              <option key={trig.event} value={trig.event}>
-                {t(`automation.trigger.${trig.event}` as DictionaryKey)}
-              </option>
-            ))}
-          </select>
-        </div>
-        {paramKey && (
-          <div className="flex flex-col gap-1">
-            <Field
-              label={t(`automation.trigger.param.${paramKey}` as DictionaryKey)}
-              type="number"
-              min={1}
-              required
-              value={gatilhoParametroValor}
-              onChange={(e) => setGatilhoParametroValor(e.target.value)}
-              className="max-w-xs"
-            />
-            <p className="text-xs text-ink-faint">{t("automation.trigger.dataHint")}</p>
-          </div>
-        )}
-        <ConditionsEditor fields={fields} conditions={condicoes} onChange={setCondicoes} />
-        <ActionsEditor actionTypes={availableActions} actions={acoes} onChange={setAcoes} />
+        <StepFlow
+          catalog={catalog.data}
+          tipoAutomacao={tipoAutomacao}
+          gatilhoTipo={gatilhoTipo}
+          onGatilhoTipoChange={(v) => {
+            setGatilhoTipo(v);
+            setCondicoes([]);
+            setGatilhoParametroValor("");
+          }}
+          gatilhoParametroValor={gatilhoParametroValor}
+          onGatilhoParametroValorChange={setGatilhoParametroValor}
+          condicoes={condicoes}
+          onCondicoesChange={setCondicoes}
+          acoes={acoes}
+          onAcoesChange={setAcoes}
+        />
         <Field
           label={t("automation.cooldownMinutos")}
           type="number"

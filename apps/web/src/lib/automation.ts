@@ -64,7 +64,8 @@ export type ActionType =
   | "create_opportunity"
   | "start_chatbot"
   | "send_webhook"
-  | "schedule_followup";
+  | "schedule_followup"
+  | "wait";
 
 export interface AutomationAction {
   tipo: ActionType;
@@ -105,7 +106,7 @@ export interface Automation {
   updatedAt: string;
 }
 
-export type ExecutionStatus = "pending" | "running" | "success" | "failed" | "dead_letter" | "throttled" | "loop_blocked";
+export type ExecutionStatus = "pending" | "running" | "waiting" | "success" | "failed" | "dead_letter" | "throttled" | "loop_blocked" | "cancelled";
 
 /** Um passo do histórico detalhado — gravado tanto no sucesso quanto na falha (Fase D), e também devolvido (sem persistir) pelo teste simulado. */
 export interface ExecutedStep {

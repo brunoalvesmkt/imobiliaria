@@ -1375,7 +1375,7 @@ model AutomationExecution {
   dadosGatilho     Json?
   acoesExecutadas  Json?
   tentativas       Int       @default(0)
-  status           String    @default("pending") // pending | running | success | failed | dead_letter | throttled | loop_blocked
+  status           String    @default("pending") // pending | running | waiting | success | failed | dead_letter | throttled | loop_blocked | cancelled
   erro             String?
   executedAt       DateTime?
   createdAt        DateTime  @default(now())
@@ -1384,6 +1384,10 @@ model AutomationExecution {
   // start_chatbot conclui um fluxo que emite outro evento de domínio) — 0
   // para disparos por evento externo genuíno. Ver automation-chain-context.ts.
   chainDepth       Int       @default(0)
+  // Índice (em Automation.acoes) da próxima ação a rodar quando a execução
+  // está "waiting" — gravado quando um passo "wait" pausa a sequência (Fase E).
+  // Nulo enquanto a execução nunca foi pausada.
+  resumeFromIndex  Int?
 
   tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   automation Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)

@@ -27,13 +27,49 @@ export function ActionsEditor({
   function add() {
     onChange([...actions, { tipo: "send_message", texto: "" }]);
   }
+  // Reordenação por índice (↑/↓) — mesmo padrão já usado no CRM para reordenar etapas de funil
+  // (ReorderStagesPanel), sem depender de biblioteca de drag-and-drop.
+  function move(index: number, direction: -1 | 1) {
+    const target = index + direction;
+    if (target < 0 || target >= actions.length) return;
+    const next = [...actions];
+    const [item] = next.splice(index, 1);
+    if (!item) return;
+    next.splice(target, 0, item);
+    onChange(next);
+  }
 
   return (
     <div className="flex flex-col gap-3">
       <label className="text-sm font-medium text-ink">{t("automation.actions.title")}</label>
       {actions.map((action, i) => (
-        <div key={i} className="flex flex-col gap-2 rounded-md border border-line bg-surface-alt p-3">
+        <div
+          key={i}
+          className={`flex flex-col gap-2 rounded-md border p-3 ${
+            action.tipo === "wait" ? "border-violet-200 bg-violet-50/60 dark:border-violet-900 dark:bg-violet-950/20" : "border-line bg-surface-alt"
+          }`}
+        >
           <div className="flex items-center gap-2">
+            <div className="flex flex-col">
+              <button
+                type="button"
+                onClick={() => move(i, -1)}
+                disabled={i === 0}
+                aria-label={t("automation.step.moveUp")}
+                className="text-xs leading-none text-ink-dim hover:text-ink disabled:opacity-30"
+              >
+                ▲
+              </button>
+              <button
+                type="button"
+                onClick={() => move(i, 1)}
+                disabled={i === actions.length - 1}
+                aria-label={t("automation.step.moveDown")}
+                className="text-xs leading-none text-ink-dim hover:text-ink disabled:opacity-30"
+              >
+                ▼
+              </button>
+            </div>
             <select
               value={action.tipo}
               onChange={(e) => update(i, { tipo: e.target.value as ActionType })}
@@ -163,6 +199,19 @@ function ActionTypeFields({ action, onChange }: { action: AutomationAction; onCh
             </select>
           </div>
         </div>
+      );
+    case "wait":
+      return (
+        <Field
+          label={t("automation.actions.field.waitDelayMinutes")}
+          type="number"
+          min={1}
+          value={action.delayMinutes ?? ""}
+          onChange={(e) => {
+            const { delayMinutes: _omit, ...rest } = action;
+            onChange(e.target.value ? { ...rest, delayMinutes: Number(e.target.value) } : rest);
+          }}
+        />
       );
     case "schedule_followup":
       return (

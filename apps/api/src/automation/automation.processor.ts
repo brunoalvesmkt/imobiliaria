@@ -8,6 +8,7 @@ import { ProviderRegistryService } from "../whatsapp/providers/provider-registry
 import { RealtimeGateway } from "../realtime/realtime.gateway";
 import { ChatbotEngineService } from "../chatbot/engine/chatbot-engine.service";
 import { FollowUpsService } from "./followups.service";
+import { AutomationProducer } from "./automation.producer";
 import { stripDddiBrasil } from "../crm/contacts/phone.util";
 import { evaluateConditions, type AutomationAction, type AutomationCondition } from "./automation-definition.types";
 import { runWithAutomationChain } from "./automation-chain-context";
@@ -15,6 +16,8 @@ import { runWithAutomationChain } from "./automation-chain-context";
 interface RunExecutionJobData {
   executionId: string;
   chainDepth?: number;
+  /** Presente só no job de retomada de uma execução pausada por um passo "wait" (Fase E) — índice (em `acoes`) da próxima ação a rodar. */
+  resumeFromIndex?: number;
 }
 
 /** Acima desta idade, uma execução travada em "running" é considerada órfã (worker derrubado no meio) e pode ser reprocessada — folga confortável acima do lock padrão do BullMQ. */
@@ -51,6 +54,7 @@ export class AutomationProcessor extends WorkerHost {
     private readonly realtime: RealtimeGateway,
     private readonly chatbotEngine: ChatbotEngineService,
     private readonly followUps: FollowUpsService,
+    private readonly producer: AutomationProducer,
   ) {
     super();
   }
@@ -69,10 +73,16 @@ export class AutomationProcessor extends WorkerHost {
   private async runExecution(job: Job<RunExecutionJobData>): Promise<void> {
     const execution = await this.prisma.automationExecution.findUnique({ where: { id: job.data.executionId } });
     if (!execution) return;
-    if (execution.status === "success" || execution.status === "dead_letter") {
-      return; // já processada com sucesso ou definitivamente falhou — idempotência (caso crítico #8)
+    const isResume = job.data.resumeFromIndex !== undefined;
+
+    if (execution.status === "success" || execution.status === "dead_letter" || execution.status === "cancelled") {
+      return; // já processada com sucesso, falhou definitivamente ou foi cancelada — idempotência (caso crítico #8)
     }
-    if (execution.status === "running" && Date.now() - execution.updatedAt.getTime() < STALE_RUNNING_MS) {
+    if (isResume) {
+      if (execution.status !== "waiting") return; // já foi retomada por outra entrega do job, ou o estado mudou nesse meio-tempo
+    } else if (execution.status === "waiting") {
+      return; // execução pausada aguardando o job de retomada de um passo "wait" (Fase E) — este é um disparo duplicado do job original
+    } else if (execution.status === "running" && Date.now() - execution.updatedAt.getTime() < STALE_RUNNING_MS) {
       return; // outra execução deste mesmo job já está em andamento — duplicata concorrente legítima
     }
 
@@ -82,8 +92,33 @@ export class AutomationProcessor extends WorkerHost {
     });
 
     const automation = await this.prisma.automation.findUniqueOrThrow({ where: { id: execution.automationId } });
+
+    // Espera com revalidação (mesmo princípio de sendFollowUp, Fase B): o tempo entre pausar num
+    // passo "wait" e retomar pode ter tornado a automação inativa ou invalidado as condições que a
+    // originaram — sem isso, a sequência continuaria mesmo depois de o usuário pausar/arquivar a
+    // automação ou o estado mudar. Só se aplica ao retomar; a 1ª passada já foi validada no dispatch.
+    if (isResume) {
+      if (automation.status !== "active") {
+        await this.prisma.automationExecution.update({
+          where: { id: execution.id },
+          data: { status: "cancelled", erro: "Automação não está mais ativa." },
+        });
+        return;
+      }
+      const condicoes = automation.condicoes as unknown as AutomationCondition[] | null;
+      if (!evaluateConditions((execution.dadosGatilho as Record<string, unknown> | null) ?? {}, condicoes)) {
+        await this.prisma.automationExecution.update({
+          where: { id: execution.id },
+          data: { status: "cancelled", erro: "Condições não são mais válidas após a espera." },
+        });
+        return;
+      }
+    }
+
     const acoes = automation.acoes as unknown as AutomationAction[];
-    const executed: ExecutedStep[] = [];
+    const startIndex = job.data.resumeFromIndex ?? 0;
+    // Numa retomada, os passos que já rodaram antes da pausa não podem se perder (mesmo princípio da Fase D).
+    const executed: ExecutedStep[] = isResume ? ((execution.acoesExecutadas as unknown as ExecutedStep[] | null) ?? []) : [];
 
     // Resolvido uma única vez por execução (mesmo quando o gatilho não tinha contactId — ex.:
     // "Mensagem recebida" na primeira conversa de um número novo, contactId só existe depois que
@@ -92,10 +127,33 @@ export class AutomationProcessor extends WorkerHost {
 
     // A profundidade da corrente (ver automation-chain-context.ts) fica disponível dentro deste
     // contexto assíncrono para o AutomationEngineService.dispatch, caso uma ação (ex.: start_chatbot)
-    // dispare sincronamente um novo evento de domínio que reentre no motor de automações.
-    await runWithAutomationChain({ executionId: execution.id, depth: job.data.chainDepth ?? 0 }, async () => {
+    // dispare sincronamente um novo evento de domínio que reentre no motor de automações. Lida direto
+    // da própria execução (persistida na Fase B) em vez de precisar duplicar no payload do job de retomada.
+    await runWithAutomationChain({ executionId: execution.id, depth: execution.chainDepth }, async () => {
       try {
-        for (const acao of acoes) {
+        for (let i = startIndex; i < acoes.length; i++) {
+          const acao = acoes[i];
+          if (!acao) continue;
+
+          // Passo "Esperar" (Fase E): pausa a sequência de verdade — diferente de `schedule_followup`,
+          // que só agenda uma mensagem futura como side-effect sem interromper as ações seguintes.
+          if (acao.tipo === "wait") {
+            const iniciadoEm = new Date().toISOString();
+            executed.push({
+              tipo: "wait",
+              status: "success",
+              result: { aguardando: acao.delayMinutes },
+              iniciadoEm,
+              concluidoEm: new Date().toISOString(),
+            });
+            await this.prisma.automationExecution.update({
+              where: { id: execution.id },
+              data: { status: "waiting", acoesExecutadas: executed as unknown as Prisma.InputJsonValue, resumeFromIndex: i + 1 },
+            });
+            await this.producer.enqueueResume(execution.id, i + 1, acao.delayMinutes * 60_000);
+            return; // pausada — nem sucesso nem falha ainda, a retomada decide o resto
+          }
+
           const iniciadoEm = new Date().toISOString();
           try {
             const result = await this.executeAction(automation.tenantId, execution, acao, automation.webhookSecret, contactId);
@@ -361,6 +419,14 @@ export class AutomationProcessor extends WorkerHost {
         }
         const response = await fetch(acao.url, { method: "POST", headers, body });
         return { status: response.status };
+      }
+
+      case "wait": {
+        // Na execução real, `runExecution` intercepta "wait" antes de chegar aqui (pausa a sequência
+        // de verdade via `producer.enqueueResume`) — este caso só é alcançado pelo teste simulado
+        // (`simulateActions`, sempre síncrono, nunca deveria realmente pausar nada).
+        if (simulate) return { simulado: true, esperariaMinutos: acao.delayMinutes };
+        return { skipped: "tratado pelo mecanismo de pausa/retomada de runExecution" };
       }
 
       case "schedule_followup": {

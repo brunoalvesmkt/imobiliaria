@@ -13,6 +13,7 @@ const TABS: { href: string; labelKey: DictionaryKey }[] = [
   { href: "/painel/configuracoes/auditoria", labelKey: "auditLog.title" },
   { href: "/painel/configuracoes/perfis", labelKey: "roles.title" },
   { href: "/painel/configuracoes/usuarios", labelKey: "tenantUsers.title" },
+  { href: "/painel/configuracoes/idioma", labelKey: "language.label" },
 ];
 
 export default function ConfiguracoesLayout({ children }: { children: React.ReactNode }) {

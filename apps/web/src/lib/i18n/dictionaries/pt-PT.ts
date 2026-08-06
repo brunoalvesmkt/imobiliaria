@@ -4,6 +4,7 @@ const dictionary: Record<DictionaryKey, string> = {
   "theme.switchToLight": "Mudar para modo claro",
   "theme.switchToDark": "Mudar para modo escuro",
   "language.label": "Idioma",
+  "language.settingsSubtitle": "Escolha o idioma exibido em todo o painel.",
 
   "nav.inicio": "Dashboard",
   "nav.crm": "CRM",
@@ -105,6 +106,8 @@ const dictionary: Record<DictionaryKey, string> = {
   "crm.leadScore.configError": "Não foi possível guardar os limiares.",
 
   "common.loading": "A carregar…",
+  "common.loadError": "Não foi possível carregar o painel. Verifique a sua ligação e tente novamente.",
+  "common.retry": "Tentar novamente",
   "common.gotIt": "Percebi",
   "common.save": "Guardar",
   "common.cancel": "Cancelar",

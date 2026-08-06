@@ -6,7 +6,6 @@ import { useState } from "react";
 import { useLogout, useMyProfile, useTenantInfo } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import { ThemeToggle } from "./theme-toggle";
-import { LanguageSwitcher } from "./language-switcher";
 import { NotificationBell } from "./notification-bell";
 import { MenuLayoutToggle } from "./menu-layout-toggle";
 
@@ -16,8 +15,16 @@ function initials(nome?: string): string {
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase();
 }
 
+const COMPANY_NAME_MAX_CHARS = 15;
+
+function truncateCompanyName(nome?: string): string {
+  if (!nome) return " ";
+  return nome.length > COMPANY_NAME_MAX_CHARS ? `${nome.slice(0, COMPANY_NAME_MAX_CHARS)}…` : nome;
+}
+
 /**
- * Grupo de ações do topo (layout do menu, idioma, tema, notificações, avatar)
+ * Grupo de ações do topo (layout do menu, tema, notificações, avatar) — o
+ * idioma foi movido para dentro de Configurações.
  * — extraído do Topbar para poder ser reaproveitado dentro do HorizontalNav
  * no layout horizontal e do Sidebar no layout lateral, ficando junto do menu
  * em vez de numa barra separada.
@@ -43,7 +50,6 @@ export function TopbarActions({ showName = true }: { showName?: boolean }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <MenuLayoutToggle />
-      <LanguageSwitcher />
       <ThemeToggle />
       <NotificationBell />
 
@@ -59,7 +65,7 @@ export function TopbarActions({ showName = true }: { showName?: boolean }) {
           {showName && (
             <span className="hidden min-w-0 flex-col items-start sm:flex">
               <span className="truncate text-sm font-semibold leading-tight text-brand-700 dark:text-brand-300">{profile.data?.nome ?? " "}</span>
-              <span className="truncate text-xs leading-tight text-ink-faint">{tenantInfo.data?.razaoSocial ?? " "}</span>
+              <span className="truncate text-xs leading-tight text-ink-faint">{truncateCompanyName(tenantInfo.data?.razaoSocial)}</span>
             </span>
           )}
           {showName && (
@@ -72,11 +78,14 @@ export function TopbarActions({ showName = true }: { showName?: boolean }) {
         {menuOpen && (
           <>
             <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} aria-hidden="true" />
-            {/* No Sidebar (showName=false) o avatar fica colado no rodapé da tela — abrir para
-                baixo (top-full) deixava o menu cortado fora da viewport. Abre para cima ali. */}
+            {/* No Sidebar (showName=false) o avatar fica colado no rodapé/canto esquerdo da
+                tela — abrir para baixo (top-full) deixava o menu cortado fora da viewport
+                embaixo, e ancorar pela direita (right-0) cortava pela esquerda (a barra é
+                estreita e fica colada na borda esquerda da tela). Ali abre para cima e para
+                a direita (left-0). */}
             <div
-              className={`absolute right-0 z-20 w-56 rounded-md border border-line bg-surface py-1 shadow-md ${
-                showName ? "top-full mt-1" : "bottom-full mb-1"
+              className={`absolute z-20 w-56 rounded-md border border-line bg-surface py-1 shadow-md ${
+                showName ? "right-0 top-full mt-1" : "left-0 bottom-full mb-1"
               }`}
             >
               <div className="border-b border-line px-3 py-2">

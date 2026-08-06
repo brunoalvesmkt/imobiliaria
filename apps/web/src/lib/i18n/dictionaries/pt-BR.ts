@@ -2,6 +2,7 @@ const dictionary = {
   "theme.switchToLight": "Mudar para modo claro",
   "theme.switchToDark": "Mudar para modo escuro",
   "language.label": "Idioma",
+  "language.settingsSubtitle": "Escolha o idioma exibido em todo o painel.",
 
   "nav.inicio": "Dashboard",
   "nav.crm": "CRM",
@@ -103,6 +104,8 @@ const dictionary = {
   "crm.leadScore.configError": "Não foi possível salvar os limiares.",
 
   "common.loading": "Carregando…",
+  "common.loadError": "Não foi possível carregar o painel. Verifique sua conexão e tente novamente.",
+  "common.retry": "Tentar novamente",
   "common.gotIt": "Entendi",
   "common.save": "Salvar",
   "common.cancel": "Cancelar",

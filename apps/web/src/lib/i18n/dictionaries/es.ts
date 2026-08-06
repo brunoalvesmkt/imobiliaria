@@ -4,6 +4,7 @@ const dictionary: Record<DictionaryKey, string> = {
   "theme.switchToLight": "Cambiar a modo claro",
   "theme.switchToDark": "Cambiar a modo oscuro",
   "language.label": "Idioma",
+  "language.settingsSubtitle": "Elige el idioma mostrado en todo el panel.",
 
   "nav.inicio": "Dashboard",
   "nav.crm": "CRM",
@@ -105,6 +106,8 @@ const dictionary: Record<DictionaryKey, string> = {
   "crm.leadScore.configError": "No fue posible guardar los umbrales.",
 
   "common.loading": "Cargando…",
+  "common.loadError": "No se pudo cargar el panel. Verifica tu conexión e inténtalo de nuevo.",
+  "common.retry": "Intentar de nuevo",
   "common.gotIt": "Entendido",
   "common.save": "Guardar",
   "common.cancel": "Cancelar",

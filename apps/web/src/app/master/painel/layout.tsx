@@ -95,11 +95,13 @@ function MasterActions({
         {menuOpen && (
           <>
             <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} aria-hidden="true" />
-            {/* No menu lateral (showName=false) o avatar fica no rodapé da tela — abrir para
-                baixo deixava o menu suspenso cortado fora da viewport. Abre para cima ali. */}
+            {/* No menu lateral (showName=false) o avatar fica no rodapé/canto esquerdo da tela
+                — abrir para baixo deixava o menu cortado fora da viewport embaixo, e ancorar
+                pela direita (right-0) cortava pela esquerda (barra estreita colada na borda
+                esquerda). Ali abre para cima e para a direita (left-0). */}
             <div
-              className={`absolute right-0 z-20 w-48 rounded-md border border-line bg-surface py-1 shadow-md ${
-                showName ? "top-full mt-1" : "bottom-full mb-1"
+              className={`absolute z-20 w-48 rounded-md border border-line bg-surface py-1 shadow-md ${
+                showName ? "right-0 top-full mt-1" : "left-0 bottom-full mb-1"
               }`}
             >
               <div className="border-b border-line px-3 py-2">

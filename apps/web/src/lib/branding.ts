@@ -24,12 +24,22 @@ export interface AnnouncementConfig {
   dismissMode: "session" | "always";
 }
 
+// A política padrão de retry do QueryProvider não tenta de novo em 401/403 —
+// certo para buscas que sinalizam se a sessão é válida, mas essas duas rodam
+// só depois que o usuário já está autenticado (dentro do painel), então um
+// 401/403 pontual aqui é mais provável ser uma oscilação passageira (ex.:
+// rotação do token em andamento) do que sessão realmente inválida. Sem
+// insistir, uma falha isolada deixava a logo presa no fallback de letra até
+// um F5 manual.
+const BRANDING_RETRY = 3;
+
 export function useTenantBranding(enabled = true) {
   return useQuery({
     queryKey: ["branding", "tenant"],
     queryFn: () => apiGet<BrandingConfig & { announcement: AnnouncementConfig }>("/branding/tenant"),
     enabled,
     staleTime: 5 * 60 * 1000,
+    retry: BRANDING_RETRY,
   });
 }
 
@@ -39,6 +49,7 @@ export function useMasterBranding(enabled = true) {
     queryFn: () => apiGet<BrandingConfig>("/branding/master"),
     enabled,
     staleTime: 5 * 60 * 1000,
+    retry: BRANDING_RETRY,
   });
 }
 

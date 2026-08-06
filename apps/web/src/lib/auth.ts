@@ -80,12 +80,20 @@ export function useTenantInfo(enabled: boolean) {
   });
 }
 
+// Só habilitadas depois que `useCurrentUser` já teve sucesso (sessão válida)
+// — um 401/403 pontual aqui é mais provável ser uma oscilação passageira
+// (cold start do backend, rotação do token) do que sessão inválida de fato.
+// A política padrão do QueryProvider não insiste em 401/403, o que deixava
+// o menu preso com módulos vazios até um F5 manual.
+const MODULE_QUERY_RETRY = 3;
+
 export function useActiveModules(enabled: boolean) {
   return useQuery({
     queryKey: ["tenants", "me", "features"],
     queryFn: () => apiGet<FeatureFlagInfo[]>("/tenants/me/features"),
     enabled,
     select: (flags) => new Set(flags.filter((f) => f.enabled).map((f) => f.module)),
+    retry: MODULE_QUERY_RETRY,
   });
 }
 
@@ -96,6 +104,7 @@ export function useModuleOrder(enabled: boolean) {
     queryFn: () => apiGet<{ moduleOrder: string[] }>("/tenants/me/module-order"),
     enabled,
     select: (data) => data.moduleOrder,
+    retry: MODULE_QUERY_RETRY,
   });
 }
 

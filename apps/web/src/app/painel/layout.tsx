@@ -12,6 +12,7 @@ import { HorizontalNav } from "@/components/layout/horizontal-nav";
 import { Topbar } from "@/components/layout/topbar";
 import { ImpersonationBanner } from "@/components/layout/impersonation-banner";
 import { AnnouncementBanner } from "@/components/layout/announcement-banner";
+import { Button } from "@/components/ui/button";
 
 /**
  * Proteção de rota é feita no cliente (não há middleware/SSR autenticado
@@ -55,6 +56,28 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
     return (
       <div className="flex min-h-screen items-center justify-center bg-surface-alt">
         <span className="text-sm text-ink-faint">{t("common.loading")}</span>
+      </div>
+    );
+  }
+
+  // Numa VPS recém-reiniciada (ou numa oscilação de rede pontual), essas duas
+  // buscas podem falhar antes do backend estar pronto — como não reagem a
+  // 401/403 (política padrão do QueryProvider), elas ficam paradas em erro
+  // pra sempre sem F5. Sem isso, o layout seguia adiante com `?? new Set()`,
+  // renderizando o menu com módulos vazios e a logo em fallback como se a
+  // empresa realmente não tivesse nada configurado.
+  if (activeModules.isError || moduleOrder.isError) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-surface-alt px-4 text-center">
+        <span className="text-sm text-ink-dim">{t("common.loadError")}</span>
+        <Button
+          onClick={() => {
+            activeModules.refetch();
+            moduleOrder.refetch();
+          }}
+        >
+          {t("common.retry")}
+        </Button>
       </div>
     );
   }

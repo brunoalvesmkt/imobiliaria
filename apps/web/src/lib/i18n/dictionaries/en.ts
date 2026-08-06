@@ -4,6 +4,7 @@ const dictionary: Record<DictionaryKey, string> = {
   "theme.switchToLight": "Switch to light mode",
   "theme.switchToDark": "Switch to dark mode",
   "language.label": "Language",
+  "language.settingsSubtitle": "Choose the language shown across the panel.",
 
   "nav.inicio": "Dashboard",
   "nav.crm": "CRM",
@@ -105,6 +106,8 @@ const dictionary: Record<DictionaryKey, string> = {
   "crm.leadScore.configError": "Could not save the thresholds.",
 
   "common.loading": "Loading…",
+  "common.loadError": "Couldn't load the panel. Check your connection and try again.",
+  "common.retry": "Try again",
   "common.gotIt": "Got it",
   "common.save": "Save",
   "common.cancel": "Cancel",

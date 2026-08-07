@@ -119,6 +119,8 @@ const dictionary: Record<DictionaryKey, string> = {
   "notifications.recipients.historyEmpty": "No deliveries recorded yet.",
   "notifications.recipients.deliverySent": "Sent",
   "notifications.recipients.deliveryFailed": "Failed",
+  "notifications.recipients.confirmDelete": "Delete recipient \"{nome}\" ({numero})? They will stop receiving WhatsApp notifications.",
+  "notifications.recipients.deleteError": "Could not delete the recipient.",
   "notifications.templates.title": "Notification types",
   "notifications.templates.subtitle": "Edit the title and message of each type, and choose which ones also trigger administrative WhatsApp.",
   "notifications.templates.critical": "Triggers WhatsApp",

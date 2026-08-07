@@ -216,9 +216,24 @@ function RecipientRow({ recipient, typeOptions }: { recipient: NotificationRecip
   const { t, locale } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const updateRecipient = useUpdateNotificationRecipient(recipient.id);
   const deleteRecipient = useDeleteNotificationRecipient();
   const deliveries = useNotificationDeliveries(expanded ? recipient.id : "");
+
+  async function onDelete() {
+    const confirmed = window.confirm(
+      t("notifications.recipients.confirmDelete").replace("{nome}", recipient.nome || recipient.numero).replace("{numero}", recipient.numero),
+    );
+    if (!confirmed) return;
+    setDeleteError(null);
+    try {
+      await deleteRecipient.mutateAsync(recipient.id);
+    } catch (err) {
+      const body = (err as { body?: { message?: string } }).body;
+      setDeleteError(body?.message ?? t("notifications.recipients.deleteError"));
+    }
+  }
 
   const typeLabels = recipient.tipos.length === 0
     ? t("notifications.recipients.allTypes")
@@ -272,14 +287,22 @@ function RecipientRow({ recipient, typeOptions }: { recipient: NotificationRecip
             </button>
             <button
               type="button"
-              onClick={() => deleteRecipient.mutate(recipient.id)}
-              className="text-xs font-medium text-red-600 hover:underline"
+              onClick={onDelete}
+              disabled={deleteRecipient.isPending}
+              className="text-xs font-medium text-red-600 hover:underline disabled:opacity-50"
             >
               {t("common.remove")}
             </button>
           </div>
         </td>
       </tr>
+      {deleteError && (
+        <tr className="border-b border-line last:border-0">
+          <td colSpan={5} className="px-4 pb-2">
+            <Alert tone="error">{deleteError}</Alert>
+          </td>
+        </tr>
+      )}
       {expanded && (
         <tr className="border-b border-line last:border-0 bg-surface-alt/50">
           <td colSpan={5} className="px-4 py-3">

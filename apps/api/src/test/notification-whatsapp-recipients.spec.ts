@@ -211,6 +211,29 @@ describe("Notificações — destinatários e templates de WhatsApp administrati
     expect(created.body.origem).toBe("manual");
   }, 15_000);
 
+  it("excluir o destinatário migrado do destinoNumero antigo não o recria na próxima leitura da lista", async () => {
+    const other = await signupTenant("notifrecip-legacy-del");
+    await superAdmin.patch(`/master/tenants/${other.tenantId}/modules`).send({ module: "whatsapp", enabled: true });
+
+    await prisma.featureFlag.upsert({
+      where: { tenantId_module: { tenantId: other.tenantId, module: "configuracoes" } },
+      create: { tenantId: other.tenantId, module: "configuracoes", enabled: true, config: { notificacaoWhatsapp: { destinoNumero: "5511977776666" } } },
+      update: { config: { notificacaoWhatsapp: { destinoNumero: "5511977776666" } } },
+    });
+
+    const list = await other.agent.get("/notifications/settings/whatsapp/recipients");
+    expect(list.body).toHaveLength(1);
+    const migratedId = list.body[0].id as string;
+
+    const del = await other.agent.delete(`/notifications/settings/whatsapp/recipients/${migratedId}`);
+    expect(del.status).toBe(200);
+
+    // Antes da correção, essa segunda leitura recriava o mesmo destinatário (o destinoNumero antigo
+    // continuava salvo em FeatureFlag e a migração automática rodava de novo do zero).
+    const listAfterDelete = await other.agent.get("/notifications/settings/whatsapp/recipients");
+    expect(listAfterDelete.body).toHaveLength(0);
+  }, 15_000);
+
   it("templates: editar o corpo com placeholder muda a mensagem realmente enviada, e reset volta ao padrão", async () => {
     const recipient = await tenant.agent
       .post("/notifications/settings/whatsapp/recipients")

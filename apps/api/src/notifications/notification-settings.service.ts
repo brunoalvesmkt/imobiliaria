@@ -85,7 +85,12 @@ export class NotificationSettingsService {
     return this.prisma.notificationWhatsappRecipient.findMany({ where: { tenantId }, orderBy: { createdAt: "asc" } });
   }
 
-  /** Migra o `destinoNumero` único (modelo antigo) para um destinatário de verdade, uma única vez. */
+  /**
+   * Migra o `destinoNumero` único (modelo antigo) para um destinatário de verdade, uma única vez —
+   * e apaga o `destinoNumero` do JSON antigo depois de migrar, senão excluir o destinatário migrado
+   * faria `existingCount` voltar a 0 e essa mesma migração recriaria o destinatário na próxima leitura
+   * da lista, dando a impressão de que a exclusão "não funciona".
+   */
   private async migrateLegacyDestino(tenantId: string): Promise<void> {
     const existingCount = await this.prisma.notificationWhatsappRecipient.count({ where: { tenantId } });
     if (existingCount > 0) return;
@@ -97,6 +102,12 @@ export class NotificationSettingsService {
 
     await this.prisma.notificationWhatsappRecipient.create({
       data: { tenantId, numero: destinoNumero, tipos: [], ativo: true, origem: "migrated" },
+    });
+
+    const { destinoNumero: _removed, ...restLegacy } = config.notificacaoWhatsapp ?? {};
+    await this.prisma.featureFlag.update({
+      where: { tenantId_module: { tenantId, module: "configuracoes" } },
+      data: { config: { ...config, notificacaoWhatsapp: restLegacy } as unknown as Prisma.InputJsonValue },
     });
   }
 
@@ -167,9 +178,23 @@ export class NotificationSettingsService {
 
   async removeRecipient(id: string, actorId: string) {
     const tenantId = requireCurrentTenantId();
-    await this.getRecipient(id, tenantId);
+    const recipient = await this.getRecipient(id, tenantId);
 
     await this.prisma.notificationWhatsappRecipient.delete({ where: { id } });
+
+    // Se era o destinatário migrado do destinoNumero antigo, apaga o valor legado também — senão a
+    // próxima leitura da lista (migrateLegacyDestino) recria esse mesmo destinatário do zero.
+    if (recipient.origem === "migrated") {
+      const flag = await this.prisma.featureFlag.findUnique({ where: { tenantId_module: { tenantId, module: "configuracoes" } } });
+      const config = (flag?.config as ConfiguracoesFlagConfig | null) ?? {};
+      if (config.notificacaoWhatsapp?.destinoNumero) {
+        const { destinoNumero: _removed, ...restLegacy } = config.notificacaoWhatsapp;
+        await this.prisma.featureFlag.update({
+          where: { tenantId_module: { tenantId, module: "configuracoes" } },
+          data: { config: { ...config, notificacaoWhatsapp: restLegacy } as unknown as Prisma.InputJsonValue },
+        });
+      }
+    }
 
     await this.audit.record({
       actorId,

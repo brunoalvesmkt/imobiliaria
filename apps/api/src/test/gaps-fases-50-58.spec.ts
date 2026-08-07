@@ -255,10 +255,10 @@ describe("Gaps do prompt mestre — Fases 50-58", () => {
     expect(detail.responsavelId).toBe(other.userId);
   });
 
-  it("Fase 57: configurações de notificação por WhatsApp administrativo — GET/PATCH", async () => {
+  it("Fase 57: configurações de notificação por WhatsApp administrativo — GET/PATCH + destinatários", async () => {
     const before = await tenant.agent.get("/notifications/settings/whatsapp");
     expect(before.status).toBe(200);
-    expect(before.body).toEqual({ whatsAppNumberId: null, destinoNumero: null });
+    expect(before.body).toEqual({ whatsAppNumberId: null });
 
     const numberRes = await tenant.agent.post("/whatsapp/numbers").send({
       tipo: "atendente",
@@ -266,14 +266,21 @@ describe("Gaps do prompt mestre — Fases 50-58", () => {
       numero: `5511${Math.floor(Math.random() * 900000000 + 100000000)}`,
     });
 
-    const update = await tenant.agent
-      .patch("/notifications/settings/whatsapp")
-      .send({ whatsAppNumberId: numberRes.body.id, destinoNumero: "5511999998888" });
+    const update = await tenant.agent.patch("/notifications/settings/whatsapp").send({ whatsAppNumberId: numberRes.body.id });
     expect(update.status).toBe(200);
     expect(update.body.whatsAppNumberId).toBe(numberRes.body.id);
 
     const after = await tenant.agent.get("/notifications/settings/whatsapp");
-    expect(after.body.destinoNumero).toBe("5511999998888");
+    expect(after.body.whatsAppNumberId).toBe(numberRes.body.id);
+
+    // Destinatários (Fase Notificações): número de destino agora é uma lista própria, não um campo único.
+    const recipient = await tenant.agent.post("/notifications/settings/whatsapp/recipients").send({ nome: "Admin", numero: "5511999998888" });
+    expect(recipient.status).toBe(201);
+    expect(recipient.body.tipos).toEqual([]);
+
+    const list = await tenant.agent.get("/notifications/settings/whatsapp/recipients");
+    expect(list.status).toBe(200);
+    expect(list.body.find((r: { id: string }) => r.id === recipient.body.id)).toBeDefined();
   });
 
   it("Fase 58: busca por palavra-chave da base de conhecimento usa variações e prioridade para desempate", async () => {

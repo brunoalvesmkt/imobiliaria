@@ -98,6 +98,9 @@ model Tenant {
   emailLogs          EmailLog[]
   impersonationSessions ImpersonationSession[]
   notifications      Notification[]
+  notificationWhatsappRecipients NotificationWhatsappRecipient[]
+  notificationWhatsappDeliveries NotificationWhatsappDelivery[]
+  notificationTemplates          NotificationTemplate[]
   conversationEvaluations ConversationEvaluation[]
   quickMessages           QuickMessage[]
   customFieldDefinitions  CustomFieldDefinition[]
@@ -1611,4 +1614,61 @@ model Notification {
 
   @@index([tenantId, recipientUserId, readAt])
   @@map("notifications")
+}
+
+/// Destinatário de WhatsApp administrativo — recebe notificações críticas (ver NotificationsService.sendWhatsappAdmin).
+/// `tipos` vazio = recebe todos os tipos; preenchido = só os tipos listados.
+model NotificationWhatsappRecipient {
+  id        String   @id @default(uuid())
+  tenantId  String
+  nome      String?
+  numero    String
+  tipos     String[] @default([])
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant     Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  deliveries NotificationWhatsappDelivery[]
+
+  @@index([tenantId])
+  @@map("notification_whatsapp_recipients")
+}
+
+/// Histórico de envio por destinatário — uma linha por tentativa, sucesso ou falha.
+model NotificationWhatsappDelivery {
+  id          String   @id @default(uuid())
+  tenantId    String
+  recipientId String
+  tipo        String
+  mensagem    String
+  status      String // "sent" | "failed"
+  erro        String?
+  createdAt   DateTime @default(now())
+
+  tenant    Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  recipient NotificationWhatsappRecipient  @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, recipientId, createdAt])
+  @@map("notification_whatsapp_deliveries")
+}
+
+/// Override do texto (título/corpo) e da criticidade de um tipo de notificação — só existe uma linha
+/// quando o tenant customizou; sem override, `NotificationTemplatesService` usa o padrão (ver
+/// notification-types.ts). `critical` nulo = usa o padrão do tipo; `critical: true/false` explícito
+/// decide se esse tipo também dispara WhatsApp administrativo, além da notificação in-app.
+model NotificationTemplate {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tipo      String
+  titulo    String
+  corpo     String
+  critical  Boolean?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, tipo])
+  @@map("notification_templates")
 }

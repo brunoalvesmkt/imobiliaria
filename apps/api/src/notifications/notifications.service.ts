@@ -54,26 +54,26 @@ export class NotificationsService {
     this.realtime.emitToTenant(input.tenantId, "notification:new", notification);
 
     if (input.critical) {
-      await this.sendWhatsappAdmin(input.tenantId, `${input.titulo}\n${input.corpo}`);
+      await this.sendWhatsappAdmin(input.tenantId, input.tipo, `${input.titulo}\n${input.corpo}`);
     }
 
     return notification;
   }
 
   /**
-   * Canal opcional de notificação por WhatsApp administrativo (prompt
-   * mestre §6) — best-effort: sem configuração ou com o número desconectado,
-   * só loga e segue (nunca derruba a criação da notificação in-app por
-   * causa disso).
+   * Canal opcional de notificação por WhatsApp administrativo (prompt mestre §6) — best-effort: sem
+   * número de origem configurado ou desconectado, só loga e segue (nunca derruba a criação da
+   * notificação in-app por causa disso). Manda para todo `NotificationWhatsappRecipient` ativo cujo
+   * `tipos` esteja vazio (recebe tudo) ou contenha este `tipo` — grava uma `NotificationWhatsappDelivery`
+   * por tentativa (sucesso ou falha), é o histórico visível na tela de Configurações.
    */
-  private async sendWhatsappAdmin(tenantId: string, texto: string): Promise<void> {
+  private async sendWhatsappAdmin(tenantId: string, tipo: string, texto: string): Promise<void> {
     try {
       // Consulta direta (não via NotificationSettingsService, que depende do tenant ALS) —
       // `create()` é chamado a partir de listeners de evento que podem rodar fora de um contexto de tenant resolvido.
       const flag = await this.prisma.featureFlag.findUnique({ where: { tenantId_module: { tenantId, module: "configuracoes" } } });
-      const settings = (flag?.config as { notificacaoWhatsapp?: { whatsAppNumberId?: string | null; destinoNumero?: string | null } } | null)
-        ?.notificacaoWhatsapp;
-      if (!settings?.whatsAppNumberId || !settings.destinoNumero) {
+      const settings = (flag?.config as { notificacaoWhatsapp?: { whatsAppNumberId?: string | null } } | null)?.notificacaoWhatsapp;
+      if (!settings?.whatsAppNumberId) {
         return;
       }
 
@@ -82,12 +82,29 @@ export class NotificationsService {
         return;
       }
 
+      const recipients = await this.prisma.notificationWhatsappRecipient.findMany({ where: { tenantId, ativo: true } });
+      const matching = recipients.filter((r) => r.tipos.length === 0 || r.tipos.includes(tipo));
+      if (matching.length === 0) {
+        return;
+      }
+
       const provider = this.providers.resolve(number.provider);
-      await provider.sendMessage(
-        { id: number.id, tenantId: number.tenantId, numero: number.numero, externalAccountId: number.externalAccountId },
-        settings.destinoNumero,
-        { tipo: "text", texto },
-      );
+      for (const recipient of matching) {
+        try {
+          await provider.sendMessage(
+            { id: number.id, tenantId: number.tenantId, numero: number.numero, externalAccountId: number.externalAccountId },
+            recipient.numero,
+            { tipo: "text", texto },
+          );
+          await this.prisma.notificationWhatsappDelivery.create({
+            data: { tenantId, recipientId: recipient.id, tipo, mensagem: texto, status: "sent" },
+          });
+        } catch (error) {
+          await this.prisma.notificationWhatsappDelivery.create({
+            data: { tenantId, recipientId: recipient.id, tipo, mensagem: texto, status: "failed", erro: (error as Error).message },
+          });
+        }
+      }
     } catch (error) {
       this.logger.warn(`Falha ao enviar notificação por WhatsApp administrativo: ${(error as Error).message}`);
     }

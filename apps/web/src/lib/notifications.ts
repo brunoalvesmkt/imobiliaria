@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiGet, apiPatch } from "./api-client";
+import { apiDelete, apiGet, apiPatch, apiPost } from "./api-client";
 import { useRealtimeEvent } from "./realtime";
 
 export interface Notification {
@@ -59,7 +59,6 @@ export function useMarkAllNotificationsRead() {
 
 export interface NotificationWhatsappSettings {
   whatsAppNumberId: string | null;
-  destinoNumero: string | null;
 }
 
 export function useNotificationWhatsappSettings() {
@@ -74,5 +73,112 @@ export function useUpdateNotificationWhatsappSettings() {
   return useMutation({
     mutationFn: (input: NotificationWhatsappSettings) => apiPatch<NotificationWhatsappSettings>("/notifications/settings/whatsapp", input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications", "settings", "whatsapp"] }),
+  });
+}
+
+/** Só os tipos elegíveis para o filtro de destinatário (os hoje críticos por padrão) — ver `NOTIFICATION_TYPES` no backend. */
+export interface NotificationTypeOption {
+  tipo: string;
+  label: string;
+}
+
+export function useNotificationWhatsappTypes() {
+  return useQuery({
+    queryKey: ["notifications", "settings", "whatsapp", "types"],
+    queryFn: () => apiGet<NotificationTypeOption[]>("/notifications/settings/whatsapp/types"),
+    staleTime: 60_000,
+  });
+}
+
+export interface NotificationRecipient {
+  id: string;
+  nome: string | null;
+  numero: string;
+  tipos: string[];
+  ativo: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export function useNotificationRecipients() {
+  return useQuery({
+    queryKey: ["notifications", "settings", "whatsapp", "recipients"],
+    queryFn: () => apiGet<NotificationRecipient[]>("/notifications/settings/whatsapp/recipients"),
+  });
+}
+
+export function useCreateNotificationRecipient() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { nome?: string; numero: string; tipos?: string[] }) =>
+      apiPost<NotificationRecipient>("/notifications/settings/whatsapp/recipients", input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications", "settings", "whatsapp", "recipients"] }),
+  });
+}
+
+export function useUpdateNotificationRecipient(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Partial<{ nome: string; numero: string; tipos: string[]; ativo: boolean }>) =>
+      apiPatch<NotificationRecipient>(`/notifications/settings/whatsapp/recipients/${id}`, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications", "settings", "whatsapp", "recipients"] }),
+  });
+}
+
+export function useDeleteNotificationRecipient() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiDelete<{ status: "ok" }>(`/notifications/settings/whatsapp/recipients/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications", "settings", "whatsapp", "recipients"] }),
+  });
+}
+
+export interface NotificationDelivery {
+  id: string;
+  tipo: string;
+  mensagem: string;
+  status: "sent" | "failed";
+  erro: string | null;
+  createdAt: string;
+}
+
+export function useNotificationDeliveries(recipientId: string) {
+  return useQuery({
+    queryKey: ["notifications", "settings", "whatsapp", "recipients", recipientId, "deliveries"],
+    queryFn: () => apiGet<NotificationDelivery[]>(`/notifications/settings/whatsapp/recipients/${recipientId}/deliveries`),
+    enabled: !!recipientId,
+  });
+}
+
+export interface NotificationTemplate {
+  tipo: string;
+  titulo: string;
+  corpo: string;
+  critical: boolean;
+  placeholders: { key: string; label: string }[];
+  customized: boolean;
+}
+
+export function useNotificationTemplates() {
+  return useQuery({
+    queryKey: ["notifications", "settings", "templates"],
+    queryFn: () => apiGet<NotificationTemplate[]>("/notifications/settings/templates"),
+  });
+}
+
+export function useUpdateNotificationTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tipo, ...input }: { tipo: string; titulo?: string; corpo?: string; critical?: boolean }) =>
+      apiPatch<NotificationTemplate>(`/notifications/settings/templates/${tipo}`, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications", "settings", "templates"] }),
+  });
+}
+
+export function useResetNotificationTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (tipo: string) => apiDelete<NotificationTemplate>(`/notifications/settings/templates/${tipo}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications", "settings", "templates"] }),
   });
 }

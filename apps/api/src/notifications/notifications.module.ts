@@ -6,10 +6,12 @@ import { NotificationsService } from "./notifications.service";
 import { NotificationsListener } from "./notifications.listener";
 import { NotificationSettingsController } from "./notification-settings.controller";
 import { NotificationSettingsService } from "./notification-settings.service";
+import { NotificationTemplatesController } from "./notification-templates.controller";
+import { NotificationTemplatesService } from "./notification-templates.service";
 
 @Module({
   imports: [RealtimeModule, ProvidersModule],
-  controllers: [NotificationsController, NotificationSettingsController],
-  providers: [NotificationsService, NotificationsListener, NotificationSettingsService],
+  controllers: [NotificationsController, NotificationSettingsController, NotificationTemplatesController],
+  providers: [NotificationsService, NotificationsListener, NotificationSettingsService, NotificationTemplatesService],
 })
 export class NotificationsModule {}

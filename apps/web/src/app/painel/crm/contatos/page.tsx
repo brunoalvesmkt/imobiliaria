@@ -104,6 +104,7 @@ export default function ContatosPage() {
   ];
   const settingsItems: DropdownMenuItem[] = [
     { label: t("crm.origins.title"), onClick: () => router.push("/painel/configuracoes/origens") },
+    { label: t("crm.customFields.title"), onClick: () => router.push("/painel/configuracoes/campos-personalizados") },
     { label: t("crm.leadScore.configTitle"), onClick: () => router.push("/painel/configuracoes/lead-score") },
     { label: t("quality.configTitle"), onClick: () => router.push("/painel/configuracoes/qualidade") },
     { label: t("crm.visibility.configTitle"), onClick: () => router.push("/painel/configuracoes/crm-visibilidade") },

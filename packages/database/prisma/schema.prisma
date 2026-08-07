@@ -1625,6 +1625,11 @@ model NotificationWhatsappRecipient {
   numero    String
   tipos     String[] @default([])
   ativo     Boolean  @default(true)
+  // "manual" (cadastrado pela tela) ou "migrated" (veio do destinoNumero único do modelo antigo,
+  // ver NotificationSettingsService.migrateLegacyDestino) — só "manual" conta pro limite de
+  // destinatários (quantidade de usuários do painel), senão a migração automática consumiria a
+  // única vaga de um tenant pequeno antes do usuário conseguir cadastrar o próprio número.
+  origem    String   @default("manual")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

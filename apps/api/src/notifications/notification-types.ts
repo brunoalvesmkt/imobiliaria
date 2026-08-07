@@ -62,13 +62,6 @@ export const NOTIFICATION_TYPES: NotificationTypeDefinition[] = [
     placeholders: [{ key: "nota", label: "Nota da análise" }],
     critical: false,
   },
-  {
-    tipo: "invoice.overdue",
-    defaultTitulo: "Fatura vencida",
-    defaultCorpo: "Existe uma fatura vencida para esta empresa.",
-    placeholders: [],
-    critical: true,
-  },
 ];
 
 /** Só os tipos que disparam WhatsApp administrativo — usado no cadastro de destinatários. */

@@ -184,6 +184,33 @@ describe("Notificações — destinatários e templates de WhatsApp administrati
     expect(second.status).toBe(400);
   }, 15_000);
 
+  it("migração automática do destinoNumero antigo não consome a vaga do primeiro destinatário cadastrado manualmente", async () => {
+    const other = await signupTenant("notifrecip-legacy");
+    await superAdmin.patch(`/master/tenants/${other.tenantId}/modules`).send({ module: "whatsapp", enabled: true });
+
+    // Simula um tenant que já tinha o número de destino antigo configurado (modelo pré-refatoração),
+    // guardado solto em FeatureFlag("configuracoes").config — mesmo formato que `migrateLegacyDestino` lê.
+    await prisma.featureFlag.upsert({
+      where: { tenantId_module: { tenantId: other.tenantId, module: "configuracoes" } },
+      create: { tenantId: other.tenantId, module: "configuracoes", enabled: true, config: { notificacaoWhatsapp: { destinoNumero: "5511988887777" } } },
+      update: { config: { notificacaoWhatsapp: { destinoNumero: "5511988887777" } } },
+    });
+
+    // A primeira leitura da lista dispara a migração automática (tenant tem só 1 usuário ativo).
+    const list = await other.agent.get("/notifications/settings/whatsapp/recipients");
+    expect(list.status).toBe(200);
+    expect(list.body).toHaveLength(1);
+    expect(list.body[0].origem).toBe("migrated");
+
+    // O destinatário cadastrado de verdade pelo usuário não pode ser bloqueado pela vaga já consumida
+    // pela migração — só destinatários "manual" contam para o limite.
+    const created = await other.agent
+      .post("/notifications/settings/whatsapp/recipients")
+      .send({ nome: "Bruno", numero: "5511969382469" });
+    expect(created.status).toBe(201);
+    expect(created.body.origem).toBe("manual");
+  }, 15_000);
+
   it("templates: editar o corpo com placeholder muda a mensagem realmente enviada, e reset volta ao padrão", async () => {
     const recipient = await tenant.agent
       .post("/notifications/settings/whatsapp/recipients")

@@ -83,12 +83,6 @@ export class NotificationsListener implements OnModuleInit {
           link: payload.conversationId ? `/painel/atendimento/inbox?conversationId=${payload.conversationId}` : null,
         };
       },
-      "invoice.overdue": () => ({
-        tipo: "invoice.overdue",
-        recipientUserId: null,
-        values: {},
-        link: "/painel/financeiro",
-      }),
     };
 
     for (const [eventName, handler] of Object.entries(handlers) as [DomainEventName, (payload: DomainEventPayload) => HandlerResult][]) {

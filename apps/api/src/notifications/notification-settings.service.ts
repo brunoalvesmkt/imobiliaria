@@ -96,7 +96,7 @@ export class NotificationSettingsService {
     if (!destinoNumero) return;
 
     await this.prisma.notificationWhatsappRecipient.create({
-      data: { tenantId, numero: destinoNumero, tipos: [], ativo: true },
+      data: { tenantId, numero: destinoNumero, tipos: [], ativo: true, origem: "migrated" },
     });
   }
 
@@ -105,7 +105,7 @@ export class NotificationSettingsService {
     await this.migrateLegacyDestino(tenantId);
 
     const [count, limit] = await Promise.all([
-      this.prisma.notificationWhatsappRecipient.count({ where: { tenantId } }),
+      this.prisma.notificationWhatsappRecipient.count({ where: { tenantId, origem: "manual" } }),
       this.recipientLimit(tenantId),
     ]);
     if (count >= limit) {

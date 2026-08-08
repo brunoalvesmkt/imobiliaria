@@ -98,7 +98,8 @@ function NewTenantForm({ onDone }: { onDone: () => void }) {
     e.preventDefault();
     setError(null);
     try {
-      await createTenant.mutateAsync({ ...form, ...(form.planId ? { planId: form.planId } : {}) });
+      const { planId, ...rest } = form;
+      await createTenant.mutateAsync({ ...rest, ...(planId ? { planId } : {}) });
       setForm({ razaoSocial: "", cnpj: "", responsavel: "", email: "", senha: "", planId: "" });
       onDone();
     } catch (err) {

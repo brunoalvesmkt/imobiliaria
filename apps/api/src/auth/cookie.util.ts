@@ -77,6 +77,10 @@ export function clearAuthCookies(res: Response, accessCookieName: string, refres
   res.clearCookie(refreshCookieName, baseCookieOptions);
 }
 
+export function setSingleAuthCookie(res: Response, cookieName: string, token: string, maxAgeMs: number): void {
+  res.cookie(cookieName, token, { ...baseCookieOptions, maxAge: maxAgeMs });
+}
+
 export function setTwoFactorChallengeCookie(res: Response, token: string): void {
   res.cookie(TENANT_2FA_CHALLENGE_COOKIE, token, { ...baseCookieOptions, maxAge: 10 * 60 * 1000 });
 }

@@ -8,7 +8,7 @@ import { MenuLayoutProvider } from "@/lib/menu-layout";
 import { I18nProvider } from "@/lib/i18n";
 import { SiteMetadata } from "@/components/layout/site-metadata";
 
-const DEFAULT_TITLE = "Chatbot SaaS Platform";
+const DEFAULT_TITLE = "Plataforma Imobiliária";
 const DEFAULT_DESCRIPTION = "Atendimento, CRM, Chatbot, Automação e WhatsApp em uma plataforma só.";
 // Ver comentário equivalente em middleware.ts: busca só do servidor, usa
 // `API_URL` (rede interna do Docker em produção) em vez de `NEXT_PUBLIC_API_URL`
@@ -21,7 +21,7 @@ const API_URL = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http:
  * Busca o título/favicon já no servidor (mesmo endpoint público que
  * `SiteMetadata` usa no cliente) para o `<title>` correto ir dentro do HTML
  * desde a primeira resposta — sem isso, a aba mostra brevemente
- * "Chatbot SaaS Platform" até o JS do cliente trocar via `document.title`
+ * "Plataforma Imobiliária" até o JS do cliente trocar via `document.title`
  * (débito registrado desde a Fase de branding, fechado aqui). Best-effort,
  * mesmo raciocínio do `middleware.ts`: se a API estiver indisponível na hora
  * do build/request, cai no título padrão em vez de quebrar a página.

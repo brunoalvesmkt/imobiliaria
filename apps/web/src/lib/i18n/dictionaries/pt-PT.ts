@@ -17,7 +17,7 @@ const dictionary: Record<DictionaryKey, string> = {
   "nav.configuracoes": "Definições",
   "nav.comingSoon": "brevemente",
   "nav.comingSoonTitle": "Este ecrã chega numa próxima fase do frontend",
-  "nav.brand": "Chatbot SaaS",
+  "nav.brand": "Plataforma Imobiliária",
 
   "topbar.myData": "Os Meus Dados",
   "topbar.security": "Segurança",

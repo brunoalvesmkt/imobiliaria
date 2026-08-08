@@ -15,7 +15,7 @@ const dictionary = {
   "nav.configuracoes": "Configurações",
   "nav.comingSoon": "em breve",
   "nav.comingSoonTitle": "Tela chega em uma próxima fase do frontend",
-  "nav.brand": "Chatbot SaaS",
+  "nav.brand": "Plataforma Imobiliária",
 
   "topbar.myData": "Meus Dados",
   "topbar.security": "Segurança",

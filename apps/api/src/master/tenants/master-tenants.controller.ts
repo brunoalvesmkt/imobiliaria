@@ -6,7 +6,7 @@ import { MasterRolesGuard } from "../../common/master-roles/master-roles.guard";
 import { RequireMasterRole } from "../../common/master-roles/master-roles.decorator";
 import { CurrentUser } from "../../auth/current-user.decorator";
 import type { AuthenticatedRequestUser } from "../../auth/jwt-payload.interface";
-import { TENANT_ACCESS_COOKIE } from "../../auth/cookie.util";
+import { TENANT_ACCESS_COOKIE, setSingleAuthCookie } from "../../auth/cookie.util";
 import { MasterTenantsService } from "./master-tenants.service";
 import { UpdateTenantStatusDto } from "./dto/update-tenant-status.dto";
 import { AssignPlanDto } from "./dto/assign-plan.dto";
@@ -127,13 +127,7 @@ export class MasterTenantsController {
       actorFrom(user, req),
     );
 
-    res.cookie(TENANT_ACCESS_COOKIE, result.accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      path: "/",
-      maxAge: 15 * 60 * 1000,
-    });
+    setSingleAuthCookie(res, TENANT_ACCESS_COOKIE, result.accessToken, 15 * 60 * 1000);
 
     return { tenantId: result.tenantId, accessLevel: result.accessLevel };
   }

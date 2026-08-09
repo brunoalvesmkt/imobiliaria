@@ -5,6 +5,7 @@ import {
   useCreateNotificationRecipient,
   useDeleteNotificationRecipient,
   useNotificationDeliveries,
+  useNotificationRecipientLimit,
   useNotificationRecipients,
   useNotificationWhatsappSettings,
   useNotificationWhatsappTypes,
@@ -85,9 +86,12 @@ function RecipientsSection() {
   const { t } = useI18n();
   const recipients = useNotificationRecipients();
   const types = useNotificationWhatsappTypes();
+  const limitStatus = useNotificationRecipientLimit();
   const createRecipient = useCreateNotificationRecipient();
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const atLimit = !!limitStatus.data && limitStatus.data.count >= limitStatus.data.limit;
 
   return (
     <div className="flex flex-col gap-3">
@@ -100,6 +104,14 @@ function RecipientsSection() {
           {showForm ? t("common.cancel") : t("notifications.recipients.add")}
         </Button>
       </div>
+
+      {limitStatus.data && (
+        <Alert tone={atLimit ? "error" : "info"}>
+          {t("notifications.recipients.limitStatus")
+            .replace("{count}", String(limitStatus.data.count))
+            .replace("{limit}", String(limitStatus.data.limit))}
+        </Alert>
+      )}
 
       {error && <Alert tone="error">{error}</Alert>}
 

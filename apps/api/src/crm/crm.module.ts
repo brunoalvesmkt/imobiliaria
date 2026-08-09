@@ -23,6 +23,12 @@ import { ContactOriginsController } from "./contact-origins/contact-origins.cont
 import { ContactOriginsService } from "./contact-origins/contact-origins.service";
 import { TaskTypesController } from "./task-types/task-types.controller";
 import { TaskTypesService } from "./task-types/task-types.service";
+import { OpportunityReasonsController } from "./opportunity-reasons/opportunity-reasons.controller";
+import { OpportunityReasonsService } from "./opportunity-reasons/opportunity-reasons.service";
+import { ProductsController } from "./products/products.controller";
+import { ProductsService } from "./products/products.service";
+import { StageChecklistsController } from "./stage-checklists/stage-checklists.controller";
+import { StageChecklistsService } from "./stage-checklists/stage-checklists.service";
 
 @Module({
   imports: [
@@ -46,6 +52,9 @@ import { TaskTypesService } from "./task-types/task-types.service";
     CustomFieldsController,
     ContactOriginsController,
     TaskTypesController,
+    OpportunityReasonsController,
+    ProductsController,
+    StageChecklistsController,
   ],
   providers: [
     ContactsService,
@@ -57,6 +66,9 @@ import { TaskTypesService } from "./task-types/task-types.service";
     ContactOriginsService,
     TaskTypesService,
     CrmVisibilityConfigService,
+    OpportunityReasonsService,
+    ProductsService,
+    StageChecklistsService,
   ],
 })
 export class CrmModule {}

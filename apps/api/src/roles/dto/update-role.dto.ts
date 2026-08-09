@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { ArrayMaxSize, IsArray, IsOptional, IsString, MaxLength, MinLength, ValidateNested } from "class-validator";
+import { ArrayMaxSize, IsArray, IsBoolean, IsOptional, IsString, MaxLength, MinLength, ValidateNested } from "class-validator";
 import { PermissionInputDto } from "./permission-input.dto";
 
 export class UpdateRoleDto {
@@ -13,6 +13,10 @@ export class UpdateRoleDto {
   @IsString()
   @MaxLength(200)
   descricao?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  ativo?: boolean;
 
   @IsOptional()
   @IsArray()

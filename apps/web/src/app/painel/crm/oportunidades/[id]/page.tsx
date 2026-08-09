@@ -14,6 +14,10 @@ import {
   useDeleteOpportunity,
 } from "@/lib/crm";
 import { ContactTasks } from "@/components/crm/contact-tasks";
+import { CloseOpportunityModal } from "@/components/crm/close-opportunity-modal";
+import { OpportunityItemsSection } from "@/components/crm/opportunity-items-section";
+import { OpportunityChecklistPanel } from "@/components/crm/opportunity-checklist-panel";
+import { useChecklistHistory } from "@/lib/stage-checklists";
 import { Field } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
@@ -35,7 +39,8 @@ export default function OpportunityDetailPage() {
   const deleteOpportunity = useDeleteOpportunity();
   const isAdmin = useIsAdmin();
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ valor: "", produto: "", servico: "", previsaoFechamento: "", observacoes: "" });
+  const [closingResultado, setClosingResultado] = useState<"won" | "lost" | null>(null);
+  const [form, setForm] = useState({ previsaoFechamento: "", observacoes: "" });
   const [transferring, setTransferring] = useState(false);
   const [transferTarget, setTransferTarget] = useState("");
   const [transferringFunnel, setTransferringFunnel] = useState(false);
@@ -52,9 +57,6 @@ export default function OpportunityDetailPage() {
 
   function startEditing() {
     setForm({
-      valor: data.valor ?? "",
-      produto: data.produto ?? "",
-      servico: data.servico ?? "",
       previsaoFechamento: data.previsaoFechamento ? data.previsaoFechamento.slice(0, 10) : "",
       observacoes: data.observacoes ?? "",
     });
@@ -63,9 +65,6 @@ export default function OpportunityDetailPage() {
 
   async function onSave() {
     await updateOpportunity.mutateAsync({
-      ...(form.valor ? { valor: Number(form.valor) } : {}),
-      produto: form.produto,
-      servico: form.servico,
       ...(form.previsaoFechamento ? { previsaoFechamento: form.previsaoFechamento } : {}),
       observacoes: form.observacoes,
     });
@@ -102,7 +101,7 @@ export default function OpportunityDetailPage() {
               <>
                 <button
                   type="button"
-                  onClick={() => closeOpportunity.mutate({ id: data.id, resultado: "won" })}
+                  onClick={() => setClosingResultado("won")}
                   className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
                 >
                   <ThumbIcon direction="up" />
@@ -110,7 +109,7 @@ export default function OpportunityDetailPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => closeOpportunity.mutate({ id: data.id, resultado: "lost" })}
+                  onClick={() => setClosingResultado("lost")}
                   className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
                 >
                   <ThumbIcon direction="down" />
@@ -203,15 +202,12 @@ export default function OpportunityDetailPage() {
         {editing ? (
           <div className="flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-3">
-              <Field label={t("crm.funnel.value")} type="number" value={form.valor} onChange={(e) => setForm({ ...form, valor: e.target.value })} />
               <Field
                 label={t("crm.opportunityDetail.closeDate")}
                 type="date"
                 value={form.previsaoFechamento}
                 onChange={(e) => setForm({ ...form, previsaoFechamento: e.target.value })}
               />
-              <Field label={t("crm.opportunityDetail.product")} value={form.produto} onChange={(e) => setForm({ ...form, produto: e.target.value })} />
-              <Field label={t("crm.opportunityDetail.service")} value={form.servico} onChange={(e) => setForm({ ...form, servico: e.target.value })} />
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-ink">{t("crm.contacts.notes")}</label>
@@ -238,8 +234,6 @@ export default function OpportunityDetailPage() {
               label={t("crm.opportunityDetail.closeDate")}
               value={data.previsaoFechamento ? new Date(data.previsaoFechamento).toLocaleDateString(locale) : null}
             />
-            <Info label={t("crm.opportunityDetail.product")} value={data.produto} />
-            <Info label={t("crm.opportunityDetail.service")} value={data.servico} />
             {data.observacoes && (
               <div className="col-span-2">
                 <dt className="text-xs font-medium uppercase tracking-wide text-ink-faint">{t("crm.contacts.notes")}</dt>
@@ -249,6 +243,10 @@ export default function OpportunityDetailPage() {
           </dl>
         )}
       </section>
+
+      <OpportunityItemsSection opportunityId={data.id} />
+
+      <ChecklistSection opportunityId={data.id} />
 
       <section className="rounded-lg border border-line bg-surface p-5">
         <h2 className="mb-4 text-sm font-semibold text-ink">{t("crm.opportunityDetail.responsavelSection")}</h2>
@@ -428,6 +426,20 @@ export default function OpportunityDetailPage() {
           })}
         </ul>
       </section>
+
+      {closingResultado && (
+        <CloseOpportunityModal
+          resultado={closingResultado}
+          saving={closeOpportunity.isPending}
+          onClose={() => setClosingResultado(null)}
+          onConfirm={(input) => {
+            closeOpportunity.mutate(
+              { id: data.id, resultado: closingResultado, ...input },
+              { onSuccess: () => setClosingResultado(null) },
+            );
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -443,6 +455,46 @@ function ThumbIcon({ direction }: { direction: "up" | "down" }) {
     >
       <path d="M2 21h2a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1H2v11ZM22 11.5a2 2 0 0 0-2-2h-5.42l.72-3.6a2 2 0 0 0-.49-1.74A2 2 0 0 0 13.28 3.4h-.09a1 1 0 0 0-.9.56L8.5 10H7v11h11.06a2 2 0 0 0 1.92-1.42l1.83-6.15a2 2 0 0 0 .19-.84v-1.09Z" />
     </svg>
+  );
+}
+
+function ChecklistSection({ opportunityId }: { opportunityId: string }) {
+  const { t, locale } = useI18n();
+  const history = useChecklistHistory(opportunityId);
+  const [showHistory, setShowHistory] = useState(false);
+
+  return (
+    <section className="rounded-lg border border-line bg-surface p-5">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-ink">{t("crm.checklist.sectionTitle")}</h2>
+        {(history.data?.length ?? 0) > 0 && (
+          <button type="button" onClick={() => setShowHistory((v) => !v)} className="text-xs font-medium text-ink-dim hover:underline">
+            {t("crm.checklist.historyTitle")}
+          </button>
+        )}
+      </div>
+
+      <OpportunityChecklistPanel opportunityId={opportunityId} />
+
+      {showHistory && (
+        <div className="mt-3 flex flex-col gap-2 border-t border-line pt-3">
+          {history.data?.length === 0 && <p className="text-xs text-ink-faint">{t("crm.checklist.historyEmpty")}</p>}
+          {history.data?.map((entry) => (
+            <div key={entry.id} className="rounded-md border border-line bg-surface-alt p-2 text-xs">
+              <p className="text-ink-faint">{new Date(entry.createdAt).toLocaleString(locale)}</p>
+              <ul className="mt-1 flex flex-col gap-0.5">
+                {entry.itens.map((item) => (
+                  <li key={item.itemId} className="text-ink-dim">
+                    {item.titulo}: <span className="font-medium text-ink">{item.resultado === "concluido" ? t("crm.checklist.done") : t("crm.checklist.notDone")}</span>
+                    {item.motivo && ` — ${item.motivo}`}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 

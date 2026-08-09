@@ -187,9 +187,14 @@ export function defaultDataFor(type: FlowNodeType, presetTipo?: MessageMediaType
     case "message":
       return { tipo: presetTipo ?? "text", texto: "", delayMs: DEFAULT_DELAY_MS } satisfies MessageNodeData;
     case "question":
-      return { texto: "", variavel: "", delayMs: DEFAULT_DELAY_MS } satisfies QuestionNodeData;
+      return { texto: "", variavel: "", maxTentativas: 3, delayMs: DEFAULT_DELAY_MS } satisfies QuestionNodeData;
     case "menu":
-      return { texto: "", opcoes: [{ chave: "1", texto: "" }], delayMs: DEFAULT_DELAY_MS } satisfies MenuNodeData;
+      return {
+        texto: "",
+        opcoes: [{ chave: "1", texto: "" }],
+        maxTentativas: 3,
+        delayMs: DEFAULT_DELAY_MS,
+      } satisfies MenuNodeData;
     case "condition":
       return { campo: "", operador: "equals" } satisfies ConditionNodeData;
     case "subflow":

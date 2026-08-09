@@ -581,13 +581,8 @@ export function useResponsavelOptions() {
 export function useUpdateOpportunity(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: {
-      valor?: number;
-      produto?: string;
-      servico?: string;
-      previsaoFechamento?: string;
-      observacoes?: string;
-    }) => apiPatch<OpportunityDetail>(`/crm/opportunities/${id}`, input),
+    mutationFn: (input: { previsaoFechamento?: string; observacoes?: string }) =>
+      apiPatch<OpportunityDetail>(`/crm/opportunities/${id}`, input),
     onSuccess: (updated) => {
       queryClient.invalidateQueries({ queryKey: ["crm", "opportunities"] });
       queryClient.setQueryData(["crm", "opportunities", "detail", id], updated);
@@ -634,11 +629,71 @@ export function useReorderOpportunities() {
   });
 }
 
+export interface OpportunityItem {
+  id: string;
+  tenantId: string;
+  opportunityId: string;
+  productId: string | null;
+  nome: string;
+  preco: string;
+  quantidade: number;
+  createdAt: string;
+}
+
+export function useOpportunityItems(opportunityId: string) {
+  return useQuery({
+    queryKey: ["crm", "opportunities", "detail", opportunityId, "items"],
+    queryFn: () => apiGet<OpportunityItem[]>(`/crm/opportunities/${opportunityId}/items`),
+    enabled: !!opportunityId,
+  });
+}
+
+function invalidateOpportunityDetail(queryClient: ReturnType<typeof useQueryClient>, opportunityId: string) {
+  queryClient.invalidateQueries({ queryKey: ["crm", "opportunities", "detail", opportunityId] });
+  queryClient.invalidateQueries({ queryKey: ["crm", "opportunities"] });
+}
+
+export function useAddOpportunityItem(opportunityId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { productId?: string; nome: string; preco: number; quantidade?: number }) =>
+      apiPost<OpportunityItem>(`/crm/opportunities/${opportunityId}/items`, input),
+    onSuccess: () => invalidateOpportunityDetail(queryClient, opportunityId),
+  });
+}
+
+export function useUpdateOpportunityItem(opportunityId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ itemId, ...input }: { itemId: string; nome?: string; preco?: number; quantidade?: number }) =>
+      apiPatch<OpportunityItem>(`/crm/opportunities/${opportunityId}/items/${itemId}`, input),
+    onSuccess: () => invalidateOpportunityDetail(queryClient, opportunityId),
+  });
+}
+
+export function useRemoveOpportunityItem(opportunityId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (itemId: string) => apiDelete<{ status: "ok" }>(`/crm/opportunities/${opportunityId}/items/${itemId}`),
+    onSuccess: () => invalidateOpportunityDetail(queryClient, opportunityId),
+  });
+}
+
 export function useCloseOpportunity() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, resultado, motivo }: { id: string; resultado: "won" | "lost"; motivo?: string }) =>
-      apiPatch<Opportunity>(`/crm/opportunities/${id}/close`, { resultado, motivo }),
+    mutationFn: ({
+      id,
+      resultado,
+      motivo,
+      observacao,
+    }: {
+      id: string;
+      resultado: "won" | "lost";
+      motivo?: string | undefined;
+      observacao?: string | undefined;
+    }) =>
+      apiPatch<Opportunity>(`/crm/opportunities/${id}/close`, { resultado, motivo, observacao }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["crm", "opportunities"] }),
   });
 }

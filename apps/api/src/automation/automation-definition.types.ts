@@ -221,13 +221,17 @@ export const ACTION_REQUIRED_MODULE: Partial<Record<ActionType, string>> = {
  * esses nomes técnicos exatos. Portado de `apps/web/src/lib/automation.ts`
  * (fonte única agora é o backend).
  */
+// Campos "*Id" brutos (contactId/opportunityId/taskId) foram removidos das
+// listas abaixo — sem seletor por nome (ver ID_FIELD_KIND) e sem valor
+// prático como condição de automação, já que ninguém sabe de cor o id de um
+// contato/oportunidade/tarefa específico para comparar.
 export const TRIGGER_FIELDS: Record<DomainEventName, string[]> = {
   "conversation.created": ["conversationId", "origem", "contatoNumero"],
   "message.received": ["conversationId", "conteudo", "direction"],
-  "opportunity.stage_changed": ["opportunityId", "stageId", "stageIdAnterior"],
-  "opportunity.won": ["opportunityId", "motivo", "valor"],
-  "opportunity.lost": ["opportunityId", "motivo", "valor"],
-  "crm_task.created": ["taskId", "tipo", "titulo"],
+  "opportunity.stage_changed": ["stageId", "stageIdAnterior"],
+  "opportunity.won": ["motivo", "valor"],
+  "opportunity.lost": ["motivo", "valor"],
+  "crm_task.created": ["tipo", "titulo"],
   "chatbot.flow.completed": ["chatbotExecutionId", "chatbotFlowId"],
   "chatbot.flow.abandoned": ["chatbotExecutionId", "chatbotFlowId"],
   "chatbot.flow.transferred": ["chatbotExecutionId", "chatbotFlowId"],
@@ -235,21 +239,21 @@ export const TRIGGER_FIELDS: Record<DomainEventName, string[]> = {
   "invoice.overdue": ["invoiceId", "subscriptionId"],
   "subscription.activated": ["subscriptionId", "planId"],
   "subscription.cancelled": ["subscriptionId", "motivo"],
-  "contact.created": ["contactId", "origemId"],
+  "contact.created": ["origemId"],
   "conversation.closed": ["conversationId"],
   "conversation.transferred": ["conversationId", "filaId", "atendenteId"],
   "whatsapp_number.connected": ["whatsAppNumberId"],
   "whatsapp_number.disconnected": ["whatsAppNumberId"],
-  "crm_task.overdue": ["taskId", "tipo", "titulo"],
-  "contact.lead_hot": ["contactId", "score"],
+  "crm_task.overdue": ["tipo", "titulo"],
+  "contact.lead_hot": ["score"],
   "conversation.analysis_completed": ["conversationId", "nota"],
-  "crm_task.completed": ["taskId", "tipo", "titulo"],
-  "crm_task.reassigned": ["taskId", "responsavelId", "responsavelIdAnterior"],
-  "opportunity.responsavel_changed": ["opportunityId", "responsavelId", "responsavelIdAnterior"],
+  "crm_task.completed": ["tipo", "titulo"],
+  "crm_task.reassigned": ["responsavelId", "responsavelIdAnterior"],
+  "opportunity.responsavel_changed": ["responsavelId", "responsavelIdAnterior"],
   "contact.imported": ["quantidade", "origem"],
   "contact.merged": ["contatoSobrevivente", "contatoMesclado"],
-  "crm_task.due_soon": ["taskId", "tipo", "titulo"],
-  "opportunity.stage_stagnant": ["opportunityId", "stageId", "diasParado"],
+  "crm_task.due_soon": ["tipo", "titulo"],
+  "opportunity.stage_stagnant": ["stageId", "diasParado"],
 };
 
 /** Campos cujo valor é o ID de uma entidade com nome — o frontend mostra um seletor por nome em vez de um campo de texto livre. */

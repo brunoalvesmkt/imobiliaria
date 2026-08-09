@@ -85,6 +85,16 @@ export class NotificationSettingsService {
     return this.prisma.notificationWhatsappRecipient.findMany({ where: { tenantId }, orderBy: { createdAt: "asc" } });
   }
 
+  /** Contagem atual vs. limite do plano — usado pelo aviso proativo na tela, antes do usuário tentar cadastrar e esbarrar no erro de `createRecipient`. */
+  async getRecipientLimitStatus(): Promise<{ count: number; limit: number }> {
+    const tenantId = requireCurrentTenantId();
+    const [count, limit] = await Promise.all([
+      this.prisma.notificationWhatsappRecipient.count({ where: { tenantId, origem: "manual" } }),
+      this.recipientLimit(tenantId),
+    ]);
+    return { count, limit };
+  }
+
   /**
    * Migra o `destinoNumero` único (modelo antigo) para um destinatário de verdade, uma única vez —
    * e apaga o `destinoNumero` do JSON antigo depois de migrar, senão excluir o destinatário migrado

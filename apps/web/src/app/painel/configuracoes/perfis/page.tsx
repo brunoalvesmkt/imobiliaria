@@ -29,6 +29,7 @@ export default function RolesPage() {
   const [showForm, setShowForm] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Role | null>(null);
   const deleteRole = useDeleteRole();
+  const updateRole = useUpdateRole();
   const [error, setError] = useState<string | null>(null);
 
   async function onDelete(role: Role, substitutaRoleId?: string) {
@@ -77,11 +78,20 @@ export default function RolesPage() {
               <div>
                 <p className="text-sm font-medium text-ink">
                   {role.nome} {role.isSystem && <span className="ml-1 text-xs font-normal text-ink-faint">({t("roles.system")})</span>}
+                  {!role.ativo && <span className="ml-1 text-xs font-normal text-red-600">({t("roles.inactive")})</span>}
                 </p>
                 {role.descricao && <p className="text-xs text-ink-dim">{role.descricao}</p>}
               </div>
               {!role.isSystem && (
                 <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-ink-dim">
+                    <input
+                      type="checkbox"
+                      checked={role.ativo}
+                      onChange={(e) => updateRole.mutate({ id: role.id, ativo: e.target.checked })}
+                    />
+                    {t("roles.active")}
+                  </label>
                   <button
                     type="button"
                     onClick={() => {
@@ -161,8 +171,16 @@ function RoleForm({ roleId, onDone }: { roleId?: string; onDone: () => void }) {
     const key = permissionKey(module, action);
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
+      const turningOn = !next.has(key);
+      if (turningOn) next.add(key);
+      else next.delete(key);
+
+      if (action === "administer" && turningOn) {
+        for (const otherAction of options.data?.actions ?? []) {
+          next.add(permissionKey(module, otherAction));
+        }
+      }
+
       return next;
     });
   }

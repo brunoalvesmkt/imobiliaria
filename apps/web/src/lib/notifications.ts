@@ -125,6 +125,13 @@ export function useUpdateNotificationRecipient(id: string) {
   });
 }
 
+export function useNotificationRecipientLimit() {
+  return useQuery({
+    queryKey: ["notifications", "settings", "whatsapp", "recipients", "limit"],
+    queryFn: () => apiGet<{ count: number; limit: number }>("/notifications/settings/whatsapp/recipients/limit"),
+  });
+}
+
 export function useDeleteNotificationRecipient() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -155,6 +162,7 @@ export interface NotificationTemplate {
   titulo: string;
   corpo: string;
   critical: boolean;
+  ativo: boolean;
   placeholders: { key: string; label: string }[];
   customized: boolean;
 }
@@ -169,7 +177,7 @@ export function useNotificationTemplates() {
 export function useUpdateNotificationTemplate() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ tipo, ...input }: { tipo: string; titulo?: string; corpo?: string; critical?: boolean }) =>
+    mutationFn: ({ tipo, ...input }: { tipo: string; titulo?: string; corpo?: string; critical?: boolean; ativo?: boolean }) =>
       apiPatch<NotificationTemplate>(`/notifications/settings/templates/${tipo}`, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications", "settings", "templates"] }),
   });

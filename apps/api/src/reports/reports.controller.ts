@@ -67,9 +67,11 @@ export class ReportsController {
     return this.service.financeiro(dto);
   }
 
+  // Só quem administra Atendimento vê a análise de atendimento com IA — não
+  // basta ter acesso geral a Relatórios (documento de alterações, item 3).
   @Get("qualidade")
   @RequireModule("qualidade_ia")
-  @RequirePermission("relatorios", "view")
+  @RequirePermission("atendimento", "administer")
   qualidade(@Query() dto: DateRangeDto) {
     return this.service.qualidade(dto);
   }

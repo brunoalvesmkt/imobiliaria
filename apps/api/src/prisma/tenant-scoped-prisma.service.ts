@@ -595,4 +595,143 @@ export class TenantScopedPrismaService {
         this.prisma.customFieldDefinition.delete({ where: { id: args.where.id, tenantId } }),
     };
   }
+
+  get opportunityReason() {
+    const tenantId = requireCurrentTenantId();
+    return {
+      findMany: (args: Omit<Prisma.OpportunityReasonFindManyArgs, "where"> & { where?: Prisma.OpportunityReasonWhereInput } = {}) =>
+        this.prisma.opportunityReason.findMany({ ...args, where: { ...args.where, tenantId } }),
+
+      findFirst: (args: Omit<Prisma.OpportunityReasonFindFirstArgs, "where"> & { where?: Prisma.OpportunityReasonWhereInput } = {}) =>
+        this.prisma.opportunityReason.findFirst({ ...args, where: { ...args.where, tenantId } }),
+
+      create: (
+        args: Omit<Prisma.OpportunityReasonCreateArgs, "data"> & { data: Omit<Prisma.OpportunityReasonUncheckedCreateInput, "tenantId"> },
+      ) => this.prisma.opportunityReason.create({ ...args, data: { ...args.data, tenantId } }),
+
+      update: (args: { where: { id: string }; data: Prisma.OpportunityReasonUncheckedUpdateInput }) =>
+        this.prisma.opportunityReason.update({ where: { id: args.where.id, tenantId }, data: args.data }),
+
+      delete: (args: { where: { id: string } }) => this.prisma.opportunityReason.delete({ where: { id: args.where.id, tenantId } }),
+    };
+  }
+
+  get product() {
+    const tenantId = requireCurrentTenantId();
+    return {
+      findMany: (args: Omit<Prisma.ProductFindManyArgs, "where"> & { where?: Prisma.ProductWhereInput } = {}) =>
+        this.prisma.product.findMany({ ...args, where: { ...args.where, tenantId } }),
+
+      findFirst: (args: Omit<Prisma.ProductFindFirstArgs, "where"> & { where?: Prisma.ProductWhereInput } = {}) =>
+        this.prisma.product.findFirst({ ...args, where: { ...args.where, tenantId } }),
+
+      create: (args: Omit<Prisma.ProductCreateArgs, "data"> & { data: Omit<Prisma.ProductUncheckedCreateInput, "tenantId"> }) =>
+        this.prisma.product.create({ ...args, data: { ...args.data, tenantId } }),
+
+      update: (args: { where: { id: string }; data: Prisma.ProductUncheckedUpdateInput }) =>
+        this.prisma.product.update({ where: { id: args.where.id, tenantId }, data: args.data }),
+
+      delete: (args: { where: { id: string } }) => this.prisma.product.delete({ where: { id: args.where.id, tenantId } }),
+    };
+  }
+
+  get opportunityItem() {
+    const tenantId = requireCurrentTenantId();
+    return {
+      findMany: (args: Omit<Prisma.OpportunityItemFindManyArgs, "where"> & { where?: Prisma.OpportunityItemWhereInput } = {}) =>
+        this.prisma.opportunityItem.findMany({ ...args, where: { ...args.where, tenantId } }),
+
+      findFirst: (args: Omit<Prisma.OpportunityItemFindFirstArgs, "where"> & { where?: Prisma.OpportunityItemWhereInput } = {}) =>
+        this.prisma.opportunityItem.findFirst({ ...args, where: { ...args.where, tenantId } }),
+
+      create: (
+        args: Omit<Prisma.OpportunityItemCreateArgs, "data"> & { data: Omit<Prisma.OpportunityItemUncheckedCreateInput, "tenantId"> },
+      ) => this.prisma.opportunityItem.create({ ...args, data: { ...args.data, tenantId } }),
+
+      update: (args: { where: { id: string }; data: Prisma.OpportunityItemUncheckedUpdateInput }) =>
+        this.prisma.opportunityItem.update({ where: { id: args.where.id, tenantId }, data: args.data }),
+
+      delete: (args: { where: { id: string } }) => this.prisma.opportunityItem.delete({ where: { id: args.where.id, tenantId } }),
+    };
+  }
+
+  /** PK é `tenantId` (uma linha por tenant) — sem `findMany`, sempre um registro. */
+  get tenantStorageUsage() {
+    const tenantId = requireCurrentTenantId();
+    return {
+      findUnique: () => this.prisma.tenantStorageUsage.findUnique({ where: { tenantId } }),
+
+      upsert: (args: { create: Omit<Prisma.TenantStorageUsageUncheckedCreateInput, "tenantId">; update: Prisma.TenantStorageUsageUncheckedUpdateInput }) =>
+        this.prisma.tenantStorageUsage.upsert({
+          where: { tenantId },
+          create: { ...args.create, tenantId },
+          update: args.update,
+        }),
+    };
+  }
+
+  get stageChecklistItem() {
+    const tenantId = requireCurrentTenantId();
+    return {
+      findMany: (args: Omit<Prisma.StageChecklistItemFindManyArgs, "where"> & { where?: Prisma.StageChecklistItemWhereInput } = {}) =>
+        this.prisma.stageChecklistItem.findMany({ ...args, where: { ...args.where, tenantId } }),
+
+      findFirst: (args: Omit<Prisma.StageChecklistItemFindFirstArgs, "where"> & { where?: Prisma.StageChecklistItemWhereInput } = {}) =>
+        this.prisma.stageChecklistItem.findFirst({ ...args, where: { ...args.where, tenantId } }),
+
+      create: (
+        args: Omit<Prisma.StageChecklistItemCreateArgs, "data"> & { data: Omit<Prisma.StageChecklistItemUncheckedCreateInput, "tenantId"> },
+      ) => this.prisma.stageChecklistItem.create({ ...args, data: { ...args.data, tenantId } }),
+
+      update: (args: { where: { id: string }; data: Prisma.StageChecklistItemUncheckedUpdateInput }) =>
+        this.prisma.stageChecklistItem.update({ where: { id: args.where.id, tenantId }, data: args.data }),
+
+      delete: (args: { where: { id: string } }) => this.prisma.stageChecklistItem.delete({ where: { id: args.where.id, tenantId } }),
+    };
+  }
+
+  get opportunityStageChecklistFill() {
+    const tenantId = requireCurrentTenantId();
+    return {
+      findMany: (
+        args: Omit<Prisma.OpportunityStageChecklistFillFindManyArgs, "where"> & {
+          where?: Prisma.OpportunityStageChecklistFillWhereInput;
+        } = {},
+      ) => this.prisma.opportunityStageChecklistFill.findMany({ ...args, where: { ...args.where, tenantId } }),
+
+      create: (
+        args: Omit<Prisma.OpportunityStageChecklistFillCreateArgs, "data"> & {
+          data: Omit<Prisma.OpportunityStageChecklistFillUncheckedCreateInput, "tenantId">;
+        },
+      ) => this.prisma.opportunityStageChecklistFill.create({ ...args, data: { ...args.data, tenantId } }),
+    };
+  }
+
+  get opportunityChecklistProgress() {
+    const tenantId = requireCurrentTenantId();
+    return {
+      findMany: (
+        args: Omit<Prisma.OpportunityChecklistProgressFindManyArgs, "where"> & {
+          where?: Prisma.OpportunityChecklistProgressWhereInput;
+        } = {},
+      ) => this.prisma.opportunityChecklistProgress.findMany({ ...args, where: { ...args.where, tenantId } }),
+
+      upsert: (args: {
+        opportunityId: string;
+        itemId: string;
+        stageId: string;
+        create: Omit<Prisma.OpportunityChecklistProgressUncheckedCreateInput, "tenantId" | "opportunityId" | "itemId" | "stageId">;
+        update: Prisma.OpportunityChecklistProgressUncheckedUpdateInput;
+      }) =>
+        this.prisma.opportunityChecklistProgress.upsert({
+          where: { opportunityId_itemId: { opportunityId: args.opportunityId, itemId: args.itemId } },
+          create: { ...args.create, tenantId, opportunityId: args.opportunityId, itemId: args.itemId, stageId: args.stageId },
+          update: args.update,
+        }),
+
+      deleteMany: (
+        args: Omit<Prisma.OpportunityChecklistProgressDeleteManyArgs, "where"> & { where?: Prisma.OpportunityChecklistProgressWhereInput } = {},
+      ) => this.prisma.opportunityChecklistProgress.deleteMany({ ...args, where: { ...args.where, tenantId } }),
+    };
+  }
 }

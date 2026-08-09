@@ -128,7 +128,7 @@ export class AuthService {
       const adminRole = await tx.role.create({
         data: {
           tenantId: tenant.id,
-          nome: "admin",
+          nome: "Admin",
           descricao: "Acesso total aos módulos ativos e a Configurações",
           isSystem: true,
         },

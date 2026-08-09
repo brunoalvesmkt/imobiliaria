@@ -15,6 +15,8 @@ import { MoveStageDto } from "./dto/move-stage.dto";
 import { CloseOpportunityDto } from "./dto/close-opportunity.dto";
 import { ReorderDto } from "./dto/reorder.dto";
 import { TransferResponsavelDto } from "./dto/transfer-responsavel.dto";
+import { CreateOpportunityItemDto } from "./dto/create-opportunity-item.dto";
+import { UpdateOpportunityItemDto } from "./dto/update-opportunity-item.dto";
 
 @Controller("crm/opportunities")
 @UseGuards(TenantAuthGuard, ModuleActiveGuard, PermissionsGuard)
@@ -81,5 +83,34 @@ export class OpportunitiesController {
   @RequirePermission("crm", "edit")
   reorder(@Body() dto: ReorderDto, @CurrentUser() user: AuthenticatedRequestUser) {
     return this.service.reorder(dto.stageId, dto.orderedIds, user.id);
+  }
+
+  @Get(":id/items")
+  @RequirePermission("crm", "view")
+  listItems(@Param("id") id: string) {
+    return this.service.listItems(id);
+  }
+
+  @Post(":id/items")
+  @RequirePermission("crm", "edit")
+  addItem(@Param("id") id: string, @Body() dto: CreateOpportunityItemDto, @CurrentUser() user: AuthenticatedRequestUser) {
+    return this.service.addItem(id, dto, user.id, user.roleId);
+  }
+
+  @Patch(":id/items/:itemId")
+  @RequirePermission("crm", "edit")
+  updateItem(
+    @Param("id") id: string,
+    @Param("itemId") itemId: string,
+    @Body() dto: UpdateOpportunityItemDto,
+    @CurrentUser() user: AuthenticatedRequestUser,
+  ) {
+    return this.service.updateItem(id, itemId, dto, user.id, user.roleId);
+  }
+
+  @Delete(":id/items/:itemId")
+  @RequirePermission("crm", "edit")
+  removeItem(@Param("id") id: string, @Param("itemId") itemId: string, @CurrentUser() user: AuthenticatedRequestUser) {
+    return this.service.removeItem(id, itemId, user.id, user.roleId);
   }
 }

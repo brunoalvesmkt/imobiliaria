@@ -62,6 +62,13 @@ export const NOTIFICATION_TYPES: NotificationTypeDefinition[] = [
     placeholders: [{ key: "nota", label: "Nota da análise" }],
     critical: false,
   },
+  {
+    tipo: "storage.limit_reached",
+    defaultTitulo: "Limite de armazenamento atingido",
+    defaultCorpo: "O consumo de armazenamento da sua empresa atingiu {{percentual}}% do limite contratado.",
+    placeholders: [{ key: "percentual", label: "Percentual do limite atingido" }],
+    critical: true,
+  },
 ];
 
 /** Só os tipos que disparam WhatsApp administrativo — usado no cadastro de destinatários. */

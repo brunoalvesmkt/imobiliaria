@@ -45,9 +45,10 @@ export function NotificationTemplatesSection() {
 function TemplateRow({ template, onEdit }: { template: NotificationTemplate; onEdit: () => void }) {
   const { t } = useI18n();
   const reset = useResetNotificationTemplate();
+  const update = useUpdateNotificationTemplate();
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-line bg-surface p-4">
+    <div className={`flex flex-col gap-2 rounded-lg border border-line bg-surface p-4 ${template.ativo ? "" : "opacity-60"}`}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
@@ -67,7 +68,15 @@ function TemplateRow({ template, onEdit }: { template: NotificationTemplate; onE
           </div>
           <p className="mt-1 text-xs text-ink-dim">{template.corpo}</p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-3">
+          <label className="flex items-center gap-1.5 text-xs font-medium text-ink-dim">
+            <input
+              type="checkbox"
+              checked={template.ativo}
+              onChange={(e) => update.mutate({ tipo: template.tipo, ativo: e.target.checked })}
+            />
+            {t("notifications.templates.activeToggle")}
+          </label>
           <button type="button" onClick={onEdit} className="text-xs font-medium text-ink-dim hover:underline">
             {t("common.edit")}
           </button>

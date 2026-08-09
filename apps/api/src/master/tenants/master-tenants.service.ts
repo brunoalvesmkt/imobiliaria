@@ -9,6 +9,7 @@ import { hashPassword, slugify } from "../../auth/crypto.util";
 import { toCsv } from "../../reports/csv.util";
 import { ADMIN_DEFAULT_PERMISSIONS } from "../../auth/default-permissions";
 import { createDefaultFunnel } from "../../crm/funnels/default-funnel.util";
+import { StorageService } from "../../storage/storage.service";
 import type { MasterActorContext } from "../plans/plans.service";
 import type { UpdateTenantStatusDto } from "./dto/update-tenant-status.dto";
 import type { AssignPlanDto } from "./dto/assign-plan.dto";
@@ -16,6 +17,7 @@ import type { ToggleModuleDto } from "./dto/toggle-module.dto";
 import type { ImpersonateDto } from "./dto/impersonate.dto";
 import type { CreateManualTenantDto } from "./dto/create-manual-tenant.dto";
 import type { UpdateLoginEmailDto } from "./dto/update-login-email.dto";
+import type { UpdateStorageLimitDto } from "./dto/update-storage-limit.dto";
 
 @Injectable()
 export class MasterTenantsService {
@@ -24,6 +26,7 @@ export class MasterTenantsService {
     private readonly audit: AuditService,
     private readonly tokenService: TokenService,
     private readonly authService: AuthService,
+    private readonly storage: StorageService,
   ) {}
 
   /**
@@ -35,7 +38,7 @@ export class MasterTenantsService {
    */
   private async getLoginUser(tenantId: string) {
     const adminRole = await this.prisma.role.findFirst({
-      where: { tenantId, isSystem: true, nome: "admin" },
+      where: { tenantId, isSystem: true, nome: "Admin" },
     });
     if (!adminRole) return null;
 
@@ -117,7 +120,7 @@ export class MasterTenantsService {
       include: { plan: { select: { id: true, nome: true } } },
     });
 
-    const [activeSessions, overdueGroups] = await Promise.all([
+    const [activeSessions, overdueGroups, storageByTenant] = await Promise.all([
       this.prisma.impersonationSession.findMany({
         where: { tenantId: { in: tenants.map((t) => t.id) }, endedAt: null, expiresAt: { gt: new Date() } },
         select: { tenantId: true },
@@ -127,6 +130,7 @@ export class MasterTenantsService {
         where: { tenantId: { in: tenants.map((t) => t.id) }, status: "overdue" },
         _count: true,
       }),
+      this.storage.getUsageForTenants(tenants.map((t) => t.id)),
     ]);
     const activeTenantIds = new Set(activeSessions.map((s) => s.tenantId));
     const overdueTenantIds = new Set(overdueGroups.map((g) => g.tenantId));
@@ -135,6 +139,7 @@ export class MasterTenantsService {
       ...tenant,
       impersonationActive: activeTenantIds.has(tenant.id),
       hasOverdueInvoices: overdueTenantIds.has(tenant.id),
+      storage: storageByTenant[tenant.id] ?? null,
     }));
   }
 
@@ -193,7 +198,7 @@ export class MasterTenantsService {
       await createDefaultFunnel(tx, tenant.id);
 
       const adminRole = await tx.role.create({
-        data: { tenantId: tenant.id, nome: "admin", descricao: "Acesso total aos módulos ativos e a Configurações", isSystem: true },
+        data: { tenantId: tenant.id, nome: "Admin", descricao: "Acesso total aos módulos ativos e a Configurações", isSystem: true },
       });
       await tx.permission.createMany({
         data: ADMIN_DEFAULT_PERMISSIONS.map((p) => ({ roleId: adminRole.id, module: p.module, action: p.action })),
@@ -271,11 +276,44 @@ export class MasterTenantsService {
 
   async consumption(id: string) {
     await this.get(id);
-    const [tenantUsers, files] = await Promise.all([
+    const [tenantUsers, files, storageUsage] = await Promise.all([
       this.prisma.tenantUser.count({ where: { tenantId: id, deletedAt: null } }),
       this.prisma.file.count({ where: { tenantId: id, deletedAt: null } }),
+      this.storage.getUsageForTenants([id]),
     ]);
-    return { tenantUsers, files };
+    return { tenantUsers, files, storage: storageUsage[id] ?? null };
+  }
+
+  async updateStorageLimit(id: string, dto: UpdateStorageLimitDto, actor: MasterActorContext) {
+    const before = await this.get(id);
+
+    const updated = await this.prisma.tenant.update({
+      where: { id },
+      data: {
+        storageUnlimited: dto.storageUnlimited,
+        storageLimitMb: dto.storageUnlimited ? null : dto.storageLimitMb ?? null,
+      },
+    });
+
+    await this.audit.record({
+      actorId: actor.actorId,
+      actorType: "master",
+      tenantId: id,
+      action: "master.tenant.storage_limit_update",
+      entity: "Tenant",
+      entityId: id,
+      previousData: { storageLimitMb: before.storageLimitMb, storageUnlimited: before.storageUnlimited },
+      newData: { storageLimitMb: updated.storageLimitMb, storageUnlimited: updated.storageUnlimited },
+      ip: actor.ip,
+      userAgent: actor.userAgent,
+    });
+
+    return { storageLimitMb: updated.storageLimitMb, storageUnlimited: updated.storageUnlimited };
+  }
+
+  async recalculateStorage(id: string) {
+    await this.get(id);
+    return this.storage.recalculate(id);
   }
 
   async updateStatus(id: string, dto: UpdateTenantStatusDto, actor: MasterActorContext) {
@@ -412,7 +450,7 @@ export class MasterTenantsService {
 
     const tenant = await this.get(id);
     const adminRole = await this.prisma.role.findFirst({
-      where: { tenantId: tenant.id, isSystem: true, nome: "admin" },
+      where: { tenantId: tenant.id, isSystem: true, nome: "Admin" },
     });
     if (!adminRole) {
       throw new NotFoundException("Papel admin do tenant não encontrado — não é possível impersonar.");

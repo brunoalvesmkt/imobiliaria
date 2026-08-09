@@ -91,7 +91,7 @@ export function StepFlow({
         {fields.length === 0 && condicoes.length === 0 ? (
           <p className="text-xs text-ink-faint">{t("automation.step.noConditions")}</p>
         ) : (
-          <ConditionsEditor fields={fields} conditions={condicoes} onChange={onCondicoesChange} />
+          <ConditionsEditor fields={fields} conditions={condicoes} onChange={onCondicoesChange} trigger={gatilhoTipo} />
         )}
       </StepCard>
 

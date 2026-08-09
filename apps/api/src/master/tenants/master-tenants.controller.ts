@@ -14,6 +14,7 @@ import { ToggleModuleDto } from "./dto/toggle-module.dto";
 import { ImpersonateDto } from "./dto/impersonate.dto";
 import { CreateManualTenantDto } from "./dto/create-manual-tenant.dto";
 import { UpdateLoginEmailDto } from "./dto/update-login-email.dto";
+import { UpdateStorageLimitDto } from "./dto/update-storage-limit.dto";
 
 function actorFrom(user: AuthenticatedRequestUser, req: Request) {
   return { actorId: user.id, ip: req.ip, userAgent: req.get("user-agent") };
@@ -51,6 +52,23 @@ export class MasterTenantsController {
   @Get(":id/consumption")
   consumption(@Param("id") id: string) {
     return this.service.consumption(id);
+  }
+
+  @Patch(":id/storage-limit")
+  @RequireMasterRole("super_admin")
+  updateStorageLimit(
+    @Param("id") id: string,
+    @Body() dto: UpdateStorageLimitDto,
+    @CurrentUser() user: AuthenticatedRequestUser,
+    @Req() req: Request,
+  ) {
+    return this.service.updateStorageLimit(id, dto, actorFrom(user, req));
+  }
+
+  @Post(":id/storage-recalculate")
+  @RequireMasterRole("super_admin")
+  recalculateStorage(@Param("id") id: string) {
+    return this.service.recalculateStorage(id);
   }
 
   @Get(":id/login-access")

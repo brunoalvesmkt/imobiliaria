@@ -10,6 +10,7 @@ export interface NotificationTemplateView {
   titulo: string;
   corpo: string;
   critical: boolean;
+  ativo: boolean;
   placeholders: { key: string; label: string }[];
   customized: boolean;
 }
@@ -40,6 +41,7 @@ export class NotificationTemplatesService {
         titulo: override?.titulo ?? def.defaultTitulo,
         corpo: override?.corpo ?? def.defaultCorpo,
         critical: override?.critical ?? def.critical,
+        ativo: override?.ativo ?? true,
         placeholders: def.placeholders,
         customized: !!override,
       };
@@ -53,14 +55,16 @@ export class NotificationTemplatesService {
       throw new NotFoundException("Tipo de notificação não encontrado.");
     }
 
-    const titulo = dto.titulo ?? def.defaultTitulo;
-    const corpo = dto.corpo ?? def.defaultCorpo;
-    const critical = dto.critical ?? def.critical;
+    const existing = await this.prisma.notificationTemplate.findUnique({ where: { tenantId_tipo: { tenantId, tipo } } });
+    const titulo = dto.titulo ?? existing?.titulo ?? def.defaultTitulo;
+    const corpo = dto.corpo ?? existing?.corpo ?? def.defaultCorpo;
+    const critical = dto.critical ?? existing?.critical ?? def.critical;
+    const ativo = dto.ativo ?? existing?.ativo ?? true;
 
     await this.prisma.notificationTemplate.upsert({
       where: { tenantId_tipo: { tenantId, tipo } },
-      create: { tenantId, tipo, titulo, corpo, critical },
-      update: { titulo, corpo, critical },
+      create: { tenantId, tipo, titulo, corpo, critical, ativo },
+      update: { titulo, corpo, critical, ativo },
     });
 
     await this.audit.record({
@@ -70,10 +74,10 @@ export class NotificationTemplatesService {
       entity: "NotificationTemplate",
       entityId: tipo,
       tenantId,
-      newData: { titulo, corpo, critical },
+      newData: { titulo, corpo, critical, ativo },
     });
 
-    return { tipo, titulo, corpo, critical, placeholders: def.placeholders, customized: true };
+    return { tipo, titulo, corpo, critical, ativo, placeholders: def.placeholders, customized: true };
   }
 
   async reset(tipo: string, actorId: string): Promise<NotificationTemplateView> {
@@ -94,7 +98,15 @@ export class NotificationTemplatesService {
       tenantId,
     });
 
-    return { tipo, titulo: def.defaultTitulo, corpo: def.defaultCorpo, critical: def.critical, placeholders: def.placeholders, customized: false };
+    return {
+      tipo,
+      titulo: def.defaultTitulo,
+      corpo: def.defaultCorpo,
+      critical: def.critical,
+      ativo: true,
+      placeholders: def.placeholders,
+      customized: false,
+    };
   }
 
   /**
@@ -102,7 +114,11 @@ export class NotificationTemplatesService {
    * crítico (dispara WhatsApp administrativo) — chamado pelo `NotificationsListener` fora do contexto
    * de tenant resolvido, por isso recebe `tenantId` direto em vez de `requireCurrentTenantId()`.
    */
-  async render(tenantId: string, tipo: string, values: Record<string, string>): Promise<{ titulo: string; corpo: string; critical: boolean }> {
+  async render(
+    tenantId: string,
+    tipo: string,
+    values: Record<string, string>,
+  ): Promise<{ titulo: string; corpo: string; critical: boolean; ativo: boolean }> {
     const def = findNotificationType(tipo);
     if (!def) {
       throw new Error(`Tipo de notificação desconhecido: ${tipo}`);
@@ -112,11 +128,13 @@ export class NotificationTemplatesService {
     const tituloTemplate = override?.titulo ?? def.defaultTitulo;
     const corpoTemplate = override?.corpo ?? def.defaultCorpo;
     const critical = override?.critical ?? def.critical;
+    const ativo = override?.ativo ?? true;
 
     return {
       titulo: renderNotificationText(tituloTemplate, values),
       corpo: renderNotificationText(corpoTemplate, values),
       critical,
+      ativo,
     };
   }
 }

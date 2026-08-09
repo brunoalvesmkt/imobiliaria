@@ -14,4 +14,8 @@ export class UpdateNotificationTemplateDto {
   @IsOptional()
   @IsBoolean()
   critical?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  ativo?: boolean;
 }

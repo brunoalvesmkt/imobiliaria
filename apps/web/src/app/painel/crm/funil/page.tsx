@@ -27,6 +27,8 @@ import { Alert } from "@/components/ui/alert";
 import { HorizontalScroller } from "@/components/ui/horizontal-scroller";
 import { DropdownMenu, type DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { ContactForm } from "@/components/crm/contact-form";
+import { CloseOpportunityModal } from "@/components/crm/close-opportunity-modal";
+import { MoveStageGateModal } from "@/components/crm/move-stage-gate-modal";
 import { ModalPanel as SettingsPanel } from "@/components/ui/modal-panel";
 import { useI18n } from "@/lib/i18n";
 import { ApiError } from "@/lib/api-client";
@@ -150,6 +152,7 @@ function FunnelSettingsMenu({
   onError: (message: string | null) => void;
 }) {
   const { t } = useI18n();
+  const router = useRouter();
   const [panel, setPanel] = useState<SettingsPanelKind | null>(null);
 
   const items: DropdownMenuItem[] = [
@@ -161,6 +164,7 @@ function FunnelSettingsMenu({
     { label: t("crm.funnel.settingsMenu.reorderStages"), onClick: () => setPanel("reorderStages") },
     { label: t("crm.funnel.toggleActiveMenu"), onClick: () => setPanel("toggleActive") },
     { label: t("crm.funnel.delete"), onClick: () => setPanel("deleteFunnel") },
+    { label: t("crm.funnel.settingsMenu.advancedSettings"), onClick: () => router.push("/painel/crm/funil/configuracoes") },
   ];
 
   return (
@@ -706,6 +710,8 @@ function Board({
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
   const [zoom, setZoom] = useState(100);
+  const [closingOpportunity, setClosingOpportunity] = useState<{ id: string; resultado: "won" | "lost" } | null>(null);
+  const [pendingMove, setPendingMove] = useState<{ opportunityId: string; originStageId: string; targetStageId: string } | null>(null);
 
   const open = (opportunities.data ?? []).filter(
     (o) => o.status === "open" && (!onlySemResponsavel || !o.responsavelId),
@@ -727,14 +733,14 @@ function Board({
     const targetIndex = direction === "next" ? currentIndex + 1 : currentIndex - 1;
     const target = stages[targetIndex];
     if (!target) return;
-    moveStage.mutate({ id: opportunity.id, stageId: target.id });
+    setPendingMove({ opportunityId: opportunity.id, originStageId: opportunity.stageId, targetStageId: target.id });
   }
 
   function moveToStageId(opportunityId: string, stageId: string) {
     const opportunity = open.find((o) => o.id === opportunityId);
     if (!opportunity) return;
     if (opportunity.stageId !== stageId) {
-      moveStage.mutate({ id: opportunityId, stageId });
+      setPendingMove({ opportunityId, originStageId: opportunity.stageId, targetStageId: stageId });
     }
   }
 
@@ -917,7 +923,7 @@ function Board({
                             title={t("crm.funnel.win")}
                             onClick={(e) => {
                               e.stopPropagation();
-                              closeOpportunity.mutate({ id: opportunity.id, resultado: "won" });
+                              setClosingOpportunity({ id: opportunity.id, resultado: "won" });
                             }}
                             className="rounded p-1 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
                           >
@@ -928,7 +934,7 @@ function Board({
                             title={t("crm.funnel.lose")}
                             onClick={(e) => {
                               e.stopPropagation();
-                              closeOpportunity.mutate({ id: opportunity.id, resultado: "lost" });
+                              setClosingOpportunity({ id: opportunity.id, resultado: "lost" });
                             }}
                             className="rounded p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
                           >
@@ -948,6 +954,35 @@ function Board({
           );
         })}
       </HorizontalScroller>
+
+      {closingOpportunity && (
+        <CloseOpportunityModal
+          resultado={closingOpportunity.resultado}
+          saving={closeOpportunity.isPending}
+          onClose={() => setClosingOpportunity(null)}
+          onConfirm={(input) => {
+            closeOpportunity.mutate(
+              { id: closingOpportunity.id, resultado: closingOpportunity.resultado, ...input },
+              { onSuccess: () => setClosingOpportunity(null) },
+            );
+          }}
+        />
+      )}
+
+      {pendingMove && (
+        <MoveStageGateModal
+          opportunityId={pendingMove.opportunityId}
+          originStageId={pendingMove.originStageId}
+          confirming={moveStage.isPending}
+          onClose={() => setPendingMove(null)}
+          onConfirm={() => {
+            moveStage.mutate(
+              { id: pendingMove.opportunityId, stageId: pendingMove.targetStageId },
+              { onSuccess: () => setPendingMove(null) },
+            );
+          }}
+        />
+      )}
     </div>
   );
 }

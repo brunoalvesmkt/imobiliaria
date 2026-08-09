@@ -11,11 +11,31 @@ import { useI18n } from "@/lib/i18n";
 import { apiUrl, ApiError } from "@/lib/api-client";
 import { StatusBadge } from "./status-badge";
 import { formatCpfCnpj } from "@/lib/cpf-cnpj";
+import { formatGb, formatLimitGb, storageStatus, STORAGE_STATUS_TEXT_CLASSES } from "@/lib/storage";
+import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
+
+type StorageFilter = "all" | "80" | "90" | "100";
+
+const STORAGE_FILTER_LABEL_KEY: Record<StorageFilter, DictionaryKey> = {
+  all: "master.tenants.storageFilter.all",
+  "80": "master.tenants.storageFilter.above80",
+  "90": "master.tenants.storageFilter.above90",
+  "100": "master.tenants.storageFilter.atLimit",
+};
 
 export default function MasterTenantsPage() {
   const { t } = useI18n();
   const tenants = useMasterTenants();
   const [showForm, setShowForm] = useState(false);
+  const [storageFilter, setStorageFilter] = useState<StorageFilter>("all");
+
+  const filteredTenants = (tenants.data ?? []).filter((tenant) => {
+    if (storageFilter === "all") return true;
+    // Tenants ilimitados nunca entram em nenhuma faixa (percentage é null).
+    if (!tenant.storage || tenant.storage.percentage == null) return false;
+    const threshold = Number(storageFilter);
+    return tenant.storage.percentage >= threshold;
+  });
 
   return (
     <div className="flex flex-col gap-4">
@@ -31,6 +51,21 @@ export default function MasterTenantsPage() {
 
       {showForm && <NewTenantForm onDone={() => setShowForm(false)} />}
 
+      <div className="flex items-center gap-1">
+        {(["all", "80", "90", "100"] as StorageFilter[]).map((option) => (
+          <button
+            key={option}
+            type="button"
+            onClick={() => setStorageFilter(option)}
+            className={`rounded-md px-2.5 py-1 text-xs font-medium ${
+              storageFilter === option ? "bg-brand-600 text-white" : "bg-surface-muted text-ink-dim hover:bg-surface-alt"
+            }`}
+          >
+            {t(STORAGE_FILTER_LABEL_KEY[option])}
+          </button>
+        ))}
+      </div>
+
       <div className="overflow-x-auto rounded-lg border border-line bg-surface">
         <table className="w-full text-sm">
           <thead>
@@ -39,15 +74,16 @@ export default function MasterTenantsPage() {
               <th className="px-4 py-2">{t("master.tenants.columnCnpj")}</th>
               <th className="px-4 py-2">{t("master.tenants.columnStatus")}</th>
               <th className="px-4 py-2">{t("master.tenants.columnPlan")}</th>
+              <th className="px-4 py-2">{t("master.tenants.columnStorage")}</th>
             </tr>
           </thead>
           <tbody>
-            {tenants.data?.map((tenant) => (
+            {filteredTenants.map((tenant) => (
               <TenantRow key={tenant.id} tenant={tenant} />
             ))}
-            {tenants.data?.length === 0 && (
+            {filteredTenants.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-6 text-center text-ink-faint">
+                <td colSpan={5} className="px-4 py-6 text-center text-ink-faint">
                   —
                 </td>
               </tr>
@@ -60,7 +96,8 @@ export default function MasterTenantsPage() {
 }
 
 function TenantRow({ tenant }: { tenant: MasterTenant }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const status = storageStatus(tenant.storage?.percentage ?? null);
   return (
     <tr className="border-b border-line last:border-0">
       <td className="px-4 py-2 font-medium text-ink">
@@ -83,6 +120,11 @@ function TenantRow({ tenant }: { tenant: MasterTenant }) {
         <StatusBadge status={tenant.status} />
       </td>
       <td className="px-4 py-2 text-ink-dim">{tenant.plan?.nome ?? t("master.tenants.noPlan")}</td>
+      <td className={`px-4 py-2 ${STORAGE_STATUS_TEXT_CLASSES[status]}`}>
+        {tenant.storage
+          ? `${formatGb(tenant.storage.usedBytes, locale)} / ${formatLimitGb(tenant.storage.limitMb, tenant.storage.unlimited, locale, t("storage.unlimited"))}`
+          : "—"}
+      </td>
     </tr>
   );
 }

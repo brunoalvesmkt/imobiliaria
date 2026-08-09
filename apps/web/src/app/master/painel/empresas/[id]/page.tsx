@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import {
   useImpersonateTenant,
   useMasterTenant,
+  useRecalculateTenantStorage,
   useResendTenantPasswordReset,
   useTenantConsumption,
   useTenantLoginAccess,
@@ -13,14 +14,17 @@ import {
   useUpdateTenantModule,
   useUpdateTenantPlan,
   useUpdateTenantStatus,
+  useUpdateTenantStorageLimit,
   type TenantStatus,
 } from "@/lib/master-tenants";
 import { Alert } from "@/components/ui/alert";
 import { Field } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { useMasterPlans } from "@/lib/master-plans";
 import { useCurrentMasterUser } from "@/lib/master-auth";
 import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
+import { formatGb, formatLimitGb, storageStatus, STORAGE_STATUS_CLASSES, STORAGE_STATUS_TEXT_CLASSES } from "@/lib/storage";
 import { StatusBadge } from "../status-badge";
 import { formatCpfCnpj } from "@/lib/cpf-cnpj";
 
@@ -127,6 +131,8 @@ export default function MasterTenantDetailPage() {
           </dl>
         </div>
       </section>
+
+      <StorageCard id={id} storage={consumption.data?.storage ?? null} canManage={canManage} />
 
       {canManage && (
         <section className="rounded-lg border border-line bg-surface p-4">
@@ -311,5 +317,97 @@ export default function MasterTenantDetailPage() {
         </section>
       )}
     </div>
+  );
+}
+
+function StorageCard({
+  id,
+  storage,
+  canManage,
+}: {
+  id: string;
+  storage: { usedBytes: number; limitMb: number | null; unlimited: boolean; percentage: number | null; updatedAt: string | null } | null;
+  canManage: boolean;
+}) {
+  const { t, locale } = useI18n();
+  const updateLimit = useUpdateTenantStorageLimit(id);
+  const recalculate = useRecalculateTenantStorage(id);
+  const [editing, setEditing] = useState(false);
+  const [limitGb, setLimitGb] = useState("");
+  const [unlimited, setUnlimited] = useState(false);
+
+  useEffect(() => {
+    if (storage) {
+      setUnlimited(storage.unlimited);
+      setLimitGb(storage.limitMb != null ? String(storage.limitMb / 1024) : "");
+    }
+  }, [storage]);
+
+  if (!storage) return null;
+
+  const status = storageStatus(storage.percentage);
+  const widthPercent = storage.percentage == null ? 0 : Math.min(100, storage.percentage);
+
+  async function onSaveLimit() {
+    const limitMb = unlimited || !limitGb ? null : Math.round(Number(limitGb) * 1024);
+    await updateLimit.mutateAsync({ storageLimitMb: limitMb, storageUnlimited: unlimited });
+    setEditing(false);
+  }
+
+  return (
+    <section className="rounded-lg border border-line bg-surface p-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-ink">{t("storage.tab.title")}</h2>
+        {canManage && (
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => recalculate.mutate()} disabled={recalculate.isPending} className="text-xs font-medium text-ink-dim hover:underline disabled:opacity-50">
+              {t("storage.master.recalculate")}
+            </button>
+            <button type="button" onClick={() => setEditing((v) => !v)} className="text-xs font-medium text-brand-700 hover:underline">
+              {editing ? t("common.cancel") : t("storage.master.editLimit")}
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-2 flex items-center justify-between text-sm">
+        <span className="text-ink-dim">{t("storage.usedOfLimit")}</span>
+        <span className={`font-semibold ${STORAGE_STATUS_TEXT_CLASSES[status]}`}>
+          {formatGb(storage.usedBytes, locale)} / {formatLimitGb(storage.limitMb, storage.unlimited, locale, t("storage.unlimited"))}
+        </span>
+      </div>
+      {!storage.unlimited && (
+        <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-surface-muted">
+          <div className={`h-full rounded-full ${STORAGE_STATUS_CLASSES[status]}`} style={{ width: `${widthPercent}%` }} />
+        </div>
+      )}
+      {storage.updatedAt && (
+        <p className="mt-2 text-xs text-ink-faint">
+          {t("storage.lastUpdated")} {new Date(storage.updatedAt).toLocaleString(locale)}
+        </p>
+      )}
+
+      {editing && (
+        <div className="mt-3 flex flex-col gap-2 rounded-md border border-line bg-surface-alt p-3">
+          <label className="flex items-center gap-2 text-sm text-ink">
+            <input type="checkbox" checked={unlimited} onChange={(e) => setUnlimited(e.target.checked)} />
+            {t("storage.unlimited")}
+          </label>
+          {!unlimited && (
+            <Field
+              label={t("storage.master.limitGbLabel")}
+              value={limitGb}
+              onChange={(e) => setLimitGb(e.target.value)}
+              placeholder="10"
+            />
+          )}
+          <div>
+            <Button type="button" loading={updateLimit.isPending} onClick={onSaveLimit}>
+              {t("common.save")}
+            </Button>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }

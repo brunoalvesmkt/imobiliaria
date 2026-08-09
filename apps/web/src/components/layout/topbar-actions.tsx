@@ -5,9 +5,37 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useLogout, useMyProfile, useTenantInfo } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import { formatGb, formatLimitGb, storageStatus, STORAGE_STATUS_CLASSES, useStorageUsage } from "@/lib/storage";
 import { ThemeToggle } from "./theme-toggle";
 import { NotificationBell } from "./notification-bell";
 import { MenuLayoutToggle } from "./menu-layout-toggle";
+
+/** Bloco compacto de uso/limite de armazenamento no menu do avatar — só busca quando o menu está aberto (lazy, não pré-carrega em toda navegação). */
+function AvatarMenuStorageBlock({ open }: { open: boolean }) {
+  const { t, locale } = useI18n();
+  const usage = useStorageUsage(open);
+
+  if (!usage.data) return null;
+
+  const status = storageStatus(usage.data.percentage);
+  const widthPercent = usage.data.percentage == null ? 0 : Math.min(100, usage.data.percentage);
+
+  return (
+    <div className="border-b border-line px-3 py-2">
+      <div className="flex items-center justify-between text-xs text-ink-dim">
+        <span>{t("storage.avatarMenu.title")}</span>
+        <span>
+          {formatGb(usage.data.usedBytes, locale)} / {formatLimitGb(usage.data.limitMb, usage.data.unlimited, locale, t("storage.unlimited"))}
+        </span>
+      </div>
+      {!usage.data.unlimited && (
+        <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-surface-muted">
+          <div className={`h-full rounded-full ${STORAGE_STATUS_CLASSES[status]}`} style={{ width: `${widthPercent}%` }} />
+        </div>
+      )}
+    </div>
+  );
+}
 
 function initials(nome?: string): string {
   if (!nome) return "?";
@@ -92,6 +120,7 @@ export function TopbarActions({ showName = true }: { showName?: boolean }) {
                 <p className="truncate text-sm font-medium text-ink">{profile.data?.nome}</p>
                 <p className="truncate text-xs text-ink-faint">{profile.data?.email}</p>
               </div>
+              <AvatarMenuStorageBlock open={menuOpen} />
               <Link
                 href="/painel/meus-dados"
                 onClick={() => setMenuOpen(false)}

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post, UseGuards } from "@nestjs/common";
 import { TenantAuthGuard } from "../auth/guards/tenant-auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import type { AuthenticatedRequestUser } from "../auth/jwt-payload.interface";
@@ -23,5 +23,10 @@ export class FilesController {
   @Get(":id/download-url")
   createDownloadUrl(@Param("id") id: string) {
     return this.service.createDownloadUrl(id);
+  }
+
+  @Delete(":id")
+  remove(@Param("id") id: string) {
+    return this.service.remove(id);
   }
 }

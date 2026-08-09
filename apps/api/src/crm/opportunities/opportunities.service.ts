@@ -7,6 +7,7 @@ import { requireCurrentTenantId } from "../../common/tenant/tenant-context";
 import { DomainEventsService } from "../../common/events/domain-events.service";
 import { FollowUpsService } from "../../automation/followups.service";
 import { CrmVisibilityConfigService } from "../crm-visibility-config.service";
+import { StageChecklistsService } from "../stage-checklists/stage-checklists.service";
 import type { CreateOpportunityDto } from "./dto/create-opportunity.dto";
 import type { UpdateOpportunityDto } from "./dto/update-opportunity.dto";
 import type { MoveStageDto } from "./dto/move-stage.dto";
@@ -22,6 +23,7 @@ export class OpportunitiesService {
     private readonly domainEvents: DomainEventsService,
     private readonly followUps: FollowUpsService,
     private readonly visibilityConfig: CrmVisibilityConfigService,
+    private readonly stageChecklists: StageChecklistsService,
   ) {}
 
   /**
@@ -272,6 +274,8 @@ export class OpportunitiesService {
       throw new NotFoundException("Etapa não encontrada neste funil.");
     }
 
+    await this.stageChecklists.enforceStageChecklist(id, opportunity.stageId, dto.checklist, actorId);
+
     const updated = await this.tenantPrisma.opportunity.update({
       where: { id },
       data: { stageId: dto.stageId, probabilidade: stage.probabilidade },
@@ -336,18 +340,33 @@ export class OpportunitiesService {
     return { status: "ok" as const };
   }
 
+  /**
+   * Observação obrigatória — validado aqui também (não só no frontend, que
+   * pode ser contornado chamando a API direto): busca o `OpportunityReason`
+   * cujo nome bate exatamente com `dto.motivo` (o texto livre do "Outro" no
+   * modal nunca corresponde a um registro, então passa direto).
+   */
+  private async assertObservacaoObrigatoria(tipo: "won" | "lost", dto: CloseOpportunityDto): Promise<void> {
+    if (!dto.motivo) return;
+    const reason = await this.tenantPrisma.opportunityReason.findFirst({ where: { tipo, nome: dto.motivo } });
+    if (reason?.obrigatorioObservacao && !dto.observacao?.trim()) {
+      throw new BadRequestException(`O motivo "${dto.motivo}" exige uma observação.`);
+    }
+  }
+
   async close(id: string, dto: CloseOpportunityDto, actorId: string, roleId?: string) {
     const tenantId = requireCurrentTenantId();
     const opportunity = await this.get(id, actorId, roleId);
     if (opportunity.status !== "open") {
       throw new BadRequestException("Oportunidade já está encerrada.");
     }
+    await this.assertObservacaoObrigatoria(dto.resultado, dto);
 
     const now = new Date();
     const data: Prisma.OpportunityUncheckedUpdateInput =
       dto.resultado === "won"
-        ? { status: "won", motivoGanho: dto.motivo ?? null, wonAt: now }
-        : { status: "lost", motivoPerda: dto.motivo ?? null, lostAt: now };
+        ? { status: "won", motivoGanho: dto.motivo ?? null, observacaoFechamento: dto.observacao ?? null, wonAt: now }
+        : { status: "lost", motivoPerda: dto.motivo ?? null, observacaoFechamento: dto.observacao ?? null, lostAt: now };
 
     const updated = await this.tenantPrisma.opportunity.update({ where: { id }, data });
     await this.closeOpenStageHistory(id, now);
@@ -386,6 +405,112 @@ export class OpportunitiesService {
       entity: "Opportunity",
       entityId: id,
     });
+  }
+
+  listItems(opportunityId: string) {
+    return this.tenantPrisma.opportunityItem.findMany({
+      where: { opportunityId },
+      orderBy: { createdAt: "asc" },
+    });
+  }
+
+  /**
+   * `Opportunity.valor` é sempre recalculado pelo backend como
+   * soma(preco*quantidade) de todos os itens — o frontend nunca calcula
+   * isso manualmente, só reflete o valor retornado pelo servidor.
+   */
+  private async recalcValor(opportunityId: string): Promise<void> {
+    const items = await this.tenantPrisma.opportunityItem.findMany({ where: { opportunityId } });
+    const total = items.reduce((sum, item) => sum + Number(item.preco) * item.quantidade, 0);
+    await this.tenantPrisma.opportunity.update({ where: { id: opportunityId }, data: { valor: total } });
+  }
+
+  async addItem(
+    opportunityId: string,
+    dto: { productId?: string; nome: string; preco: number; quantidade?: number },
+    actorId: string,
+    roleId?: string,
+  ) {
+    await this.get(opportunityId, actorId, roleId);
+
+    const item = await this.tenantPrisma.opportunityItem.create({
+      data: {
+        opportunityId,
+        productId: dto.productId ?? null,
+        nome: dto.nome,
+        preco: dto.preco,
+        quantidade: dto.quantidade ?? 1,
+      },
+    });
+    await this.recalcValor(opportunityId);
+
+    await this.audit.record({
+      actorId,
+      actorType: "tenant_user",
+      action: "opportunity_item.create",
+      entity: "OpportunityItem",
+      entityId: item.id,
+      newData: { opportunityId, nome: item.nome, preco: item.preco, quantidade: item.quantidade },
+    });
+
+    return item;
+  }
+
+  async updateItem(
+    opportunityId: string,
+    itemId: string,
+    dto: { nome?: string; preco?: number; quantidade?: number },
+    actorId: string,
+    roleId?: string,
+  ) {
+    await this.get(opportunityId, actorId, roleId);
+    const existing = await this.tenantPrisma.opportunityItem.findFirst({ where: { id: itemId, opportunityId } });
+    if (!existing) {
+      throw new NotFoundException("Item não encontrado nesta oportunidade.");
+    }
+
+    const item = await this.tenantPrisma.opportunityItem.update({
+      where: { id: itemId },
+      data: {
+        ...(dto.nome !== undefined ? { nome: dto.nome } : {}),
+        ...(dto.preco !== undefined ? { preco: dto.preco } : {}),
+        ...(dto.quantidade !== undefined ? { quantidade: dto.quantidade } : {}),
+      },
+    });
+    await this.recalcValor(opportunityId);
+
+    await this.audit.record({
+      actorId,
+      actorType: "tenant_user",
+      action: "opportunity_item.update",
+      entity: "OpportunityItem",
+      entityId: itemId,
+      newData: { opportunityId, nome: item.nome, preco: item.preco, quantidade: item.quantidade },
+    });
+
+    return item;
+  }
+
+  async removeItem(opportunityId: string, itemId: string, actorId: string, roleId?: string) {
+    await this.get(opportunityId, actorId, roleId);
+    const existing = await this.tenantPrisma.opportunityItem.findFirst({ where: { id: itemId, opportunityId } });
+    if (!existing) {
+      throw new NotFoundException("Item não encontrado nesta oportunidade.");
+    }
+
+    await this.tenantPrisma.opportunityItem.delete({ where: { id: itemId } });
+    await this.recalcValor(opportunityId);
+
+    await this.audit.record({
+      actorId,
+      actorType: "tenant_user",
+      action: "opportunity_item.remove",
+      entity: "OpportunityItem",
+      entityId: itemId,
+      previousData: { opportunityId },
+    });
+
+    return { status: "ok" as const };
   }
 
   /** Fecha a linha de histórico "aberta" (sem exitedAt) da etapa atual — chamado ao mudar de etapa ou encerrar. */

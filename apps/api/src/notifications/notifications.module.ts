@@ -13,5 +13,6 @@ import { NotificationTemplatesService } from "./notification-templates.service";
   imports: [RealtimeModule, ProvidersModule],
   controllers: [NotificationsController, NotificationSettingsController, NotificationTemplatesController],
   providers: [NotificationsService, NotificationsListener, NotificationSettingsService, NotificationTemplatesService],
+  exports: [NotificationsService, NotificationTemplatesService],
 })
 export class NotificationsModule {}

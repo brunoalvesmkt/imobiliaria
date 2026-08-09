@@ -360,7 +360,7 @@ export default function FlowBuilderPage() {
           )}
           {saveMessage === "saved" && <span className="text-xs text-brand-700">{t("chatbot.builder.saved")}</span>}
           {saveMessage === "error" && <span className="text-xs text-red-600">{t("chatbot.builder.saveError")}</span>}
-          {!readOnly && dirty && (
+          {!readOnly && (
             <Button variant="ghost" onClick={onCancelEdits}>
               {t("common.cancel")}
             </Button>

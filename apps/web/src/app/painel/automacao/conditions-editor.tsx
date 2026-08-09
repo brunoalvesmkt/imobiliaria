@@ -4,9 +4,11 @@ import {
   ID_FIELD_KIND,
   type AutomationCondition,
   type ConditionOperator,
+  type DomainEventName,
 } from "@/lib/automation";
 import { useFlows } from "@/lib/chatbot";
 import { useContactOrigins } from "@/lib/crm";
+import { useOpportunityReasons } from "@/lib/opportunity-reasons";
 import { useI18n } from "@/lib/i18n";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries/pt-BR";
 import { FunnelStagePicker } from "./funnel-stage-picker";
@@ -17,10 +19,12 @@ export function ConditionsEditor({
   fields,
   conditions,
   onChange,
+  trigger,
 }: {
   fields: string[];
   conditions: AutomationCondition[];
   onChange: (conditions: AutomationCondition[]) => void;
+  trigger?: DomainEventName | "";
 }) {
   const { t } = useI18n();
 
@@ -66,7 +70,7 @@ export function ConditionsEditor({
             ))}
           </select>
           {showValue(condition.operador) && (
-            <ConditionValueField condition={condition} onChange={(valor) => update(i, { ...condition, valor })} />
+            <ConditionValueField condition={condition} trigger={trigger} onChange={(valor) => update(i, { ...condition, valor })} />
           )}
           <button type="button" onClick={() => remove(i)} aria-label={t("common.remove")} className="text-xs text-red-600">
             ×
@@ -83,14 +87,19 @@ export function ConditionsEditor({
 /** Campo "Valor" da condição — vira um seletor por nome quando o campo escolhido é um ID de etapa/fluxo (ver ID_FIELD_KIND), texto livre nos demais casos. */
 function ConditionValueField({
   condition,
+  trigger,
   onChange,
 }: {
   condition: AutomationCondition;
+  trigger: DomainEventName | "" | undefined;
   onChange: (valor: string) => void;
 }) {
   const { t } = useI18n();
   const kind = ID_FIELD_KIND[condition.campo];
 
+  if (condition.campo === "motivo" && (trigger === "opportunity.won" || trigger === "opportunity.lost")) {
+    return <OpportunityReasonValuePicker tipo={trigger === "opportunity.won" ? "won" : "lost"} value={condition.valor ?? ""} onChange={onChange} />;
+  }
   if (kind === "flow") {
     return <FlowValuePicker value={condition.valor ?? ""} onChange={onChange} />;
   }
@@ -121,6 +130,39 @@ function FlowValuePicker({ value, onChange }: { value: string; onChange: (v: str
         </option>
       ))}
     </select>
+  );
+}
+
+/**
+ * Seletor de motivo para as condições de `opportunity.won`/`opportunity.lost` — lista os
+ * `OpportunityReason` ativos do tipo certo; como o texto salvo na oportunidade também pode ser o
+ * texto livre digitado em "Outro" no fechamento (ver CloseOpportunityModal), o valor sempre fica
+ * editável como texto — o select só preenche automaticamente, não trava a condição à lista atual.
+ */
+function OpportunityReasonValuePicker({ tipo, value, onChange }: { tipo: "won" | "lost"; value: string; onChange: (v: string) => void }) {
+  const { t } = useI18n();
+  const reasons = useOpportunityReasons(tipo);
+  return (
+    <div className="flex flex-1 items-center gap-1.5">
+      <select
+        value={reasons.data?.some((r) => r.nome === value) ? value : ""}
+        onChange={(e) => e.target.value && onChange(e.target.value)}
+        className="rounded-md border border-line bg-surface px-2 py-1.5 text-sm"
+      >
+        <option value="" />
+        {reasons.data?.filter((r) => r.ativo).map((r) => (
+          <option key={r.id} value={r.nome}>
+            {r.nome}
+          </option>
+        ))}
+      </select>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={t("automation.conditions.value")}
+        className="flex-1 rounded-md border border-line bg-surface px-2 py-1.5 text-sm"
+      />
+    </div>
   );
 }
 

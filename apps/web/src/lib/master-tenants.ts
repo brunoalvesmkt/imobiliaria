@@ -3,6 +3,15 @@ import { apiGet, apiPatch, apiPost } from "./api-client";
 
 export type TenantStatus = "trial" | "active" | "suspended" | "blocked" | "cancelled";
 
+export interface TenantStorageUsage {
+  usedBytes: number;
+  limitMb: number | null;
+  unlimited: boolean;
+  percentage: number | null;
+  categories: { imagensVideos: number; audios: number; documentos: number; outros: number };
+  updatedAt: string | null;
+}
+
 export interface MasterTenant {
   id: string;
   razaoSocial: string;
@@ -22,6 +31,7 @@ export interface MasterTenant {
   plan: { id: string; nome: string } | null;
   impersonationActive: boolean;
   hasOverdueInvoices: boolean;
+  storage: TenantStorageUsage | null;
 }
 
 export interface MasterTenantDetail extends MasterTenant {
@@ -57,8 +67,28 @@ export function useMasterTenant(id: string) {
 export function useTenantConsumption(id: string) {
   return useQuery({
     queryKey: ["master-tenants", id, "consumption"],
-    queryFn: () => apiGet<{ tenantUsers: number; files: number }>(`/master/tenants/${id}/consumption`),
+    queryFn: () => apiGet<{ tenantUsers: number; files: number; storage: TenantStorageUsage | null }>(`/master/tenants/${id}/consumption`),
     enabled: !!id,
+  });
+}
+
+export function useUpdateTenantStorageLimit(id: string) {
+  const invalidate = useInvalidateTenant(id);
+  return useMutation({
+    mutationFn: (input: { storageLimitMb: number | null; storageUnlimited: boolean }) =>
+      apiPatch<{ storageLimitMb: number | null; storageUnlimited: boolean }>(`/master/tenants/${id}/storage-limit`, input),
+    onSuccess: invalidate,
+  });
+}
+
+export function useRecalculateTenantStorage(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiPost<TenantStorageUsage>(`/master/tenants/${id}/storage-recalculate`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["master-tenants", id, "consumption"] });
+      queryClient.invalidateQueries({ queryKey: ["master-tenants"] });
+    },
   });
 }
 

@@ -29,82 +29,94 @@ enum TenantStatus {
 }
 
 model Tenant {
-  id             String       @id @default(uuid())
-  razaoSocial    String
+  id                  String       @id @default(uuid())
+  razaoSocial         String
   // Guarda CPF (pessoa física) ou CNPJ (pessoa jurídica) — o nome da coluna
   // ficou de uma época em que só CNPJ era aceito; renomear tocaria toda
   // consulta que já usa esse campo em produção, então o tipo de documento é
   // derivado em runtime pelo tamanho (11 = CPF, 14 = CNPJ) em vez de
   // renomear a coluna. Ver cpfCnpj.util.ts.
-  cnpj           String       @unique
-  responsavel    String
-  endereco       String?
-  numero         String?
-  bairro         String?
-  cidade         String?
-  uf             String?
-  cep            String?
-  segmentoId     String?
-  telefone       String?
-  whatsapp       String?
-  email          String
+  cnpj                String       @unique
+  responsavel         String
+  endereco            String?
+  numero              String?
+  bairro              String?
+  cidade              String?
+  uf                  String?
+  cep                 String?
+  segmentoId          String?
+  telefone            String?
+  whatsapp            String?
+  email               String
   // E-mail pendente de confirmação — preenchido durante uma troca de e-mail
   // (ver Fase 6.1.7.3) enquanto o endereço antigo continua ativo/em uso.
-  emailPendente        String?
-  emailPendenteCodigo  String?
-  emailPendenteExpira  DateTime?
-  emailConfirmado      Boolean  @default(true)
-  logoUrl        String?
-  subdominio     String       @unique
-  dominioCustom  String?      @unique
-  status         TenantStatus @default(trial)
-  planId         String?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  emailPendente       String?
+  emailPendenteCodigo String?
+  emailPendenteExpira DateTime?
+  emailConfirmado     Boolean      @default(true)
+  logoUrl             String?
+  subdominio          String       @unique
+  dominioCustom       String?      @unique
+  status              TenantStatus @default(trial)
+  planId              String?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
 
-  plan          Plan?          @relation(fields: [planId], references: [id], onDelete: SetNull)
-  segmento      Segment?       @relation(fields: [segmentoId], references: [id], onDelete: SetNull)
-  users         TenantUser[]
-  roles         Role[]
-  featureFlags  FeatureFlag[]
-  auditLogs     AuditLog[]
-  refreshTokens RefreshToken[]
-  subscriptions Subscription[]
-  contacts      Contact[]
-  contactOrigins ContactOrigin[]
-  crmTaskTypes  CrmTaskType[]
-  funnels       Funnel[]
-  opportunities Opportunity[]
-  crmTasks      CrmTask[]
-  whatsAppNumbers   WhatsAppNumber[]
-  whatsAppNumberFlows WhatsAppNumberFlow[]
-  whatsAppTemplates WhatsAppTemplate[]
-  riskAcceptances   RiskAcceptance[]
-  conversations     Conversation[]
-  messages          Message[]
-  teams             Team[]
-  queues            Queue[]
-  businessHours     BusinessHours[]
-  conversationEvents ConversationEvent[]
-  chatbotFlows       ChatbotFlow[]
-  chatbotExecutions  ChatbotExecution[]
-  knowledgeBaseItems KnowledgeBaseItem[]
-  aiCredentials      TenantAiCredential[]
-  automations        Automation[]
-  automationExecutions AutomationExecution[]
-  followUpSchedules  FollowUpSchedule[]
-  invoices           Invoice[]
-  affiliateReferrals AffiliateReferral[]
-  emailLogs          EmailLog[]
-  impersonationSessions ImpersonationSession[]
-  notifications      Notification[]
+  plan                           Plan?                           @relation(fields: [planId], references: [id], onDelete: SetNull)
+  segmento                       Segment?                        @relation(fields: [segmentoId], references: [id], onDelete: SetNull)
+  users                          TenantUser[]
+  roles                          Role[]
+  featureFlags                   FeatureFlag[]
+  auditLogs                      AuditLog[]
+  refreshTokens                  RefreshToken[]
+  subscriptions                  Subscription[]
+  contacts                       Contact[]
+  contactOrigins                 ContactOrigin[]
+  crmTaskTypes                   CrmTaskType[]
+  funnels                        Funnel[]
+  opportunities                  Opportunity[]
+  crmTasks                       CrmTask[]
+  whatsAppNumbers                WhatsAppNumber[]
+  whatsAppNumberFlows            WhatsAppNumberFlow[]
+  whatsAppTemplates              WhatsAppTemplate[]
+  riskAcceptances                RiskAcceptance[]
+  conversations                  Conversation[]
+  messages                       Message[]
+  teams                          Team[]
+  queues                         Queue[]
+  businessHours                  BusinessHours[]
+  conversationEvents             ConversationEvent[]
+  chatbotFlows                   ChatbotFlow[]
+  chatbotExecutions              ChatbotExecution[]
+  knowledgeBaseItems             KnowledgeBaseItem[]
+  aiCredentials                  TenantAiCredential[]
+  automations                    Automation[]
+  automationExecutions           AutomationExecution[]
+  followUpSchedules              FollowUpSchedule[]
+  invoices                       Invoice[]
+  affiliateReferrals             AffiliateReferral[]
+  emailLogs                      EmailLog[]
+  impersonationSessions          ImpersonationSession[]
+  notifications                  Notification[]
   notificationWhatsappRecipients NotificationWhatsappRecipient[]
   notificationWhatsappDeliveries NotificationWhatsappDelivery[]
   notificationTemplates          NotificationTemplate[]
-  conversationEvaluations ConversationEvaluation[]
-  quickMessages           QuickMessage[]
-  customFieldDefinitions  CustomFieldDefinition[]
-  dashboardAlertConfig    DashboardAlertConfig?
+  conversationEvaluations        ConversationEvaluation[]
+  quickMessages                  QuickMessage[]
+  customFieldDefinitions         CustomFieldDefinition[]
+  dashboardAlertConfig           DashboardAlertConfig?
+  opportunityReasons             OpportunityReason[]
+  products                       Product[]
+  opportunityItems               OpportunityItem[]
+  storageUsage                   TenantStorageUsage?
+  stageChecklistItems            StageChecklistItem[]
+  opportunityStageChecklistFills OpportunityStageChecklistFill[]
+  opportunityChecklistProgress   OpportunityChecklistProgress[]
+  // Limite de armazenamento específico deste tenant — sobrescreve
+  // Plan.limites.armazenamentoMb quando preenchido; storageUnlimited=true
+  // ignora qualquer limite (ver StorageService.resolveLimit).
+  storageLimitMb                 Int?
+  storageUnlimited               Boolean                         @default(false)
 
   @@map("tenants")
 }
@@ -133,19 +145,19 @@ enum MasterRole {
 }
 
 model MasterUser {
-  id           String     @id @default(uuid())
-  nome         String
-  email        String     @unique
-  passwordHash String
-  role         MasterRole @default(suporte)
-  status       String     @default("active")
-  lastLoginAt  DateTime?
-  failedLoginAttempts Int       @default(0)
+  id                  String     @id @default(uuid())
+  nome                String
+  email               String     @unique
+  passwordHash        String
+  role                MasterRole @default(suporte)
+  status              String     @default("active")
+  lastLoginAt         DateTime?
+  failedLoginAttempts Int        @default(0)
   lockedUntil         DateTime?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
 
-  refreshTokens RefreshToken[]
+  refreshTokens         RefreshToken[]
   impersonationSessions ImpersonationSession[]
 
   @@map("master_users")
@@ -172,36 +184,36 @@ model ImpersonationSession {
 }
 
 model TenantUser {
-  id           String    @id @default(uuid())
-  tenantId     String
-  nome         String
+  id                  String    @id @default(uuid())
+  tenantId            String
+  nome                String
   // Login é feito só por e-mail (sem exigir subdomínio/tenant na tela de
   // login nesta fase) — por isso o e-mail é único globalmente, não só por
   // tenant. O tenant do usuário autenticado nunca é lido do input do
   // cliente: é resolvido a partir deste registro após validar a senha.
-  email        String    @unique
-  passwordHash String
-  roleId       String
-  status       String    @default("active")
-  lastLoginAt  DateTime?
+  email               String    @unique
+  passwordHash        String
+  roleId              String
+  status              String    @default("active")
+  lastLoginAt         DateTime?
   failedLoginAttempts Int       @default(0)
   lockedUntil         DateTime?
-  invitedBy    String?
-  invitedAt    DateTime?
+  invitedBy           String?
+  invitedAt           DateTime?
   /// Verificação em duas etapas por e-mail (documento de alterações, item
   /// 8.2) — independente da confirmação inicial da conta (Tenant.emailConfirmado).
-  twoFactorEnabled Boolean @default(false)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  deletedAt    DateTime?
+  twoFactorEnabled    Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   role   Role   @relation(fields: [roleId], references: [id], onDelete: Restrict)
 
-  refreshTokens RefreshToken[]
-  contactsAsResponsavel     Contact[]
-  opportunitiesAsResponsavel Opportunity[]
-  crmTasksAsResponsavel     CrmTask[]
+  refreshTokens                RefreshToken[]
+  contactsAsResponsavel        Contact[]
+  opportunitiesAsResponsavel   Opportunity[]
+  crmTasksAsResponsavel        CrmTask[]
   whatsAppNumbersAsResponsavel WhatsAppNumber[]
   riskAcceptances              RiskAcceptance[]
   conversationsAsResponsavel   Conversation[]
@@ -214,13 +226,16 @@ model TenantUser {
 }
 
 model Role {
-  id          String  @id @default(uuid())
-  tenantId    String? // null = papel padrão do sistema, não editável por tenant
-  nome        String
-  descricao   String?
-  isSystem    Boolean @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(uuid())
+  tenantId  String? // null = papel padrão do sistema, não editável por tenant
+  nome      String
+  descricao String?
+  isSystem  Boolean  @default(false)
+  // Perfil inativo perde todas as permissões efetivas (checado no
+  // PermissionsGuard), mas usuários já vinculados não são desvinculados.
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   tenant      Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   permissions Permission[]
@@ -249,11 +264,11 @@ enum PermissionAction {
 }
 
 model Permission {
-  id       String            @id @default(uuid())
-  roleId   String
-  module   String
-  action   PermissionAction
-  scope    String? // ex.: "queue:<id>", "team:<id>" — granularidade opcional (ver PERMISSIONS_MATRIX.md)
+  id     String           @id @default(uuid())
+  roleId String
+  module String
+  action PermissionAction
+  scope  String? // ex.: "queue:<id>", "team:<id>" — granularidade opcional (ver PERMISSIONS_MATRIX.md)
 
   role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
@@ -308,34 +323,34 @@ model PasswordResetToken {
 // ---------------------------------------------------------------------------
 
 model Plan {
-  id             String   @id @default(uuid())
-  nome           String   @unique
-  descricao      String?
-  preco          Decimal  @db.Decimal(10, 2)
+  id              String   @id @default(uuid())
+  nome            String   @unique
+  descricao       String?
+  preco           Decimal  @db.Decimal(10, 2)
   // Preço da modalidade anual — null = plano não oferece anual, só mensal
   // (a modalidade mensal continua em `preco`, sem quebrar planos já criados
   // antes desta fase, que só tinham uma única recorrência).
-  precoAnual     Decimal? @db.Decimal(10, 2)
-  recorrencia    String   @default("mensal") // mensal | anual — recorrência padrão/legada, mantida por compatibilidade com assinaturas já criadas
-  modulos        Json // lista de módulos incluídos, ex.: ["crm", "whatsapp"]
+  precoAnual      Decimal? @db.Decimal(10, 2)
+  recorrencia     String   @default("mensal") // mensal | anual — recorrência padrão/legada, mantida por compatibilidade com assinaturas já criadas
+  modulos         Json // lista de módulos incluídos, ex.: ["crm", "whatsapp"]
   // Textos curtos das funcionalidades de destaque exibidas na tela pública
   // de seleção de plano — separado de `modulos` (que é a lista técnica
   // usada para ligar FeatureFlags) porque nem toda funcionalidade de
   // marketing corresponde 1:1 a um módulo técnico.
   funcionalidades Json?
-  limites        Json // ex.: { "usuarios": 10, "numerosWhatsappOficial": 1, "numerosWhatsappNaoOficial": 1, "armazenamentoMb": 500 }
-  iaIncluida     Boolean  @default(false)
-  apiOficial     Boolean  @default(false)
-  diasTeste      Int      @default(0)
-  publicoAtivo   Boolean  @default(false)
-  ordem          Int      @default(0)
-  destaque       Boolean  @default(false)
-  ativo          Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  limites         Json // ex.: { "usuarios": 10, "numerosWhatsappOficial": 1, "numerosWhatsappNaoOficial": 1, "armazenamentoMb": 500 }
+  iaIncluida      Boolean  @default(false)
+  apiOficial      Boolean  @default(false)
+  diasTeste       Int      @default(0)
+  publicoAtivo    Boolean  @default(false)
+  ordem           Int      @default(0)
+  destaque        Boolean  @default(false)
+  ativo           Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  tenants       Tenant[]
-  subscriptions Subscription[]
+  tenants              Tenant[]
+  subscriptions        Subscription[]
   affiliateCommissions AffiliateCommission[]
   affiliateReferrals   AffiliateReferral[]
 
@@ -353,10 +368,10 @@ enum SubscriptionStatus {
 }
 
 model Subscription {
-  id         String             @id @default(uuid())
-  tenantId   String
-  planId     String
-  status     SubscriptionStatus @default(waiting)
+  id                    String             @id @default(uuid())
+  tenantId              String
+  planId                String
+  status                SubscriptionStatus @default(waiting)
   // "Fotografia" das condições comerciais no momento da contratação (item
   // 2.6 do documento de alterações) — se o Master mudar o preço/recorrência
   // do Plan depois, assinaturas já criadas continuam cobrando pelo valor
@@ -364,17 +379,17 @@ model Subscription {
   // `plan.recorrencia` continuam sendo a fonte de verdade só para NOVAS
   // contratações.
   recorrenciaContratada String?
-  precoContratado       Decimal?  @db.Decimal(10, 2)
+  precoContratado       Decimal?           @db.Decimal(10, 2)
   diasTesteContratado   Int?
   trialEndsAt           DateTime?
-  startedAt  DateTime?
-  renewedAt  DateTime?
-  cancelledAt DateTime?
-  createdAt  DateTime           @default(now())
-  updatedAt  DateTime           @updatedAt
+  startedAt             DateTime?
+  renewedAt             DateTime?
+  cancelledAt           DateTime?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  plan   Plan   @relation(fields: [planId], references: [id], onDelete: Restrict)
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plan     Plan      @relation(fields: [planId], references: [id], onDelete: Restrict)
   invoices Invoice[]
 
   @@index([tenantId])
@@ -404,14 +419,14 @@ model FeatureFlag {
 /// Limiares de "ações que precisam de atenção" do Dashboard (Início) —
 /// configuráveis por tenant, ver módulo apps/api/src/dashboard.
 model DashboardAlertConfig {
-  id                       String   @id @default(uuid())
-  tenantId                 String   @unique
-  queueWaitMinutes         Int      @default(10)
-  opportunityStagnantDays  Int      @default(5)
-  proposalNoResponseDays   Int      @default(3)
-  taskOverdueEnabled       Boolean  @default(true)
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
+  id                      String   @id @default(uuid())
+  tenantId                String   @unique
+  queueWaitMinutes        Int      @default(10)
+  opportunityStagnantDays Int      @default(5)
+  proposalNoResponseDays  Int      @default(3)
+  taskOverdueEnabled      Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -431,11 +446,38 @@ model File {
   tamanho      Int
   uploadedBy   String
   status       String    @default("pending") // pending | uploaded
+  // Origem do upload (whatsapp|chatbot|crm|atendimento|outros) — categorização
+  // usada hoje só pelo breakdown de armazenamento (StorageService.classifyMime
+  // categoriza por mimeType, não por este campo; "modulo" é reservado para
+  // segmentação futura por origem).
+  modulo       String?   @default("outros")
   createdAt    DateTime  @default(now())
   deletedAt    DateTime?
 
   @@index([tenantId])
   @@map("files")
+}
+
+// ---------------------------------------------------------------------------
+// Armazenamento (contador pré-agregado por tenant — nunca recalculado
+// varrendo todos os arquivos a cada tela aberta, ver StorageService)
+// ---------------------------------------------------------------------------
+
+model TenantStorageUsage {
+  tenantId           String   @id
+  totalBytes         BigInt   @default(0)
+  imagensVideosBytes BigInt   @default(0)
+  audiosBytes        BigInt   @default(0)
+  documentosBytes    BigInt   @default(0)
+  outrosBytes        BigInt   @default(0)
+  // Maior faixa (80/90/100) já notificada para evitar reenvio a cada upload —
+  // zerada quando o consumo volta a cair abaixo de 80% (ver StorageService).
+  lastNotifiedTier   Int      @default(0)
+  updatedAt          DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tenant_storage_usage")
 }
 
 // ---------------------------------------------------------------------------
@@ -447,32 +489,32 @@ model File {
 // separada — mesmo resultado funcional, menos uma junção para um dado que
 // nunca é consultado sozinho fora do contato.
 model Contact {
-  id            String    @id @default(uuid())
-  tenantId      String
-  nome          String
-  sobrenome     String?
-  cpf           String?
-  cnpj          String?
-  razaoSocial   String?
-  telefone      String?
-  whatsapp      String?
-  email         String?
-  origem        String?
-  campanha      String?
-  produto       String?
-  servico       String?
-  responsavelId String?
-  observacoes   String?
+  id              String    @id @default(uuid())
+  tenantId        String
+  nome            String
+  sobrenome       String?
+  cpf             String?
+  cnpj            String?
+  razaoSocial     String?
+  telefone        String?
+  whatsapp        String?
+  email           String?
+  origem          String?
+  campanha        String?
+  produto         String?
+  servico         String?
+  responsavelId   String?
+  observacoes     String?
   // Lead Score (prompt mestre §4) — soma de pontos das respostas de
   // qualificação (QuestionNodeData.pontuacao / MenuOption.pontuacao),
   // aplicada por ChatbotEngineService. Clampada em [0, 100].
-  leadScore     Int       @default(0)
-  tags          String[] @default([])
-  customFields  Json?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  deletedAt     DateTime?
-  anonymizedAt  DateTime? // LGPD: dados pessoais apagados sob pedido — ver ContactsService.anonymize
+  leadScore       Int       @default(0)
+  tags            String[]  @default([])
+  customFields    Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+  anonymizedAt    DateTime? // LGPD: dados pessoais apagados sob pedido — ver ContactsService.anonymize
   // Fase 53: bloquear contato — impede novo envio de mensagem (manual ou por
   // automação/chatbot) até ser desbloqueado; não afeta mensagens já trocadas.
   bloqueado       Boolean   @default(false)
@@ -489,21 +531,21 @@ model Contact {
   // em Configurações do CRM (item 11.1). Os dois convivem de propósito.
   origemId String?
 
-  tenant       Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  responsavel  TenantUser? @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
-  origemRef    ContactOrigin? @relation(fields: [origemId], references: [id], onDelete: SetNull)
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  responsavel   TenantUser?    @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
+  origemRef     ContactOrigin? @relation(fields: [origemId], references: [id], onDelete: SetNull)
   opportunities Opportunity[]
-  tasks        CrmTask[]
+  tasks         CrmTask[]
   conversations Conversation[]
   // Múltiplos telefones (documento de alterações, item 10.1) — `telefone`/
   // `whatsapp` (acima) continuam sincronizados com o telefone "principal" de
   // cada tipo, para não quebrar a busca de conversa por WhatsApp
   // (`Conversation`/webhooks) nem o resto da suíte já testada. `phones` é a
   // fonte de verdade para a UI (que pode ter vários números por tipo).
-  phones       ContactPhone[]
+  phones        ContactPhone[]
   // Múltiplos e-mails — `email` (acima) continua sincronizado com o e-mail
   // principal, pelo mesmo motivo de `phones`/`telefone`/`whatsapp`.
-  emails       ContactEmail[]
+  emails        ContactEmail[]
 
   @@index([tenantId, deletedAt])
   @@index([tenantId, whatsapp])
@@ -574,11 +616,11 @@ model CrmTaskType {
 }
 
 model DeduplicationRule {
-  id       String  @id @default(uuid())
-  tenantId String
-  campo    String // whatsapp | telefone | email | cpf | cnpj
-  ativo    Boolean @default(true)
-  prioridade Int   @default(0)
+  id         String  @id @default(uuid())
+  tenantId   String
+  campo      String // whatsapp | telefone | email | cpf | cnpj
+  ativo      Boolean @default(true)
+  prioridade Int     @default(0)
 
   @@unique([tenantId, campo])
   @@index([tenantId])
@@ -595,8 +637,8 @@ model Funnel {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  stages FunnelStage[]
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  stages        FunnelStage[]
   opportunities Opportunity[]
 
   @@index([tenantId])
@@ -614,9 +656,10 @@ model FunnelStage {
   slaHoras           Int?
   ativo              Boolean @default(true)
 
-  funnel        Funnel        @relation(fields: [funnelId], references: [id], onDelete: Cascade)
-  opportunities Opportunity[]
-  stageHistory  OpportunityStageHistory[]
+  funnel         Funnel                    @relation(fields: [funnelId], references: [id], onDelete: Cascade)
+  opportunities  Opportunity[]
+  stageHistory   OpportunityStageHistory[]
+  checklistItems StageChecklistItem[]
 
   @@index([funnelId])
   @@map("funnel_stages")
@@ -629,42 +672,49 @@ enum OpportunityStatus {
 }
 
 model Opportunity {
-  id                 String            @id @default(uuid())
-  tenantId           String
-  contactId          String
-  funnelId           String
-  stageId            String
-  valor              Decimal?          @db.Decimal(12, 2)
-  probabilidade      Int?
-  produto            String?
-  servico            String?
-  responsavelId      String?
-  previsaoFechamento DateTime?
-  origem             String?
-  campanha           String?
-  motivoGanho        String?
-  motivoPerda        String?
-  observacoes        String?
-  status             OpportunityStatus @default(open)
+  id                   String            @id @default(uuid())
+  tenantId             String
+  contactId            String
+  funnelId             String
+  stageId              String
+  valor                Decimal?          @db.Decimal(12, 2)
+  probabilidade        Int?
+  produto              String?
+  servico              String?
+  responsavelId        String?
+  previsaoFechamento   DateTime?
+  origem               String?
+  campanha             String?
+  motivoGanho          String?
+  motivoPerda          String?
+  observacoes          String?
+  // Observação do fechamento (won/lost) — separada de `observacoes` (notas
+  // gerais da oportunidade); obrigatória quando o OpportunityReason
+  // selecionado tem `obrigatorioObservacao=true` (validado em close()).
+  observacaoFechamento String?
+  status               OpportunityStatus @default(open)
   // Posição dentro da etapa, para reordenação manual no Kanban (Fase 27) —
   // menor primeiro; não é alterado por mover de etapa, só por arrastar
   // dentro da mesma coluna.
-  ordem              Int               @default(0)
+  ordem                Int               @default(0)
   // Momento em que foi marcada como ganha/perdida — usados nos relatórios de
   // tempo médio até o fechamento (métricas novas, ver OpportunityStageHistory).
-  wonAt              DateTime?
-  lostAt             DateTime?
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
-  deletedAt          DateTime?
+  wonAt                DateTime?
+  lostAt               DateTime?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  deletedAt            DateTime?
 
-  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  contact     Contact     @relation(fields: [contactId], references: [id], onDelete: Restrict)
-  funnel      Funnel      @relation(fields: [funnelId], references: [id], onDelete: Restrict)
-  stage       FunnelStage @relation(fields: [stageId], references: [id], onDelete: Restrict)
-  responsavel TenantUser? @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
-  tasks       CrmTask[]
-  stageHistory OpportunityStageHistory[]
+  tenant              Tenant                          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact             Contact                         @relation(fields: [contactId], references: [id], onDelete: Restrict)
+  funnel              Funnel                          @relation(fields: [funnelId], references: [id], onDelete: Restrict)
+  stage               FunnelStage                     @relation(fields: [stageId], references: [id], onDelete: Restrict)
+  responsavel         TenantUser?                     @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
+  tasks               CrmTask[]
+  stageHistory        OpportunityStageHistory[]
+  items               OpportunityItem[]
+  stageChecklistFills OpportunityStageChecklistFill[]
+  checklistProgress   OpportunityChecklistProgress[]
 
   @@index([tenantId, status])
   @@index([funnelId, stageId])
@@ -723,28 +773,28 @@ model CrmTask {
 // ---------------------------------------------------------------------------
 
 model WhatsAppNumber {
-  id            String    @id @default(uuid())
-  tenantId      String
-  nome          String? // apelido da conexão (item 14.1 do documento) — ex.: "Atendimento SP", exibido em vez do número cru quando preenchido
-  tipo          String // chatbot | atendente
-  modalidade    String // official_api | unofficial
-  numero        String
-  status        String    @default("disconnected") // connected | disconnected | paused | authenticating | unavailable | error | blocked
-  provider      String // identifica a implementação de WhatsAppProvider usada (ex.: "meta", "fake_unofficial")
+  id                String    @id @default(uuid())
+  tenantId          String
+  nome              String? // apelido da conexão (item 14.1 do documento) — ex.: "Atendimento SP", exibido em vez do número cru quando preenchido
+  tipo              String // chatbot | atendente
+  modalidade        String // official_api | unofficial
+  numero            String
+  status            String    @default("disconnected") // connected | disconnected | paused | authenticating | unavailable | error | blocked
+  provider          String // identifica a implementação de WhatsAppProvider usada (ex.: "meta", "fake_unofficial")
   externalAccountId String? // phone_number_id da Meta, quando modalidade = official_api
-  responsavelId String?
-  chatbotFlowId String? // legado — substituído por WhatsAppNumberFlow (múltiplos fluxos por conexão); mantido só para não perder o vínculo de conexões antigas, não é mais lido pelo motor
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  deletedAt     DateTime?
+  responsavelId     String?
+  chatbotFlowId     String? // legado — substituído por WhatsAppNumberFlow (múltiplos fluxos por conexão); mantido só para não perder o vínculo de conexões antigas, não é mais lido pelo motor
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
 
-  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  responsavel   TenantUser?      @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
-  chatbotFlow   ChatbotFlow?     @relation(fields: [chatbotFlowId], references: [id], onDelete: SetNull)
-  flows         WhatsAppNumberFlow[]
-  templates     WhatsAppTemplate[]
+  tenant          Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  responsavel     TenantUser?          @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
+  chatbotFlow     ChatbotFlow?         @relation(fields: [chatbotFlowId], references: [id], onDelete: SetNull)
+  flows           WhatsAppNumberFlow[]
+  templates       WhatsAppTemplate[]
   riskAcceptances RiskAcceptance[]
-  conversations Conversation[]
+  conversations   Conversation[]
 
   @@unique([tenantId, numero])
   @@index([tenantId, status])
@@ -787,21 +837,21 @@ model WhatsAppNumberFlow {
 }
 
 model WhatsAppTemplate {
-  id             String   @id @default(uuid())
-  tenantId       String
+  id               String   @id @default(uuid())
+  tenantId         String
   whatsAppNumberId String?
-  nome           String
-  idioma         String   @default("pt_BR")
-  categoria      String // marketing | utility | authentication
-  cabecalho      String?
-  corpo          String
-  rodape         String?
-  variaveis      Json?
-  botoes         Json?
-  status         String   @default("draft") // draft | pending | approved | rejected
-  versao         Int      @default(1)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  nome             String
+  idioma           String   @default("pt_BR")
+  categoria        String // marketing | utility | authentication
+  cabecalho        String?
+  corpo            String
+  rodape           String?
+  variaveis        Json?
+  botoes           Json?
+  status           String   @default("draft") // draft | pending | approved | rejected
+  versao           Int      @default(1)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   whatsAppNumber WhatsAppNumber? @relation(fields: [whatsAppNumberId], references: [id], onDelete: SetNull)
@@ -850,15 +900,15 @@ model Conversation {
   updatedAt        DateTime  @updatedAt
   deletedAt        DateTime?
 
-  tenant         Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  contact        Contact?       @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  whatsAppNumber WhatsAppNumber @relation(fields: [whatsAppNumberId], references: [id], onDelete: Restrict)
-  queue          Queue?         @relation(fields: [queueId], references: [id], onDelete: SetNull)
-  responsavel    TenantUser?    @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
-  messages       Message[]
-  events         ConversationEvent[]
+  tenant            Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact           Contact?                 @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  whatsAppNumber    WhatsAppNumber           @relation(fields: [whatsAppNumberId], references: [id], onDelete: Restrict)
+  queue             Queue?                   @relation(fields: [queueId], references: [id], onDelete: SetNull)
+  responsavel       TenantUser?              @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
+  messages          Message[]
+  events            ConversationEvent[]
   chatbotExecutions ChatbotExecution[]
-  evaluations    ConversationEvaluation[]
+  evaluations       ConversationEvaluation[]
 
   @@index([tenantId, status, lastMessageAt])
   @@index([tenantId, whatsAppNumberId, contatoNumero])
@@ -871,21 +921,21 @@ model Conversation {
 // antecipada a pedido do usuário. Avalia uma conversa já encerrada/com
 // histórico via IA, contra critérios configuráveis pelo tenant.
 model ConversationEvaluation {
-  id                  String   @id @default(uuid())
-  tenantId            String
-  conversationId      String
-  solicitanteId       String
-  notaGeral           Float
-  classificacao       String
-  criteriosAvaliados  Json
-  pontosPositivos     Json
-  pontosMelhoria      Json
+  id                    String   @id @default(uuid())
+  tenantId              String
+  conversationId        String
+  solicitanteId         String
+  notaGeral             Float
+  classificacao         String
+  criteriosAvaliados    Json
+  pontosPositivos       Json
+  pontosMelhoria        Json
   oportunidadesPerdidas Json
-  momentosCriticos    Json
-  sugestoes           Json
-  resumoExecutivo     String
-  modeloUtilizado     String
-  createdAt           DateTime @default(now())
+  momentosCriticos      Json
+  sugestoes             Json
+  resumoExecutivo       String
+  modeloUtilizado       String
+  createdAt             DateTime @default(now())
 
   tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
@@ -896,17 +946,17 @@ model ConversationEvaluation {
 }
 
 model Message {
-  id             String    @id @default(uuid())
+  id             String   @id @default(uuid())
   tenantId       String
   conversationId String
   direction      String // in | out
   senderType     String // contact | agent | chatbot | system
-  tipo           String    @default("text") // text | image | audio | video | document | location
+  tipo           String   @default("text") // text | image | audio | video | document | location
   conteudo       String?
   midiaUrl       String?
-  statusEntrega  String    @default("sent") // sent | delivered | read | failed
-  externalId     String?   @unique // id da mensagem no provedor — garante idempotência de webhook
-  createdAt      DateTime  @default(now())
+  statusEntrega  String   @default("sent") // sent | delivered | read | failed
+  externalId     String?  @unique // id da mensagem no provedor — garante idempotência de webhook
+  createdAt      DateTime @default(now())
 
   tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
@@ -926,9 +976,9 @@ model Team {
   ativo     Boolean  @default(true)
   createdAt DateTime @default(now())
 
-  tenant  Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  members TeamMember[]
-  queues  Queue[]
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  members       TeamMember[]
+  queues        Queue[]
   quickMessages QuickMessage[]
 
   @@unique([tenantId, nome])
@@ -969,8 +1019,8 @@ model Queue {
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
-  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  team          Team?          @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  tenant        Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  team          Team?           @relation(fields: [teamId], references: [id], onDelete: SetNull)
   conversations Conversation[]
   businessHours BusinessHours[]
 
@@ -980,14 +1030,14 @@ model Queue {
 }
 
 model BusinessHours {
-  id           String    @id @default(uuid())
-  tenantId     String
-  escopo       String // number | team | queue | department
-  queueId      String?
-  diaSemana    Int? // 0 (domingo) a 6 (sábado) — null quando é uma data especial/feriado
-  horaInicio   String? // "HH:mm"
-  horaFim      String? // "HH:mm"
-  feriadoData  DateTime? // preenchido só em datas especiais/feriados
+  id          String    @id @default(uuid())
+  tenantId    String
+  escopo      String // number | team | queue | department
+  queueId     String?
+  diaSemana   Int? // 0 (domingo) a 6 (sábado) — null quando é uma data especial/feriado
+  horaInicio  String? // "HH:mm"
+  horaFim     String? // "HH:mm"
+  feriadoData DateTime? // preenchido só em datas especiais/feriados
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   queue  Queue? @relation(fields: [queueId], references: [id], onDelete: Cascade)
@@ -1028,11 +1078,11 @@ model ChatbotFlow {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  tenant         Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  versions       ChatbotFlowVersion[]
-  executions     ChatbotExecution[]
+  tenant          Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  versions        ChatbotFlowVersion[]
+  executions      ChatbotExecution[]
   whatsAppNumbers WhatsAppNumber[]
-  numberFlows    WhatsAppNumberFlow[]
+  numberFlows     WhatsAppNumberFlow[]
 
   @@unique([tenantId, nome])
   @@index([tenantId, status])
@@ -1061,17 +1111,17 @@ model ChatbotFlowVersion {
 }
 
 model ChatbotExecution {
-  id            String    @id @default(uuid())
-  tenantId      String
-  chatbotFlowId String
-  versao        Int
+  id             String    @id @default(uuid())
+  tenantId       String
+  chatbotFlowId  String
+  versao         Int
   conversationId String
-  contactId     String?
-  status        String    @default("running") // running | completed | abandoned | transferred
-  currentNodeId String?
-  contextData   Json?
-  startedAt     DateTime  @default(now())
-  finishedAt    DateTime?
+  contactId      String?
+  status         String    @default("running") // running | completed | abandoned | transferred
+  currentNodeId  String?
+  contextData    Json?
+  startedAt      DateTime  @default(now())
+  finishedAt     DateTime?
 
   tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   chatbotFlow        ChatbotFlow         @relation(fields: [chatbotFlowId], references: [id], onDelete: Cascade)
@@ -1083,19 +1133,19 @@ model ChatbotExecution {
 }
 
 model KnowledgeBaseItem {
-  id        String   @id @default(uuid())
-  tenantId  String
-  tipo      String // empresa | produto | servico | preco | politica | horario | entrega | garantia | pagamento | faq | documento | texto
-  titulo    String
-  conteudo  String
-  arquivoId String?
-  campanha  String?
-  ativo     Boolean  @default(true)
+  id           String   @id @default(uuid())
+  tenantId     String
+  tipo         String // empresa | produto | servico | preco | politica | horario | entrega | garantia | pagamento | faq | documento | texto
+  titulo       String
+  conteudo     String
+  arquivoId    String?
+  campanha     String?
+  ativo        Boolean  @default(true)
   // Vetor de embedding (array de floats) para busca semântica — calculado
   // sob demanda na primeira busca e cacheado aqui; null enquanto não
   // calculado ou se o provedor de IA do tenant não suporta embeddings (ver
   // ChatbotEngineService.searchKnowledgeBase, Fase 25).
-  embedding Json?
+  embedding    Json?
   // Fase 58: base de perguntas e respostas (prompt mestre, Funcionalidade 2)
   // — só relevante para tipo = "faq", mas mantido como colunas genéricas em
   // vez de uma tabela separada por não haver hoje nenhum outro dado
@@ -1107,8 +1157,8 @@ model KnowledgeBaseItem {
   variacoes    String[] @default([])
   palavraChave String?
   prioridade   Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -1251,12 +1301,12 @@ model PlatformSettings {
   // Logotipo exibido na tela de login (distinto do logotipo do menu lateral acima) — a empresa
   // faz login em /login (fallback: badge "C"), o Master em /master/login (fallback: badge "M").
   // Lido publicamente via GET /branding/site (sem autenticação, a tela de login é a própria página).
-  tenantLoginLogoLightUrl String? @db.Text
-  tenantLoginLogoDarkUrl  String? @db.Text
-  tenantLoginLogoSizePercent Int  @default(100)
-  masterLoginLogoLightUrl String? @db.Text
-  masterLoginLogoDarkUrl  String? @db.Text
-  masterLoginLogoSizePercent Int  @default(100)
+  tenantLoginLogoLightUrl    String? @db.Text
+  tenantLoginLogoDarkUrl     String? @db.Text
+  tenantLoginLogoSizePercent Int     @default(100)
+  masterLoginLogoLightUrl    String? @db.Text
+  masterLoginLogoDarkUrl     String? @db.Text
+  masterLoginLogoSizePercent Int     @default(100)
 
   // Título da aba do navegador e favicon — únicos para toda a plataforma
   // (painel de empresa e painel Master compartilham a mesma aba/janela do
@@ -1270,24 +1320,24 @@ model PlatformSettings {
   // empresas (não no login) — ligado/desligado e editado a qualquer momento
   // pelo Master, sem precisar de deploy. Lido via GET /branding/tenant
   // (já autenticado com TenantAuthGuard).
-  announcementEnabled     Boolean  @default(false)
-  announcementText        String?  @db.Text
-  announcementLinkUrl     String?  @db.Text
-  announcementLinkText    String?  @db.Text
-  announcementBgColor     String?
-  announcementTextColor   String?
+  announcementEnabled         Boolean @default(false)
+  announcementText            String? @db.Text
+  announcementLinkUrl         String? @db.Text
+  announcementLinkText        String? @db.Text
+  announcementBgColor         String?
+  announcementTextColor       String?
   /// "left" | "center" | "right"
-  announcementAlign       String   @default("left")
+  announcementAlign           String  @default("left")
   /// Negrito no texto do aviso (separado do negrito do botão, ver announcementButtonBold).
-  announcementBold        Boolean  @default(false)
+  announcementBold            Boolean @default(false)
   /// Cor de fundo do botão do link (texto do botão sempre em branco). Nulo = usa announcementTextColor.
-  announcementButtonColor String?
+  announcementButtonColor     String?
   /// "rounded" | "square"
-  announcementButtonShape String   @default("rounded")
+  announcementButtonShape     String  @default("rounded")
   /// Negrito no botão do aviso, independente do texto (announcementBold).
-  announcementButtonBold  Boolean  @default(false)
+  announcementButtonBold      Boolean @default(false)
   /// "session" (fecha e não mostra mais até o próximo login) | "always" (sempre mostra de novo).
-  announcementDismissMode String   @default("always")
+  announcementDismissMode     String  @default("always")
   /// Cor do texto do botão do link. Nulo = branco.
   announcementButtonTextColor String?
 
@@ -1295,21 +1345,21 @@ model PlatformSettings {
   // painel Master (não do painel das empresas) — linha separada de campos
   // porque os dois avisos são independentes (podem ter texto/cor/estado
   // diferentes ao mesmo tempo). Lido via GET /branding/master.
-  masterAnnouncementEnabled     Boolean  @default(false)
-  masterAnnouncementText        String?  @db.Text
-  masterAnnouncementLinkUrl     String?  @db.Text
-  masterAnnouncementLinkText    String?  @db.Text
-  masterAnnouncementBgColor     String?
-  masterAnnouncementTextColor   String?
+  masterAnnouncementEnabled         Boolean @default(false)
+  masterAnnouncementText            String? @db.Text
+  masterAnnouncementLinkUrl         String? @db.Text
+  masterAnnouncementLinkText        String? @db.Text
+  masterAnnouncementBgColor         String?
+  masterAnnouncementTextColor       String?
   /// "left" | "center" | "right"
-  masterAnnouncementAlign       String   @default("left")
-  masterAnnouncementBold        Boolean  @default(false)
-  masterAnnouncementButtonColor String?
+  masterAnnouncementAlign           String  @default("left")
+  masterAnnouncementBold            Boolean @default(false)
+  masterAnnouncementButtonColor     String?
   /// "rounded" | "square"
-  masterAnnouncementButtonShape String   @default("rounded")
-  masterAnnouncementButtonBold  Boolean  @default(false)
+  masterAnnouncementButtonShape     String  @default("rounded")
+  masterAnnouncementButtonBold      Boolean @default(false)
   /// "session" (fecha e não mostra mais até o próximo login) | "always" (sempre mostra de novo).
-  masterAnnouncementDismissMode String   @default("always")
+  masterAnnouncementDismissMode     String  @default("always")
   masterAnnouncementButtonTextColor String?
 
   updatedAt DateTime @updatedAt
@@ -1328,36 +1378,36 @@ model PlatformSettings {
 // flow-definition.types.ts): simples de versionar, sem exigir uma tabela
 // por tipo de ação.
 model Automation {
-  id          String   @id @default(uuid())
-  tenantId    String
-  nome        String
-  descricao   String?
+  id                String   @id @default(uuid())
+  tenantId          String
+  nome              String
+  descricao         String?
   // Categoria de organização/filtro na UI (Atendimento/CRM/Tarefas/Pós-venda/Data)
   // — nula em automações antigas (criadas antes desse campo existir, ou cujo
   // gatilho é de billing e não se encaixa nas 5 categorias); não bloqueia nada.
-  tipoAutomacao String?
-  gatilhoTipo String
+  tipoAutomacao     String?
+  gatilhoTipo       String
   // Parâmetro numérico dos gatilhos baseados em tempo (crm_task.due_soon →
   // { horasAntecedencia }, opportunity.stage_stagnant → { diasParado }) —
   // nulo pros demais gatilhos. Ver automation-data-triggers.scheduler.ts.
   gatilhoParametros Json?
-  condicoes   Json?
-  acoes       Json
-  status      String   @default("active") // active | paused | archived
-  versao      Int      @default(1)
+  condicoes         Json?
+  acoes             Json
+  status            String   @default("active") // active | paused | archived
+  versao            Int      @default(1)
   // Intervalo mínimo (minutos) entre execuções desta automação para o mesmo
   // contato/conversa — nulo = sem limite. Ver AutomationEngineService.dispatch.
-  cooldownMinutos Int?
+  cooldownMinutos   Int?
   // Segredo usado para assinar (HMAC-SHA256) o corpo de requisições da ação
   // "send_webhook" desta automação — o destino externo usa para verificar
   // autenticidade, mesmo princípio dos webhooks que a própria plataforma
   // recebe (Meta, Stripe). Gerado automaticamente na criação (Fase 28).
-  webhookSecret String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  webhookSecret     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  tenant           Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  executions       AutomationExecution[]
+  tenant            Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  executions        AutomationExecution[]
   followUpSchedules FollowUpSchedule[]
 
   @@unique([tenantId, nome])
@@ -1400,21 +1450,21 @@ model AutomationExecution {
 }
 
 model FollowUpSchedule {
-  id                 String    @id @default(uuid())
+  id                 String   @id @default(uuid())
   tenantId           String
   automationId       String
   contactId          String?
   conversationId     String?
   mensagem           String
-  sequenciaIndex     Int       @default(0)
+  sequenciaIndex     Int      @default(0)
   agendadoPara       DateTime
-  status             String    @default("scheduled") // scheduled | sent | cancelled
+  status             String   @default("scheduled") // scheduled | sent | cancelled
   canceladoPorEvento String?
   // Snapshot do payload.data do evento que originou a execução que agendou
   // este follow-up — usado para revalidar as condições da automação quando
   // o follow-up dispara (ver AutomationProcessor.sendFollowUp).
   dadosGatilho       Json?
-  createdAt          DateTime  @default(now())
+  createdAt          DateTime @default(now())
 
   tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   automation Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
@@ -1472,24 +1522,24 @@ enum AffiliateStatus {
 }
 
 model Affiliate {
-  id              String          @id @default(uuid())
-  nome            String
-  sobrenome       String
-  cpf             String          @unique
-  email           String          @unique
-  telefone        String?
-  whatsapp        String?
-  endereco        String?
-  dadosPagamento  Json?
-  status          AffiliateStatus @default(pending)
-  linkCode        String          @unique
-  aceitoTermosEm  DateTime?
+  id             String          @id @default(uuid())
+  nome           String
+  sobrenome      String
+  cpf            String          @unique
+  email          String          @unique
+  telefone       String?
+  whatsapp       String?
+  endereco       String?
+  dadosPagamento Json?
+  status         AffiliateStatus @default(pending)
+  linkCode       String          @unique
+  aceitoTermosEm DateTime?
   /// Autenticação de autoatendimento (Fase 32, ver DEVELOPMENT_PLAN.md) —
   /// opcional porque afiliados cadastrados antes desta fase não têm senha
   /// até o Master definir uma.
-  passwordHash    String?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  passwordHash   String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
   commissions   AffiliateCommission[]
   referrals     AffiliateReferral[]
@@ -1544,15 +1594,15 @@ model AffiliateReferral {
 // ---------------------------------------------------------------------------
 
 model EmailLog {
-  id         String   @id @default(uuid())
-  tenantId   String?
-  to         String
-  assunto    String
-  template   String // welcome | password_reset
-  provider   String // identifica a implementação de EmailProvider usada (ex.: "log")
+  id          String   @id @default(uuid())
+  tenantId    String?
+  to          String
+  assunto     String
+  template    String // welcome | password_reset
+  provider    String // identifica a implementação de EmailProvider usada (ex.: "log")
   providerRef String?
-  status     String   @default("sent") // sent | failed
-  createdAt  DateTime @default(now())
+  status      String   @default("sent") // sent | failed
+  createdAt   DateTime @default(now())
 
   tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -1571,19 +1621,19 @@ enum AuditActorType {
 }
 
 model AuditLog {
-  id               String         @id @default(uuid())
-  tenantId         String?
-  actorId          String
-  actorType        AuditActorType
+  id                 String         @id @default(uuid())
+  tenantId           String?
+  actorId            String
+  actorType          AuditActorType
   onBehalfOfTenantId String?
-  action           String
-  entity           String
-  entityId         String?
-  previousData     Json?
-  newData          Json?
-  ip               String?
-  userAgent        String?
-  timestamp        DateTime       @default(now())
+  action             String
+  entity             String
+  entityId           String?
+  previousData       Json?
+  newData            Json?
+  ip                 String?
+  userAgent          String?
+  timestamp          DateTime       @default(now())
 
   tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -1651,8 +1701,8 @@ model NotificationWhatsappDelivery {
   erro        String?
   createdAt   DateTime @default(now())
 
-  tenant    Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  recipient NotificationWhatsappRecipient  @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  tenant    Tenant                        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  recipient NotificationWhatsappRecipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, recipientId, createdAt])
   @@map("notification_whatsapp_deliveries")
@@ -1669,6 +1719,7 @@ model NotificationTemplate {
   titulo    String
   corpo     String
   critical  Boolean?
+  ativo     Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1676,4 +1727,127 @@ model NotificationTemplate {
 
   @@unique([tenantId, tipo])
   @@map("notification_templates")
+}
+
+model OpportunityReason {
+  id                    String  @id @default(uuid())
+  tenantId              String
+  tipo                  String // "won" | "lost"
+  nome                  String
+  ativo                 Boolean @default(true)
+  ordem                 Int     @default(0)
+  obrigatorioObservacao Boolean @default(false)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, tipo, nome])
+  @@index([tenantId, tipo])
+  @@map("opportunity_reasons")
+}
+
+model Product {
+  id             String   @id @default(uuid())
+  tenantId       String
+  nome           String
+  tipo           String // "produto" | "servico"
+  descricaoCurta String?
+  preco          Decimal  @db.Decimal(12, 2)
+  ativo          Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  items  OpportunityItem[]
+
+  @@index([tenantId, tipo])
+  @@map("products")
+}
+
+// Item de linha de uma oportunidade — productId nulo = item avulso (nome
+// digitado na hora, sem vínculo com o catálogo).
+model OpportunityItem {
+  id            String   @id @default(uuid())
+  tenantId      String
+  opportunityId String
+  productId     String?
+  nome          String
+  preco         Decimal  @db.Decimal(12, 2)
+  quantidade    Int      @default(1)
+  ordem         Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  product     Product?    @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([opportunityId])
+  @@map("opportunity_items")
+}
+
+// ---------------------------------------------------------------------------
+// Roteiros de Etapas — checklist configurável por etapa do funil que bloqueia
+// a movimentação MANUAL de uma oportunidade até que todos os itens ativos
+// tenham alguma resposta (ver OpportunitiesService.enforceStageChecklist).
+// ---------------------------------------------------------------------------
+
+model StageChecklistItem {
+  id                String  @id @default(uuid())
+  tenantId          String
+  stageId           String
+  titulo            String
+  ordem             Int     @default(0)
+  ativo             Boolean @default(true)
+  obrigatorioMotivo Boolean @default(false)
+
+  tenant   Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  stage    FunnelStage                    @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  progress OpportunityChecklistProgress[]
+
+  @@index([tenantId])
+  @@index([stageId])
+  @@map("stage_checklist_items")
+}
+
+// Snapshot IMUTÁVEL de uma resposta completa do roteiro, congelado no
+// momento em que a oportunidade sai da etapa — "itens" guarda o título de
+// cada item no momento (não uma referência viva a StageChecklistItem), então
+// editar/excluir o item depois não altera o histórico já gravado.
+model OpportunityStageChecklistFill {
+  id            String   @id @default(uuid())
+  tenantId      String
+  opportunityId String
+  stageId       String
+  preenchidoPor String?
+  itens         Json
+  createdAt     DateTime @default(now())
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([opportunityId])
+  @@map("opportunity_stage_checklist_fills")
+}
+
+// Estado MUTÁVEL de progresso do roteiro da etapa atual — diferente do
+// snapshot acima (que só existe depois que a oportunidade muda de etapa).
+// Permite marcar item a item na ficha da oportunidade, aos poucos.
+model OpportunityChecklistProgress {
+  id            String   @id @default(uuid())
+  tenantId      String
+  opportunityId String
+  stageId       String
+  itemId        String
+  resultado     String? // "concluido" | "nao_concluido"
+  motivo        String?
+  updatedAt     DateTime @updatedAt
+
+  tenant      Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  opportunity Opportunity        @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  item        StageChecklistItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([opportunityId, itemId])
+  @@index([tenantId])
+  @@map("opportunity_checklist_progress")
 }

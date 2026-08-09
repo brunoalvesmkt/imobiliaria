@@ -11,6 +11,7 @@ export interface Role {
   nome: string;
   descricao: string | null;
   isSystem: boolean;
+  ativo: boolean;
 }
 
 export interface RoleWithPermissions extends Role {
@@ -42,6 +43,7 @@ export function usePermissionOptions() {
 export interface RoleInput {
   nome: string;
   descricao?: string | undefined;
+  ativo?: boolean;
   permissions: RolePermission[];
 }
 

@@ -148,6 +148,9 @@ function FlowRow({ flow }: { flow: ChatbotFlow }) {
       <td className="px-4 py-2 text-ink-dim">{flow.versaoAtual}</td>
       <td className="px-4 py-2 text-right">
         <div className="flex justify-end gap-2">
+          <Link href={`/painel/chatbot/fluxos/${flow.id}`} className="text-xs font-medium text-brand-700 hover:underline">
+            {t("chatbot.action.openBuilder")}
+          </Link>
           <button type="button" onClick={() => setEditing(true)} className="text-xs font-medium text-ink-dim hover:underline">
             {t("chatbot.action.edit")}
           </button>

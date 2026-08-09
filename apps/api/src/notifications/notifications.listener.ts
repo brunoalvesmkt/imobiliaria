@@ -96,7 +96,8 @@ export class NotificationsListener implements OnModuleInit {
 
   private async handle(payload: DomainEventPayload, handler: (payload: DomainEventPayload) => HandlerResult): Promise<void> {
     const { tipo, recipientUserId, values, link } = handler(payload);
-    const { titulo, corpo, critical } = await this.templates.render(payload.tenantId, tipo, values);
+    const { titulo, corpo, critical, ativo } = await this.templates.render(payload.tenantId, tipo, values);
+    if (!ativo) return;
     await this.notifications.create({
       tenantId: payload.tenantId,
       recipientUserId: recipientUserId ?? null,

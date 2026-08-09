@@ -32,6 +32,7 @@ import { ReportsModule } from "./reports/reports.module";
 import { DashboardModule } from "./dashboard/dashboard.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { AuditLogModule } from "./audit-log/audit-log.module";
+import { StorageModule } from "./storage/storage.module";
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { AuditLogModule } from "./audit-log/audit-log.module";
     DashboardModule,
     NotificationsModule,
     AuditLogModule,
+    StorageModule,
   ],
   controllers: [HealthController],
   providers: [

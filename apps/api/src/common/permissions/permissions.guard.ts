@@ -40,7 +40,10 @@ export class PermissionsGuard implements CanActivate {
         roleId: user.roleId,
         module: required.module,
         action: required.action,
-        role: { tenantId: user.tenantId },
+        // Perfil inativo perde todas as permissões efetivas, mesmo com as
+        // linhas de Permission ainda existindo — usuários já vinculados ao
+        // perfil não são desvinculados automaticamente (ver Role.ativo).
+        role: { tenantId: user.tenantId, ativo: true },
       },
     });
 

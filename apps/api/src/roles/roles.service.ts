@@ -88,6 +88,7 @@ export class RolesService {
       data: {
         ...(dto.nome !== undefined ? { nome: dto.nome } : {}),
         ...(dto.descricao !== undefined ? { descricao: dto.descricao } : {}),
+        ...(dto.ativo !== undefined ? { ativo: dto.ativo } : {}),
       },
     });
 

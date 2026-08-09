@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/commo
 import { randomUUID } from "node:crypto";
 import { TenantScopedPrismaService } from "../prisma/tenant-scoped-prisma.service";
 import { requireCurrentTenantId } from "../common/tenant/tenant-context";
+import { StorageService } from "../storage/storage.service";
 import { S3Service } from "./s3.service";
 import type { CreateUploadUrlDto } from "./dto/create-upload-url.dto";
 
@@ -10,6 +11,7 @@ export class FilesService {
   constructor(
     private readonly tenantPrisma: TenantScopedPrismaService,
     private readonly s3: S3Service,
+    private readonly storage: StorageService,
   ) {}
 
   async createUploadUrl(dto: CreateUploadUrlDto, uploadedBy: string) {
@@ -38,8 +40,27 @@ export class FilesService {
     if (!file) {
       throw new NotFoundException("Arquivo não encontrado.");
     }
+    if (file.status === "uploaded") {
+      return { status: "ok" as const };
+    }
 
     await this.tenantPrisma.file.update({ where: { id: fileId }, data: { status: "uploaded" } });
+    await this.storage.recordFileAdded(requireCurrentTenantId(), file.tamanho, file.mimeType);
+    return { status: "ok" as const };
+  }
+
+  /** Soft delete — decrementa o contador de armazenamento (ver StorageService.recordFileRemoved). */
+  async remove(fileId: string) {
+    const tenantId = requireCurrentTenantId();
+    const file = await this.tenantPrisma.file.findFirst({ where: { id: fileId, deletedAt: null } });
+    if (!file) {
+      throw new NotFoundException("Arquivo não encontrado.");
+    }
+
+    await this.tenantPrisma.file.update({ where: { id: fileId }, data: { deletedAt: new Date() } });
+    if (file.status === "uploaded") {
+      await this.storage.recordFileRemoved(tenantId, file.tamanho, file.mimeType);
+    }
     return { status: "ok" as const };
   }
 

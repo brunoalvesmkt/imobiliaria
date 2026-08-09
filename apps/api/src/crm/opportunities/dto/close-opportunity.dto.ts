@@ -7,4 +7,8 @@ export class CloseOpportunityDto {
   @IsOptional()
   @IsString()
   motivo?: string;
+
+  @IsOptional()
+  @IsString()
+  observacao?: string;
 }

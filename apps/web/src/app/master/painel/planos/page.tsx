@@ -114,6 +114,9 @@ function EditPlanForm({ plan, onDone }: { plan: MasterPlan; onDone: () => void }
   const [modulos, setModulos] = useState<string[]>(plan.modulos);
   const [iaIncluida, setIaIncluida] = useState(plan.iaIncluida);
   const [apiOficial, setApiOficial] = useState(plan.apiOficial);
+  const [armazenamentoGb, setArmazenamentoGb] = useState(
+    plan.limites.armazenamentoMb != null ? String(plan.limites.armazenamentoMb / 1024) : "",
+  );
 
   function toggleModule(module: string) {
     setModulos((current) => (current.includes(module) ? current.filter((m) => m !== module) : [...current, module]));
@@ -122,12 +125,17 @@ function EditPlanForm({ plan, onDone }: { plan: MasterPlan; onDone: () => void }
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     try {
+      const { armazenamentoMb: _old, ...restLimites } = plan.limites;
+      const limites = armazenamentoGb.trim()
+        ? { ...restLimites, armazenamentoMb: Math.round(Number(armazenamentoGb) * 1024) }
+        : restLimites;
       await updatePlan.mutateAsync({
         nome,
         descricao,
         preco: Number(preco),
         recorrencia,
         modulos,
+        limites,
         iaIncluida,
         apiOficial,
       });
@@ -178,6 +186,12 @@ function EditPlanForm({ plan, onDone }: { plan: MasterPlan; onDone: () => void }
           {t("master.plans.officialApi")}
         </label>
       </div>
+      <Field
+        label={t("master.plans.storageGb")}
+        value={armazenamentoGb}
+        onChange={(e) => setArmazenamentoGb(e.target.value)}
+        placeholder={t("master.plans.storageGbPlaceholder")}
+      />
       <div>
         <Button type="submit" loading={updatePlan.isPending}>
           {t("master.plans.save")}
@@ -197,6 +211,7 @@ function NewPlanForm({ onDone }: { onDone: () => void }) {
   const [modulos, setModulos] = useState<string[]>([]);
   const [iaIncluida, setIaIncluida] = useState(false);
   const [apiOficial, setApiOficial] = useState(false);
+  const [armazenamentoGb, setArmazenamentoGb] = useState("");
 
   function toggleModule(module: string) {
     setModulos((current) => (current.includes(module) ? current.filter((m) => m !== module) : [...current, module]));
@@ -211,7 +226,7 @@ function NewPlanForm({ onDone }: { onDone: () => void }) {
         preco: Number(preco),
         recorrencia,
         modulos,
-        limites: {},
+        limites: armazenamentoGb.trim() ? { armazenamentoMb: Math.round(Number(armazenamentoGb) * 1024) } : {},
         iaIncluida,
         apiOficial,
       });
@@ -267,6 +282,12 @@ function NewPlanForm({ onDone }: { onDone: () => void }) {
           {t("master.plans.officialApi")}
         </label>
       </div>
+      <Field
+        label={t("master.plans.storageGb")}
+        value={armazenamentoGb}
+        onChange={(e) => setArmazenamentoGb(e.target.value)}
+        placeholder={t("master.plans.storageGbPlaceholder")}
+      />
       <div>
         <Button type="submit" loading={createPlan.isPending}>
           {t("master.plans.create")}

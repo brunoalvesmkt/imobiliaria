@@ -40,6 +40,12 @@ export class NotificationSettingsController {
     return this.service.listRecipients();
   }
 
+  @Get("recipients/limit")
+  @RequirePermission("configuracoes", "view")
+  getRecipientLimitStatus() {
+    return this.service.getRecipientLimitStatus();
+  }
+
   @Post("recipients")
   @RequirePermission("configuracoes", "administer")
   createRecipient(@Body() dto: CreateNotificationRecipientDto, @CurrentUser() user: AuthenticatedRequestUser) {

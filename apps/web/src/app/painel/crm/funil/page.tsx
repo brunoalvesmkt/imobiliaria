@@ -66,21 +66,13 @@ export default function FunilPage() {
         {funnel.stages.length > 0 && (
           <div className="flex items-center gap-2">
             {isAdmin && (
-              <>
-                <Link
-                  href="/painel/crm/funil/configuracoes"
-                  className="rounded-md border border-line bg-surface px-3 py-2 text-sm font-medium text-ink hover:bg-surface-alt"
-                >
-                  {t("crm.funnel.settingsMenu.advancedSettings")}
-                </Link>
-                <FunnelSettingsMenu
-                  funnel={funnel}
-                  funnels={funnels.data}
-                  onFunnelCreated={setSelectedFunnelId}
-                  onFunnelDeleted={() => setSelectedFunnelId("")}
-                  onError={setFunnelError}
-                />
-              </>
+              <FunnelSettingsMenu
+                funnel={funnel}
+                funnels={funnels.data}
+                onFunnelCreated={setSelectedFunnelId}
+                onFunnelDeleted={() => setSelectedFunnelId("")}
+                onError={setFunnelError}
+              />
             )}
             <Button onClick={() => setShowNewOpportunity((v) => !v)}>
               {showNewOpportunity ? t("common.cancel") : t("crm.funnel.newOpportunity")}
@@ -171,6 +163,12 @@ function FunnelSettingsMenu({
     { label: t("crm.funnel.settingsMenu.reorderStages"), onClick: () => setPanel("reorderStages") },
     { label: t("crm.funnel.toggleActiveMenu"), onClick: () => setPanel("toggleActive") },
     { label: t("crm.funnel.delete"), onClick: () => setPanel("deleteFunnel") },
+    {
+      label: t("crm.funnel.settingsMenu.advancedSettings"),
+      onClick: () => {
+        window.location.href = "/painel/crm/funil/configuracoes";
+      },
+    },
   ];
 
   return (

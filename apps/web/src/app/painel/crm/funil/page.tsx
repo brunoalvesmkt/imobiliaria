@@ -66,13 +66,21 @@ export default function FunilPage() {
         {funnel.stages.length > 0 && (
           <div className="flex items-center gap-2">
             {isAdmin && (
-              <FunnelSettingsMenu
-                funnel={funnel}
-                funnels={funnels.data}
-                onFunnelCreated={setSelectedFunnelId}
-                onFunnelDeleted={() => setSelectedFunnelId("")}
-                onError={setFunnelError}
-              />
+              <>
+                <Link
+                  href="/painel/crm/funil/configuracoes"
+                  className="rounded-md border border-line bg-surface px-3 py-2 text-sm font-medium text-ink hover:bg-surface-alt"
+                >
+                  {t("crm.funnel.settingsMenu.advancedSettings")}
+                </Link>
+                <FunnelSettingsMenu
+                  funnel={funnel}
+                  funnels={funnels.data}
+                  onFunnelCreated={setSelectedFunnelId}
+                  onFunnelDeleted={() => setSelectedFunnelId("")}
+                  onError={setFunnelError}
+                />
+              </>
             )}
             <Button onClick={() => setShowNewOpportunity((v) => !v)}>
               {showNewOpportunity ? t("common.cancel") : t("crm.funnel.newOpportunity")}

@@ -177,6 +177,8 @@ function FunnelSettingsMenu({
       // real observado em produção onde o clique dentro do dropdown não
       // navegava via roteamento client-side do Next.js.
       onClick: () => {
+        // eslint-disable-next-line no-console
+        console.log("[DEBUG] clique em Configurações do funil recebido");
         window.location.href = "/painel/crm/funil/configuracoes";
       },
     },

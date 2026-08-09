@@ -171,17 +171,6 @@ function FunnelSettingsMenu({
     { label: t("crm.funnel.settingsMenu.reorderStages"), onClick: () => setPanel("reorderStages") },
     { label: t("crm.funnel.toggleActiveMenu"), onClick: () => setPanel("toggleActive") },
     { label: t("crm.funnel.delete"), onClick: () => setPanel("deleteFunnel") },
-    {
-      label: t("crm.funnel.settingsMenu.advancedSettings"),
-      // Navegação de página completa (não router.push) — evitou um problema
-      // real observado em produção onde o clique dentro do dropdown não
-      // navegava via roteamento client-side do Next.js.
-      onClick: () => {
-        // eslint-disable-next-line no-console
-        console.log("[DEBUG] clique em Configurações do funil recebido");
-        window.location.href = "/painel/crm/funil/configuracoes";
-      },
-    },
   ];
 
   return (

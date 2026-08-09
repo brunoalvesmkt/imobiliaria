@@ -164,9 +164,21 @@ function FunnelSettingsMenu({
     { label: t("crm.funnel.toggleActiveMenu"), onClick: () => setPanel("toggleActive") },
     { label: t("crm.funnel.delete"), onClick: () => setPanel("deleteFunnel") },
     {
-      label: t("crm.funnel.settingsMenu.advancedSettings"),
+      label: t("crm.funnelSettings.reasonsTitle"),
       onClick: () => {
-        window.location.href = "/painel/crm/funil/configuracoes";
+        window.location.href = "/painel/crm/funil/configuracoes/motivos";
+      },
+    },
+    {
+      label: t("crm.products.title"),
+      onClick: () => {
+        window.location.href = "/painel/crm/funil/configuracoes/produtos";
+      },
+    },
+    {
+      label: t("crm.funnelSettings.checklistsTitle"),
+      onClick: () => {
+        window.location.href = "/painel/crm/funil/configuracoes/roteiros";
       },
     },
   ];

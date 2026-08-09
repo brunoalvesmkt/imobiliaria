@@ -16,7 +16,15 @@ if [ ! -f "$FILE" ]; then
   exit 1
 fi
 
-echo "ATENÇÃO: isso vai APAGAR o banco 'chatbot_saas' atual e restaurar a partir de:"
+# Nome do banco não é sempre "chatbot_saas" — deployments que customizam
+# DATABASE_URL usam outro nome (ver mesmo raciocínio em backup-postgres.sh).
+DB_NAME="${DB_NAME:-}"
+if [ -z "$DB_NAME" ] && [ -f .env ]; then
+  DB_NAME="$(grep -m1 '^DATABASE_URL=' .env | sed -E 's#.*/([^/?]+)(\?.*)?$#\1#')"
+fi
+DB_NAME="${DB_NAME:-chatbot_saas}"
+
+echo "ATENÇÃO: isso vai APAGAR o banco '${DB_NAME}' atual e restaurar a partir de:"
 echo "  $FILE"
 read -r -p "Digite 'restaurar' para confirmar: " CONFIRM
 if [ "$CONFIRM" != "restaurar" ]; then
@@ -26,11 +34,11 @@ fi
 
 echo "[$(date -Iseconds)] Derrubando conexões ativas e recriando o banco..."
 docker compose exec -T postgres psql -U postgres -d postgres -c \
-  "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'chatbot_saas' AND pid <> pg_backend_pid();"
-docker compose exec -T postgres psql -U postgres -d postgres -c "DROP DATABASE IF EXISTS chatbot_saas;"
-docker compose exec -T postgres psql -U postgres -d postgres -c "CREATE DATABASE chatbot_saas;"
+  "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${DB_NAME}' AND pid <> pg_backend_pid();"
+docker compose exec -T postgres psql -U postgres -d postgres -c "DROP DATABASE IF EXISTS \"${DB_NAME}\";"
+docker compose exec -T postgres psql -U postgres -d postgres -c "CREATE DATABASE \"${DB_NAME}\";"
 
 echo "[$(date -Iseconds)] Restaurando..."
-gunzip -c "$FILE" | docker compose exec -T postgres psql -U postgres -d chatbot_saas
+gunzip -c "$FILE" | docker compose exec -T postgres psql -U postgres -d "$DB_NAME"
 
 echo "[$(date -Iseconds)] Restauração concluída. Rode 'pnpm --filter database generate' se for continuar operando localmente."
